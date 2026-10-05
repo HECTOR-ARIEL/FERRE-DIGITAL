@@ -267,7 +267,7 @@ const stockDe=id=>Math.max(0,+(P.find(p=>p.id==id)?.stock??0));
 const disp=l=>Math.min(l.cantidad,stockDe(l.id));
 let ult=null,H=[];
 function renderB(){const q=$('qb').value.trim(),F=q?filtra(q).slice(0,30):[];
- $('bt').innerHTML=F.map(p=>`<tr class="pick" onclick="add(${p.id})" title="Tocar para agregar"><td>${thumb(p.imagen)}<td>${p.codigo?`<span class="cod">${esc(p.codigo)}</span><br>`:''}${esc(p.nombre)}<td class="n">${money(p.precio)}<td class="n hide-sm">${p.stock>0?`<span class="m">Stock ${fmt(p.stock)}</span>`:'<span class="falta">Sin stock</span>'}<td class="n"><span class="mas">+</span></tr>`).join('')
+ $('bt').innerHTML=F.map(p=>`<tr class="pick" onclick="add(${p.id})" title="Tocar para agregar"><td>${thumb(p.imagen)}<td>${p.codigo?`<span class="cod">${esc(p.codigo)}</span><br>`:''}${esc(p.nombre)}<td class="n">${money(p.precio)}<br>${p.stock>0?`<span class="m" style="font-size:12px">Stock ${fmt(p.stock)}</span>`:'<span class="falta">Sin stock</span>'}<td class="n"><span class="mas">+</span></tr>`).join('')
   ||(q?'<tr><td class="m">Sin resultados</tr>':'')}
 // Agrega el producto (o suma 1 si ya estaba) y deja lista su casilla de cantidad para escribir
 function add(id){const p=P.find(x=>x.id==id);let i=L.findIndex(x=>x.id==id);
@@ -276,7 +276,7 @@ function add(id){const p=P.find(x=>x.id==id);let i=L.findIndex(x=>x.id==id);
  const tr=q?.closest('tr');if(tr){tr.classList.remove('flash');void tr.offsetWidth;tr.classList.add('flash')}}
 function guardaBorrador(){guardaLS('borrador',JSON.stringify(L));guardaLS('cliente',$('cl').value)}
 function rl(){$('lt').innerHTML=L.map((l,i)=>{const s=stockDe(l.id),nota=s<=0?'Sin stock: saldrá en rojo en el PDF y no se cobra':s<l.cantidad?`Solo hay ${fmt(s)} en stock: se presupuestan ${fmt(s)}`:'';
-  return `<tr><td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span><br>`:''}${esc(l.nombre)}${nota?`<div class="falta">${nota}</div>`:''}
+  return `<tr><td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span><br>`:''}${esc(l.nombre)}${nota?`<div class="falta">${nota}</div>`:`<div class="m" style="font-size:12px">Stock ${fmt(s)}</div>`}
   <td><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" onfocus="this.select()" onchange="L[${i}].cantidad=+this.value;rl()">
   <td class="n hide-sm">${money(l.precio)}<td class="n">${s<=0?'<span class="falta">-</span>':money(disp(l)*l.precio)}
   <td class="n"><button class="s" title="Quitar" onclick="L.splice(${i},1);rl()">✕</button></tr>`}).join('')
@@ -288,7 +288,7 @@ let LOGO=null;
 fetch('logo.jpg').then(r=>r.ok?r.blob():null).then(b=>{if(!b)return;const fr=new FileReader();
  fr.onload=()=>{const i=new Image();i.onload=()=>LOGO={src:fr.result,k:i.height/i.width};i.src=fr.result};fr.readAsDataURL(b)}).catch(()=>{});
 // PDF de un presupuesto guardado {id, fecha, cliente, total, lineas:[{codigo,nombre,precio,cantidad,disponible}]}
-// Estilo de los presupuestos de Distribuidor DEC: negro, rojo #BD1717 y blanco.
+// Estilo de los presupuestos de Distribuidor DEC: negro, rojo #BD1717 y blanco. El total va en negro.
 // El rojo en las filas indica falta de stock.
 function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=[13,13,13],G=[120,120,120],CL=[226,226,226],W=196,X=14;
  const f=new Date(p.fecha),fecha=f.toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'numeric'}),hora=f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
@@ -312,7 +312,7 @@ function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=
  d.setDrawColor(...CL);d.roundedRect(X,y,W-X,22,2.5,2.5,'S');d.line(105,y+4,105,y+18);
  d.setFont('helvetica','bold');d.setFontSize(7);d.setTextColor(...G);esp('FACTURAR A',X+6,y+7,.6);esp('TOTAL A PAGAR',W-6,y+7,.6,true);
  d.setFontSize(14);d.setTextColor(...NEG);d.text(d.splitTextToSize(String(p.cliente||'-'),82)[0],X+6,y+15.5);
- d.setFontSize(18);d.setTextColor(...ROJO);d.text(money(p.total),W-6,y+16,{align:'right'});
+ d.setFontSize(18);d.setTextColor(...NEG);d.text(money(p.total),W-6,y+16,{align:'right'});
  y+=30;
  // tabla
  const C={cod:X+3,cant:57,des:67,pu:162,sub:W-3};
