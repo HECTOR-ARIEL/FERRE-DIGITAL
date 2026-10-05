@@ -13,7 +13,7 @@ th{font-size:12px;font-weight:600;color:var(--m);text-transform:uppercase;letter
 .n{text-align:right;white-space:nowrap}#pt tr{cursor:pointer}#pt tr:hover{background:var(--bg)}tr.off td{opacity:.55}
 .th{width:44px;height:44px;border-radius:6px;object-fit:contain;background:var(--img);border:1px solid var(--b);display:block}
 .sub{display:none}.tag{font-size:11px;padding:1px 6px;border-radius:99px;background:var(--bg);border:1px solid var(--b);color:var(--m)}
-.mini{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mini input{width:90px}
+#fc{width:auto;flex:none}.mini{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mini input{width:90px}
 dialog{border:0;border-radius:12px;padding:0;width:min(580px,calc(100% - 24px));max-height:calc(100% - 24px);background:var(--c);color:var(--t)}
 dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;padding:18px}dialog h2{margin:0;font-size:18px}
 .foto{display:flex;gap:14px;align-items:center}.foto .th{width:110px;height:110px}.foto>div{display:grid;gap:8px}
@@ -26,7 +26,7 @@ dialog{overflow:auto}
 #selbar span{flex:1;min-width:120px}#selbar .s{background:transparent;color:inherit;border-color:currentColor}
 .aviso{background:var(--bg);border:1px dashed var(--b)}
 @media(max-width:520px){.sub{display:block}.g3{grid-template-columns:1fr 1fr}.hide-sm{display:none}main{padding:10px}.c{padding:12px}
- td,th{padding:7px 5px}main .r>button{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
+ td,th{padding:7px 5px}main .r>button,#fc{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
  header{padding:8px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}#pt .th{width:36px;height:36px}.gi{width:60px;padding:6px}dialog form{padding:14px}}
 </style></head><body>
 <header><div class="brand"><img src="icon.svg" alt=""><b>Administración</b></div>
@@ -45,6 +45,7 @@ dialog{overflow:auto}
 <section id="t-prod">
  <div class="c r">
   <input id="q" type="search" placeholder="Buscar por descripción o código" oninput="lim=100;renderP()">
+  <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option></select>
   <button onclick="editar()">+ Nuevo producto</button>
   <button class="s" onclick="$('f').click()">Importar Excel</button>
   <input id="f" type="file" accept=".xlsx,.xls,.csv" hidden onchange="imp(this.files[0])">
@@ -62,7 +63,7 @@ dialog{overflow:auto}
  <div id="selbar" hidden><span><b id="nsel">0</b> seleccionado(s)</span>
   <button class="s" onclick="sel.clear();renderP()">Cancelar</button>
   <button id="bsel" onclick="accionSel()">Eliminar</button></div>
- <p class="m">Excel: la primera fila debe tener las columnas <b>descripcion</b> y <b>precio</b> (el costo) y, si quieres, <b>stock</b>. Cada producto se reconoce por su descripción original del Excel: aunque le cambies la descripción o el código aquí, se seguirá actualizando bien.</p>
+ <p class="m">Excel: puedes subir la nota de pedido tal cual llega. Se usan solo las columnas <b>Producto</b> (o Descripción) y <b>Precio</b> (y <b>Stock</b> si existe); el código y el resto de columnas se ignoran. Cada producto se reconoce por su descripción original del Excel: aunque le cambies aquí la descripción o el código, se seguirá actualizando bien.</p>
 </section>
 
 <section id="t-pres" hidden>
@@ -81,7 +82,7 @@ dialog{overflow:auto}
  <div class="foto"><img id="fimg" class="th" alt="">
   <div><button type="button" class="s" onclick="$('fi').click()">Cambiar imagen</button><button type="button" class="s" id="fqi" onclick="quitarImagen()">Quitar imagen</button></div>
   <input id="fi" type="file" accept="image/*" hidden onchange="elegirImg(this.files[0])"></div>
- <label>Código<input id="fcod" autocomplete="off"></label>
+ <label>Código<input id="fcod" autocomplete="off" placeholder="Sin código no aparece en el catálogo"></label>
  <label>Descripción<textarea id="fdes" rows="2" required></textarea></label>
  <div class="g3">
   <label>Costo<input id="fcos" inputmode="decimal" oninput="deCosto()"></label>
@@ -119,6 +120,8 @@ const tot=()=>L.reduce((s,l)=>s+l.cantidad*l.precio,0);
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2500)}
 function msg(e){if(e.code=='23505')return 'Ya existe otro producto con ese código.';return e.message||String(e)}
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
+// lo que se ve en la tabla de productos: búsqueda + filtro de código (+ papelera)
+const lista=()=>{const c=$('fc').value;return filtra($('q').value,enPap).filter(p=>!c||(c=='c')==!!p.codigo)};
 // busca dentro de los productos normales, o de la papelera si enPap=true
 const filtra=(q,enPap=false)=>{const w=norm(q).split(/\s+/).filter(Boolean);return P.filter(p=>!!p.borrado==enPap&&w.every(x=>norm((p.codigo||'')+' '+p.nombre).includes(x)))};
 
@@ -137,13 +140,13 @@ async function load(){try{P=await todos(()=>sb.from('productos').select('*').ord
  L=L.filter(l=>P.some(p=>p.id==l.id&&!p.borrado)).map(l=>{const p=P.find(x=>x.id==l.id);return{...l,codigo:p.codigo,nombre:p.nombre,precio:+p.precio}});
  for(const id of sel)if(!P.some(p=>p.id==id))sel.delete(id);
  renderP();renderB();rl()}
-function papelera(v){enPap=v;sel.clear();lim=100;$('q').value='';$('avpap').hidden=!v;$('gananc').hidden=v;
+function papelera(v){enPap=v;$('fc').value='';sel.clear();lim=100;$('q').value='';$('avpap').hidden=!v;$('gananc').hidden=v;
  document.querySelectorAll('#t-prod>.c.r:first-child>button').forEach(b=>b.hidden=v);renderP()}
-function renderP(){const F=filtra($('q').value,enPap),np=P.filter(p=>p.borrado).length;$('nf').textContent=F.length;
+function renderP(){const F=lista(),np=P.filter(p=>p.borrado).length;$('nf').textContent=F.length;
  $('bpap').textContent='Papelera'+(np?` (${np})`:'');
  $('pt').innerHTML=F.slice(0,lim).map(p=>`<tr onclick="${enPap?`marca(${p.id})`:`editar(${p.id})`}"${p.activo&&!enPap?'':' class="off"'}>
   <td class="cc" onclick="event.stopPropagation()"><input type="checkbox" class="ck" ${sel.has(p.id)?'checked':''} onchange="marca(${p.id},this.checked)">
-  <td>${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td>${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}${esc(p.nombre)}${p.activo||enPap?'':' <span class="tag">Oculto</span>'}${p.stock>0?'':' <span class="tag" style="color:var(--no)">Sin stock</span>'}<td class="n hide-sm">${money(p.costo)}<td class="n" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
+  <td>${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td>${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}${esc(p.nombre)}${p.activo||enPap?'':' <span class="tag">Oculto</span>'}${p.codigo||enPap?'':' <span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?'':' <span class="tag" style="color:var(--no)">Sin stock</span>'}<td class="n hide-sm">${money(p.costo)}<td class="n" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
   ||`<tr><td colspan="8" class="m">${enPap?'La papelera está vacía.':P.length?'Ningún producto coincide con la búsqueda.':'Todavía no hay productos. Importa un Excel o crea uno nuevo.'}</tr>`;
  $('mas').hidden=F.length<=lim;
  $('ckall').checked=F.length>0&&F.every(p=>sel.has(p.id));
@@ -156,7 +159,7 @@ async function cambiaGan(id,el){const p=P.find(x=>x.id==id),g=num(el.value);
  if(error){el.value=fmtIn(p.ganancia);return alert(msg(error))}
  p.ganancia=g;p.precio=red(p.costo*(1+g/100),2);el.value=fmtIn(g);$('pv'+id).textContent=money(p.precio);toast('Ganancia guardada: '+fmt(g)+' %')}
 function marca(id,v=!sel.has(id)){v?sel.add(id):sel.delete(id);renderP()}
-function marcaTodos(v){for(const p of filtra($('q').value,enPap))v?sel.add(p.id):sel.delete(p.id);renderP()}
+function marcaTodos(v){for(const p of lista())v?sel.add(p.id):sel.delete(p.id);renderP()}
 // Eliminar = mandar a la papelera (borrado=true). Así el Excel no los vuelve a crear.
 async function moverPapelera(ids,v){for(let i=0;i<ids.length;i+=200){const{error}=await sb.from('productos').update({borrado:v}).in('id',ids.slice(i,i+200));if(error)throw error}}
 async function accionSel(){const ids=[...sel],n=ids.length;if(!n)return;
@@ -165,7 +168,7 @@ async function accionSel(){const ids=[...sel],n=ids.length;if(!n)return;
  try{await moverPapelera(ids,!enPap);sel.clear();toast(enPap?`${n} producto(s) restaurado(s)`:`${n} producto(s) enviados a la papelera`);await load()}
  catch(e){alert(msg(e))}finally{b.disabled=false}}
 async function aplicarGanancia(){const g=num($('gb').value);if(g===null)return alert('Escribe el porcentaje de ganancia.');
- const ids=filtra($('q').value).map(p=>p.id);if(!ids.length)return;
+ const ids=lista().map(p=>p.id);if(!ids.length)return;
  if(!confirm(`¿Poner ${fmt(g)} % de ganancia a ${ids.length} producto(s)?`))return;
  for(let i=0;i<ids.length;i+=200){const{error}=await sb.from('productos').update({ganancia:g}).in('id',ids.slice(i,i+200));if(error)return alert(msg(error))}
  toast('Ganancia actualizada');load()}
@@ -210,19 +213,37 @@ async function eliminar(){
 
 /* ---------- importar Excel ---------- */
 async function imp(f){$('f').value='';if(!f)return;
- let rows;try{const wb=XLSX.read(await f.arrayBuffer());rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''})}catch{return alert('No se pudo leer el archivo.')}
- rows=rows.map(o=>Object.fromEntries(Object.entries(o).map(([k,v])=>[norm(k),v])));
- const col=(r,...ks)=>{for(const k of ks)if(k in r)return r[k]};
- const hs=rows.some(r=>'stock' in r||'cantidad' in r),out=[];
- for(const r of rows){const d=String(col(r,'descripcion','nombre','producto','detalle')??'').trim(),c=num(col(r,'precio','costo','precio costo'));
-  if(!d||c===null)continue;const o={descripcion:d,costo:c};if(hs)o.stock=num(col(r,'stock','cantidad'))??0;out.push(o)}
- if(!out.length)return alert('No encontré las columnas "descripcion" y "precio" en la primera hoja del Excel.');
+ let filas;try{const wb=XLSX.read(await f.arrayBuffer());filas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''})}catch{return alert('No se pudo leer el archivo.')}
+ // La fila de títulos puede no ser la primera (la nota de pedido la tiene en la fila 12):
+ // buscamos la que tenga una columna de producto/descripción y otra de precio.
+ // La columna de código del Excel NO se usa nunca.
+ const t=c=>norm(c).replace(/\s+/g,' ');let h=-1,cd,cp,cs;
+ for(let i=0;i<Math.min(filas.length,60)&&h<0;i++){const H=filas[i].map(t);
+  cd=H.findIndex(x=>['producto','productos','descripcion','nombre','detalle','articulo'].includes(x));
+  cp=H.findIndex(x=>x.startsWith('precio')||x=='costo');
+  if(cd>=0&&cp>=0){h=i;cs=H.indexOf('stock')}}
+ if(h<0)return alert('No encontré la fila de títulos con las columnas "Producto" (o "Descripción") y "Precio".');
+ const out=[];let sinPrecio=0;
+ for(const r of filas.slice(h+1)){const d=String(r[cd]??'').trim().replace(/\s+/g,' '),c=num(r[cp]);
+  if(!d)continue;if(c===null||c<=0){sinPrecio++;continue}
+  const o={descripcion:d,costo:red(c,2)};if(cs>=0)o.stock=num(r[cs])??0;out.push(o)}
+ if(!out.length)return alert('El Excel no tiene productos con precio.');
+ // Vista previa: cuántos existen, cuántos son nuevos y cuántos están en la papelera
+ const M=new Map(P.filter(p=>p.clave).map(p=>[p.clave,p])),vistos=new Set();let ex=0,nu=0,pa=0;
+ for(const o of out){const k=o.descripcion.toLowerCase(),p=M.get(k);if(p)p.borrado?pa++:ex++;else if(!vistos.has(k))nu++;vistos.add(k)}
  const g=num($('gn').value)??0;
- if(!confirm(`Se van a procesar ${out.length} filas.\n\n· Los productos que ya existen actualizan su costo${hs?' y stock':''} (se mantiene tu ganancia, código, descripción e imagen).\n· Los nuevos se crean con ${fmt(g)} % de ganancia.\n\n¿Continuar?`))return;
+ if(!confirm(`Leí ${out.length} productos de "${f.name}" (títulos en la fila ${h+1}).\n\n`+
+  `· ${ex} ya existen → se actualiza su costo${cs>=0?' y stock':''}. Tu ganancia, código, descripción e imagen no cambian.\n`+
+  `· ${nu} son nuevos → se crean con ${fmt(g)} % de ganancia${cs>=0?'':' y stock 0'}.\n`+
+  (pa?`· ${pa} están en la papelera → se ignoran.\n`:'')+(sinPrecio?`· ${sinPrecio} filas sin precio → se ignoran.\n`:'')+
+  `\nEl código del Excel no se usa.\n\n¿Continuar?`))return;
+ const b=document.querySelector('[onclick="$(\'f\').click()"]');b.disabled=true;
  let n=0,a=0,o=0;
- for(let i=0;i<out.length;i+=500){const{data,error}=await sb.rpc('importar_productos',{p_filas:out.slice(i,i+500),p_ganancia:g});
-  if(error){alert(msg(error));break}n+=data.nuevos;a+=data.actualizados;o+=data.omitidos||0}
- alert(`Importación terminada: ${n} nuevos, ${a} actualizados${o?`, ${o} ignorados (están en la papelera)`:""}.`);load()}
+ try{for(let i=0;i<out.length;i+=500){b.textContent=`Importando… ${Math.round(i/out.length*100)} %`;
+   const{data,error}=await sb.rpc('importar_productos',{p_filas:out.slice(i,i+500),p_ganancia:g});
+   if(error){alert(msg(error));break}n+=data.nuevos;a+=data.actualizados;o+=data.omitidos||0}}
+ finally{b.disabled=false;b.textContent='Importar Excel'}
+ alert(`Importación terminada: ${n} nuevos, ${a} actualizados${o?`, ${o} ignorados (están en la papelera)`:''}.`);load()}
 
 /* ---------- presupuesto ---------- */
 function renderB(){const q=$('qb').value.trim(),F=q?filtra(q).slice(0,30):[];

@@ -20,10 +20,11 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const money=n=>(CFG.MONEDA||'')+' '+Number(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
 const norm=s=>String(s??'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
 if(CFG.NOMBRE){$('tit').textContent=CFG.NOMBRE;document.title=CFG.NOMBRE+' · Catálogo'}
+// Solo se muestran productos con código propio, visibles y fuera de la papelera.
 // Supabase devuelve como máximo 1000 filas por consulta: pedimos por bloques
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 async function load(){
- try{P=await todos(()=>sb.from('productos').select('id,codigo,nombre,precio,imagen,stock').eq('activo',true).eq('borrado',false).order('nombre'))}
+ try{P=await todos(()=>sb.from('productos').select('id,codigo,nombre,precio,imagen,stock').eq('activo',true).eq('borrado',false).not('codigo','is',null).neq('codigo','').order('nombre'))}
  catch(e){$('u').textContent='No se pudo cargar el catálogo.';return}
  r();$('u').textContent=P.length+' productos'}
 function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
