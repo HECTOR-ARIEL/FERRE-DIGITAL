@@ -21,13 +21,13 @@ dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;pa
 .acc{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}.acc .danger{margin-right:auto}
 .tot{font-size:20px;text-align:right;margin:12px 0}
 dialog{overflow:auto}
-.ck{width:20px;height:20px;margin:0;cursor:pointer;accent-color:var(--a)}td.cc,th.cc{width:36px;padding-right:0}
+.gi{width:74px;padding:6px 8px;text-align:right}.ck{width:20px;height:20px;margin:0;cursor:pointer;accent-color:var(--a)}td.cc,th.cc{width:36px;padding-right:0}
 #selbar{position:sticky;bottom:12px;z-index:4;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--t);color:var(--bg);border-radius:10px;padding:10px 12px;margin-top:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 #selbar span{flex:1;min-width:120px}#selbar .s{background:transparent;color:inherit;border-color:currentColor}
 .aviso{background:var(--bg);border:1px dashed var(--b)}
 @media(max-width:520px){.sub{display:block}.g3{grid-template-columns:1fr 1fr}.hide-sm{display:none}main{padding:10px}.c{padding:12px}
  td,th{padding:7px 5px}main .r>button{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
- header{padding:8px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}dialog form{padding:14px}}
+ header{padding:8px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}#pt .th{width:36px;height:36px}.gi{width:60px;padding:6px}dialog form{padding:14px}}
 </style></head><body>
 <header><div class="brand"><img src="icon.svg" alt=""><b>Administración</b></div>
 <div class="r"><a class="btn s" href="./">Ver catálogo</a><button id="out" class="s" hidden onclick="salir()">Salir</button></div></header>
@@ -56,7 +56,7 @@ dialog{overflow:auto}
   <div class="mini"><span>Ganancia para productos nuevos del Excel:</span><input id="gn" inputmode="decimal" onchange="guardaLS('gn',this.value)"><span>%</span></div>
  </div>
  <div class="c w" style="padding:0">
-  <table><thead><tr><th class="cc"><input type="checkbox" class="ck" id="ckall" title="Seleccionar todos los mostrados" onchange="marcaTodos(this.checked)"></th><th></th><th class="hide-sm">Código</th><th>Descripción</th><th class="n hide-sm">Costo</th><th class="n hide-sm">Ganancia</th><th class="n">Precio venta</th><th class="n hide-sm">Stock</th></tr></thead><tbody id="pt"></tbody></table>
+  <table><thead><tr><th class="cc"><input type="checkbox" class="ck" id="ckall" title="Seleccionar todos los mostrados" onchange="marcaTodos(this.checked)"></th><th></th><th class="hide-sm">Código</th><th>Descripción</th><th class="n hide-sm">Costo</th><th class="n">Ganancia</th><th class="n">Precio venta</th><th class="n hide-sm">Stock</th></tr></thead><tbody id="pt"></tbody></table>
  </div>
  <p style="text-align:center"><button id="mas" class="s" hidden onclick="lim+=100;renderP()">Ver más</button></p>
  <div id="selbar" hidden><span><b id="nsel">0</b> seleccionado(s)</span>
@@ -143,12 +143,18 @@ function renderP(){const F=filtra($('q').value,enPap),np=P.filter(p=>p.borrado).
  $('bpap').textContent='Papelera'+(np?` (${np})`:'');
  $('pt').innerHTML=F.slice(0,lim).map(p=>`<tr onclick="${enPap?`marca(${p.id})`:`editar(${p.id})`}"${p.activo&&!enPap?'':' class="off"'}>
   <td class="cc" onclick="event.stopPropagation()"><input type="checkbox" class="ck" ${sel.has(p.id)?'checked':''} onchange="marca(${p.id},this.checked)">
-  <td>${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td>${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}${esc(p.nombre)}${p.activo||enPap?'':' <span class="tag">Oculto</span>'}<td class="n hide-sm">${money(p.costo)}<td class="n hide-sm">${fmt(p.ganancia)} %<td class="n"><b>${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
+  <td>${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td>${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}${esc(p.nombre)}${p.activo||enPap?'':' <span class="tag">Oculto</span>'}${p.stock>0?'':' <span class="tag" style="color:var(--no)">Sin stock</span>'}<td class="n hide-sm">${money(p.costo)}<td class="n" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
   ||`<tr><td colspan="8" class="m">${enPap?'La papelera está vacía.':P.length?'Ningún producto coincide con la búsqueda.':'Todavía no hay productos. Importa un Excel o crea uno nuevo.'}</tr>`;
  $('mas').hidden=F.length<=lim;
  $('ckall').checked=F.length>0&&F.every(p=>sel.has(p.id));
  $('selbar').hidden=!sel.size;$('nsel').textContent=sel.size;
  $('bsel').textContent=enPap?'Restaurar':'Eliminar';$('bsel').className=enPap?'':'danger'}
+// Cambia la ganancia desde la tabla, sin abrir el producto
+async function cambiaGan(id,el){const p=P.find(x=>x.id==id),g=num(el.value);
+ if(g===null){el.value=fmtIn(p.ganancia);return alert('Escribe un porcentaje válido.')}
+ el.disabled=true;const{error}=await sb.from('productos').update({ganancia:g}).eq('id',id);el.disabled=false;
+ if(error){el.value=fmtIn(p.ganancia);return alert(msg(error))}
+ p.ganancia=g;p.precio=red(p.costo*(1+g/100),2);el.value=fmtIn(g);$('pv'+id).textContent=money(p.precio);toast('Ganancia guardada: '+fmt(g)+' %')}
 function marca(id,v=!sel.has(id)){v?sel.add(id):sel.delete(id);renderP()}
 function marcaTodos(v){for(const p of filtra($('q').value,enPap))v?sel.add(p.id):sel.delete(p.id);renderP()}
 // Eliminar = mandar a la papelera (borrado=true). Así el Excel no los vuelve a crear.

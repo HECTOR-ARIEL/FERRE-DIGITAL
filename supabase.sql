@@ -60,6 +60,21 @@ create policy "admin presupuestos" on presupuestos for all to authenticated usin
 revoke select on productos from anon;
 grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado) on productos to anon;
 
+-- ===================== AVISO DE CAMBIOS =====================
+-- Una sola fila con la hora del último cambio en productos.
+-- El catálogo la consulta cada pocos segundos y, si cambió, recarga los productos.
+create table if not exists cambios(id int primary key default 1, ts timestamptz not null default now());
+insert into cambios(id) values (1) on conflict (id) do nothing;
+alter table cambios enable row level security;
+drop policy if exists "leer cambios" on cambios;
+create policy "leer cambios" on cambios for select using (true);
+create or replace function marcar_cambio() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin update cambios set ts = now() where id = 1; return null; end $$;
+drop trigger if exists productos_cambio on productos;
+create trigger productos_cambio after insert or update or delete on productos
+  for each statement execute function marcar_cambio();
+
 -- ===================== IMÁGENES =====================
 insert into storage.buckets (id, name, public) values ('imagenes', 'imagenes', true)
   on conflict (id) do update set public = true;

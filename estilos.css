@@ -24,5 +24,7 @@ button:disabled{opacity:.6;cursor:wait}
 .card .b{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1}
 .card h2{font-size:14px;font-weight:500;margin:0;flex:1}
 .pr{font-size:19px;font-weight:700}
+.sin{align-self:flex-start;font-size:12px;font-weight:600;color:var(--no);border:1px solid currentColor;border-radius:99px;padding:1px 8px}
+.agotado .img img{opacity:.5}.agotado .pr{color:var(--m)}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#14211f;color:#fff;padding:10px 16px;border-radius:8px;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 @media(max-width:520px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}main{padding:12px}.card .b{padding:8px 10px 10px}.pr{font-size:17px}}

@@ -23,15 +23,19 @@ if(CFG.NOMBRE){$('tit').textContent=CFG.NOMBRE;document.title=CFG.NOMBRE+' · Ca
 // Supabase devuelve como máximo 1000 filas por consulta: pedimos por bloques
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 async function load(){
- try{P=await todos(()=>sb.from('productos').select('id,codigo,nombre,precio,imagen').eq('activo',true).order('nombre'))}
+ try{P=await todos(()=>sb.from('productos').select('id,codigo,nombre,precio,imagen,stock').eq('activo',true).eq('borrado',false).order('nombre'))}
  catch(e){$('u').textContent='No se pudo cargar el catálogo.';return}
  r();$('u').textContent=P.length+' productos'}
 function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
  const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return w.every(x=>s.includes(x))});
- $('g').innerHTML=F.slice(0,lim).map(p=>`<article class="card">
+ $('g').innerHTML=F.slice(0,lim).map(p=>`<article class="card${p.stock>0?'':' agotado'}">
   <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(p.nombre)}">`:'Sin imagen'}</div>
-  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(p.nombre)}</h2><span class="pr">${money(p.precio)}</span></div></article>`).join('')
+  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(p.nombre)}</h2><span class="pr">${money(p.precio)}</span>${p.stock>0?'':'<span class="sin">Sin stock</span>'}</div></article>`).join('')
   ||`<p class="m" style="grid-column:1/-1">${P.length?'No hay productos que coincidan con la búsqueda.':'Todavía no hay productos en el catálogo.'}</p>`;
  $('mas').hidden=F.length<=lim}
-load();setInterval(load,300000);
+// Cada 10 s pregunta si hubo cambios en administración; solo entonces recarga los productos
+let ver;
+async function revisa(){const{data}=await sb.from('cambios').select('ts').eq('id',1).maybeSingle();const v=data?.ts;if(!v||v!==ver){ver=v;load()}}
+revisa();setInterval(()=>{if(!document.hidden)revisa()},10000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)revisa()});
 </script></body></html>
