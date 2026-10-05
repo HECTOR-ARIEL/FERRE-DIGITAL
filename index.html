@@ -31,7 +31,7 @@ function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
  $('g').innerHTML=F.slice(0,lim).map(p=>`<article class="card">
   <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(p.nombre)}">`:'Sin imagen'}</div>
   <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(p.nombre)}</h2><span class="pr">${money(p.precio)}</span></div></article>`).join('')
-  ||'<p class="m">No hay productos que coincidan con la búsqueda.</p>';
+  ||`<p class="m" style="grid-column:1/-1">${P.length?'No hay productos que coincidan con la búsqueda.':'Todavía no hay productos en el catálogo.'}</p>`;
  $('mas').hidden=F.length<=lim}
 load();setInterval(load,300000);
 </script></body></html>

@@ -12,7 +12,7 @@ section>.c{margin-bottom:12px}
 th{font-size:12px;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
 .n{text-align:right;white-space:nowrap}#pt tr{cursor:pointer}#pt tr:hover{background:var(--bg)}tr.off td{opacity:.55}
 .th{width:44px;height:44px;border-radius:6px;object-fit:contain;background:var(--img);border:1px solid var(--b);display:block}
-.tag{font-size:11px;padding:1px 6px;border-radius:99px;background:var(--bg);border:1px solid var(--b);color:var(--m)}
+.sub{display:none}.tag{font-size:11px;padding:1px 6px;border-radius:99px;background:var(--bg);border:1px solid var(--b);color:var(--m)}
 .mini{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mini input{width:90px}
 dialog{border:0;border-radius:12px;padding:0;width:min(580px,calc(100% - 24px));max-height:calc(100% - 24px);background:var(--c);color:var(--t)}
 dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;padding:18px}dialog h2{margin:0;font-size:18px}
@@ -20,7 +20,14 @@ dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;pa
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.chk{display:flex;gap:8px;align-items:center;color:var(--t);font-size:15px}.chk input{width:auto}
 .acc{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}.acc .danger{margin-right:auto}
 .tot{font-size:20px;text-align:right;margin:12px 0}
-@media(max-width:520px){.g3{grid-template-columns:1fr 1fr}.hide-sm{display:none}}
+dialog{overflow:auto}
+.ck{width:20px;height:20px;margin:0;cursor:pointer;accent-color:var(--a)}td.cc,th.cc{width:36px;padding-right:0}
+#selbar{position:sticky;bottom:12px;z-index:4;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--t);color:var(--bg);border-radius:10px;padding:10px 12px;margin-top:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+#selbar span{flex:1;min-width:120px}#selbar .s{background:transparent;color:inherit;border-color:currentColor}
+.aviso{background:var(--bg);border:1px dashed var(--b)}
+@media(max-width:520px){.sub{display:block}.g3{grid-template-columns:1fr 1fr}.hide-sm{display:none}main{padding:10px}.c{padding:12px}
+ td,th{padding:7px 5px}main .r>button{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
+ header{padding:8px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}dialog form{padding:14px}}
 </style></head><body>
 <header><div class="brand"><img src="icon.svg" alt=""><b>Administración</b></div>
 <div class="r"><a class="btn s" href="./">Ver catálogo</a><button id="out" class="s" hidden onclick="salir()">Salir</button></div></header>
@@ -41,15 +48,20 @@ dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;pa
   <button onclick="editar()">+ Nuevo producto</button>
   <button class="s" onclick="$('f').click()">Importar Excel</button>
   <input id="f" type="file" accept=".xlsx,.xls,.csv" hidden onchange="imp(this.files[0])">
+  <button class="s" id="bpap" onclick="papelera(true)">Papelera</button>
  </div>
- <div class="c r" style="justify-content:space-between">
+ <div class="c aviso r" id="avpap" hidden><span style="flex:1;min-width:200px"><b>Papelera.</b> Estos productos no salen en el catálogo y al importar el Excel no se vuelven a crear. Selecciónalos y pulsa "Restaurar" para recuperarlos.</span><button class="s" onclick="papelera(false)">← Volver a productos</button></div>
+ <div class="c r" id="gananc" style="justify-content:space-between">
   <div class="mini"><span>Poner</span><input id="gb" inputmode="decimal" placeholder="30"><span>% de ganancia a los <b id="nf">0</b> productos mostrados</span><button class="s" onclick="aplicarGanancia()">Aplicar</button></div>
   <div class="mini"><span>Ganancia para productos nuevos del Excel:</span><input id="gn" inputmode="decimal" onchange="guardaLS('gn',this.value)"><span>%</span></div>
  </div>
  <div class="c w" style="padding:0">
-  <table><thead><tr><th></th><th>Código</th><th>Descripción</th><th class="n hide-sm">Costo</th><th class="n hide-sm">Ganancia</th><th class="n">Precio venta</th><th class="n hide-sm">Stock</th></tr></thead><tbody id="pt"></tbody></table>
+  <table><thead><tr><th class="cc"><input type="checkbox" class="ck" id="ckall" title="Seleccionar todos los mostrados" onchange="marcaTodos(this.checked)"></th><th></th><th class="hide-sm">Código</th><th>Descripción</th><th class="n hide-sm">Costo</th><th class="n hide-sm">Ganancia</th><th class="n">Precio venta</th><th class="n hide-sm">Stock</th></tr></thead><tbody id="pt"></tbody></table>
  </div>
  <p style="text-align:center"><button id="mas" class="s" hidden onclick="lim+=100;renderP()">Ver más</button></p>
+ <div id="selbar" hidden><span><b id="nsel">0</b> seleccionado(s)</span>
+  <button class="s" onclick="sel.clear();renderP()">Cancelar</button>
+  <button id="bsel" onclick="accionSel()">Eliminar</button></div>
  <p class="m">Excel: la primera fila debe tener las columnas <b>descripcion</b> y <b>precio</b> (el costo) y, si quieres, <b>stock</b>. Cada producto se reconoce por su descripción original del Excel: aunque le cambies la descripción o el código aquí, se seguirá actualizando bien.</p>
 </section>
 
@@ -90,7 +102,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;pa
 <script>
 const sb=supabase.createClient(CFG.URL,CFG.KEY),$=id=>document.getElementById(id);
 const leeLS=k=>{try{return localStorage.getItem(k)}catch{return null}},guardaLS=(k,v)=>{try{localStorage.setItem(k,v)}catch{}};
-let P=[],L=JSON.parse(leeLS('borrador')||'[]'),ed=null,nuevaImg=null,quitarImg=false,lim=100;
+let P=[],L=JSON.parse(leeLS('borrador')||'[]'),ed=null,nuevaImg=null,quitarImg=false,lim=100,enPap=false;const sel=new Set();
 const PH='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44"><path d="M12 30l7-8 5 6 3-3 5 5" fill="none" stroke="#b5c2bf" stroke-width="2"/><circle cx="28" cy="16" r="3" fill="#b5c2bf"/></svg>');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dos=n=>Number(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -107,7 +119,8 @@ const tot=()=>L.reduce((s,l)=>s+l.cantidad*l.precio,0);
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2500)}
 function msg(e){if(e.code=='23505')return 'Ya existe otro producto con ese código.';return e.message||String(e)}
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
-const filtra=q=>{const w=norm(q).split(/\s+/).filter(Boolean);return P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return w.every(x=>s.includes(x))})};
+// busca dentro de los productos normales, o de la papelera si enPap=true
+const filtra=(q,enPap=false)=>{const w=norm(q).split(/\s+/).filter(Boolean);return P.filter(p=>!!p.borrado==enPap&&w.every(x=>norm((p.codigo||'')+' '+p.nombre).includes(x)))};
 
 /* ---------- sesión ---------- */
 async function init(){$('gn').value=leeLS('gn')??'30';$('cl').value=leeLS('cliente')||'';const{data}=await sb.auth.getSession();show(!!data.session)}
@@ -121,12 +134,30 @@ function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList
 /* ---------- productos ---------- */
 async function load(){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){return alert(msg(e))}
  // los precios del presupuesto en curso se actualizan con los de la base
- L=L.filter(l=>P.some(p=>p.id==l.id)).map(l=>{const p=P.find(x=>x.id==l.id);return{...l,codigo:p.codigo,nombre:p.nombre,precio:+p.precio}});
+ L=L.filter(l=>P.some(p=>p.id==l.id&&!p.borrado)).map(l=>{const p=P.find(x=>x.id==l.id);return{...l,codigo:p.codigo,nombre:p.nombre,precio:+p.precio}});
+ for(const id of sel)if(!P.some(p=>p.id==id))sel.delete(id);
  renderP();renderB();rl()}
-function renderP(){const F=filtra($('q').value);$('nf').textContent=F.length;
- $('pt').innerHTML=F.slice(0,lim).map(p=>`<tr onclick="editar(${p.id})"${p.activo?'':' class="off"'}><td>${thumb(p.imagen)}<td class="cod">${esc(p.codigo||'—')}<td>${esc(p.nombre)}${p.activo?'':' <span class="tag">Oculto</span>'}<td class="n hide-sm">${money(p.costo)}<td class="n hide-sm">${fmt(p.ganancia)} %<td class="n"><b>${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
-  ||`<tr><td colspan="7" class="m">${P.length?'Ningún producto coincide con la búsqueda.':'Todavía no hay productos. Importa un Excel o crea uno nuevo.'}</tr>`;
- $('mas').hidden=F.length<=lim}
+function papelera(v){enPap=v;sel.clear();lim=100;$('q').value='';$('avpap').hidden=!v;$('gananc').hidden=v;
+ document.querySelectorAll('#t-prod>.c.r:first-child>button').forEach(b=>b.hidden=v);renderP()}
+function renderP(){const F=filtra($('q').value,enPap),np=P.filter(p=>p.borrado).length;$('nf').textContent=F.length;
+ $('bpap').textContent='Papelera'+(np?` (${np})`:'');
+ $('pt').innerHTML=F.slice(0,lim).map(p=>`<tr onclick="${enPap?`marca(${p.id})`:`editar(${p.id})`}"${p.activo&&!enPap?'':' class="off"'}>
+  <td class="cc" onclick="event.stopPropagation()"><input type="checkbox" class="ck" ${sel.has(p.id)?'checked':''} onchange="marca(${p.id},this.checked)">
+  <td>${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td>${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}${esc(p.nombre)}${p.activo||enPap?'':' <span class="tag">Oculto</span>'}<td class="n hide-sm">${money(p.costo)}<td class="n hide-sm">${fmt(p.ganancia)} %<td class="n"><b>${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
+  ||`<tr><td colspan="8" class="m">${enPap?'La papelera está vacía.':P.length?'Ningún producto coincide con la búsqueda.':'Todavía no hay productos. Importa un Excel o crea uno nuevo.'}</tr>`;
+ $('mas').hidden=F.length<=lim;
+ $('ckall').checked=F.length>0&&F.every(p=>sel.has(p.id));
+ $('selbar').hidden=!sel.size;$('nsel').textContent=sel.size;
+ $('bsel').textContent=enPap?'Restaurar':'Eliminar';$('bsel').className=enPap?'':'danger'}
+function marca(id,v=!sel.has(id)){v?sel.add(id):sel.delete(id);renderP()}
+function marcaTodos(v){for(const p of filtra($('q').value,enPap))v?sel.add(p.id):sel.delete(p.id);renderP()}
+// Eliminar = mandar a la papelera (borrado=true). Así el Excel no los vuelve a crear.
+async function moverPapelera(ids,v){for(let i=0;i<ids.length;i+=200){const{error}=await sb.from('productos').update({borrado:v}).in('id',ids.slice(i,i+200));if(error)throw error}}
+async function accionSel(){const ids=[...sel],n=ids.length;if(!n)return;
+ if(!enPap&&!confirm(`¿Eliminar ${n} producto(s)?\n\nDejarán de salir en el catálogo y el Excel no los volverá a crear.\nPodrás recuperarlos desde la Papelera.`))return;
+ const b=$('bsel');b.disabled=true;
+ try{await moverPapelera(ids,!enPap);sel.clear();toast(enPap?`${n} producto(s) restaurado(s)`:`${n} producto(s) enviados a la papelera`);await load()}
+ catch(e){alert(msg(e))}finally{b.disabled=false}}
 async function aplicarGanancia(){const g=num($('gb').value);if(g===null)return alert('Escribe el porcentaje de ganancia.');
  const ids=filtra($('q').value).map(p=>p.id);if(!ids.length)return;
  if(!confirm(`¿Poner ${fmt(g)} % de ganancia a ${ids.length} producto(s)?`))return;
@@ -167,9 +198,9 @@ async function guardarProd(e){e.preventDefault();
   $('dlg').close();toast('Producto guardado');load()}
  catch(err){alert(msg(err))}finally{b.disabled=false}}
 async function eliminar(){
- if(!confirm(`¿Eliminar "${ed.nombre}"?\n\nSi solo quieres que no salga en el catálogo, desmarca "Visible en el catálogo".\nSi el producto vuelve a venir en el Excel, se creará de nuevo.`))return;
- const{error}=await sb.from('productos').delete().eq('id',ed.id);if(error)return alert(msg(error));
- if(ed.imagen)borrarImg(ed.imagen);$('dlg').close();toast('Producto eliminado');load()}
+ if(!confirm(`¿Eliminar "${ed.nombre}"?\n\nDejará de salir en el catálogo y el Excel no lo volverá a crear.\nPodrás recuperarlo desde la Papelera.`))return;
+ try{await moverPapelera([ed.id],true)}catch(e){return alert(msg(e))}
+ $('dlg').close();toast('Producto enviado a la papelera');load()}
 
 /* ---------- importar Excel ---------- */
 async function imp(f){$('f').value='';if(!f)return;
@@ -182,10 +213,10 @@ async function imp(f){$('f').value='';if(!f)return;
  if(!out.length)return alert('No encontré las columnas "descripcion" y "precio" en la primera hoja del Excel.');
  const g=num($('gn').value)??0;
  if(!confirm(`Se van a procesar ${out.length} filas.\n\n· Los productos que ya existen actualizan su costo${hs?' y stock':''} (se mantiene tu ganancia, código, descripción e imagen).\n· Los nuevos se crean con ${fmt(g)} % de ganancia.\n\n¿Continuar?`))return;
- let n=0,a=0;
+ let n=0,a=0,o=0;
  for(let i=0;i<out.length;i+=500){const{data,error}=await sb.rpc('importar_productos',{p_filas:out.slice(i,i+500),p_ganancia:g});
-  if(error){alert(msg(error));break}n+=data.nuevos;a+=data.actualizados}
- alert(`Importación terminada: ${n} nuevos, ${a} actualizados.`);load()}
+  if(error){alert(msg(error));break}n+=data.nuevos;a+=data.actualizados;o+=data.omitidos||0}
+ alert(`Importación terminada: ${n} nuevos, ${a} actualizados${o?`, ${o} ignorados (están en la papelera)`:""}.`);load()}
 
 /* ---------- presupuesto ---------- */
 function renderB(){const q=$('qb').value.trim(),F=q?filtra(q).slice(0,30):[];

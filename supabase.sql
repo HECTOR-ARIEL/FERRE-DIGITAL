@@ -14,6 +14,7 @@ alter table productos add column if not exists costo numeric(12,2) not null defa
 alter table productos add column if not exists ganancia numeric(9,4) not null default 0;   -- % de ganancia
 alter table productos add column if not exists imagen text;                                -- URL de la foto
 alter table productos add column if not exists clave text;  -- descripción original del Excel (no se edita)
+alter table productos add column if not exists borrado boolean not null default false;  -- en la papelera
 alter table productos alter column codigo drop not null;
 
 -- Versión anterior: "precio" era un número fijo. Ahora pasa a ser el costo,
@@ -52,12 +53,12 @@ drop policy if exists "catalogo publico" on productos;
 drop policy if exists "admin productos" on productos;
 drop policy if exists "admin presupuestos" on presupuestos;
 -- Cualquiera puede VER el catálogo; solo usuarios con sesión pueden modificar
-create policy "catalogo publico" on productos for select using (activo);
+create policy "catalogo publico" on productos for select using (activo and not borrado);
 create policy "admin productos" on productos for all to authenticated using (true) with check (true);
 create policy "admin presupuestos" on presupuestos for all to authenticated using (true) with check (true);
 -- Los visitantes no pueden ver tu costo ni tu % de ganancia
 revoke select on productos from anon;
-grant select (id, codigo, nombre, precio, imagen, stock, activo) on productos to anon;
+grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado) on productos to anon;
 
 -- ===================== IMÁGENES =====================
 insert into storage.buckets (id, name, public) values ('imagenes', 'imagenes', true)
@@ -70,25 +71,30 @@ create policy "admin imagenes" on storage.objects for all to authenticated
 -- Importa filas del Excel. Reconoce cada producto por su descripción ORIGINAL del Excel,
 -- así que puedes cambiar la descripción visible y el código sin perder el vínculo.
 -- Existentes: actualiza costo (y stock si viene). Nuevos: los crea con p_ganancia.
+-- Los que están en la papelera se ignoran (no se actualizan ni se vuelven a crear).
 create or replace function importar_productos(p_filas jsonb, p_ganancia numeric)
 returns json language plpgsql as $$
-declare f jsonb; k text; nuevos int := 0; actualizados int := 0;
+declare f jsonb; k text; b boolean; nuevos int := 0; actualizados int := 0; omitidos int := 0;
 begin
   for f in select * from jsonb_array_elements(p_filas) loop
     k := lower(regexp_replace(trim(f->>'descripcion'), '\s+', ' ', 'g'));
     continue when k = '';
-    update productos set costo = (f->>'costo')::numeric,
-                         stock = coalesce((f->>'stock')::numeric, stock)
-      where clave = k;
-    if found then actualizados := actualizados + 1;
-    else
+    select borrado into b from productos where clave = k;
+    if not found then
       insert into productos(clave, nombre, costo, ganancia, stock)
         values (k, regexp_replace(trim(f->>'descripcion'), '\s+', ' ', 'g'), (f->>'costo')::numeric,
                 coalesce(p_ganancia, 0), coalesce((f->>'stock')::numeric, 0));
       nuevos := nuevos + 1;
+    elsif b then
+      omitidos := omitidos + 1;
+    else
+      update productos set costo = (f->>'costo')::numeric,
+                           stock = coalesce((f->>'stock')::numeric, stock)
+        where clave = k;
+      actualizados := actualizados + 1;
     end if;
   end loop;
-  return json_build_object('nuevos', nuevos, 'actualizados', actualizados);
+  return json_build_object('nuevos', nuevos, 'actualizados', actualizados, 'omitidos', omitidos);
 end $$;
 
 -- Crea el presupuesto y descuenta el stock en una sola operación.
