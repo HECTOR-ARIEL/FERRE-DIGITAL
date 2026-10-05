@@ -20,6 +20,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;pa
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.chk{display:flex;gap:8px;align-items:center;color:var(--t);font-size:15px}.chk input{width:auto}
 .acc{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}.acc .danger{margin-right:auto}
 .tot{font-size:20px;text-align:right;margin:12px 0}
+.falta{color:var(--no);font-size:12px;font-weight:600}.qty{width:80px}.res{border-color:var(--a);border-width:2px}
 dialog{overflow:auto}
 .gi{width:74px;padding:6px 8px;text-align:right}.ck{width:20px;height:20px;margin:0;cursor:pointer;accent-color:var(--a)}td.cc,th.cc{width:36px;padding-right:0}
 #selbar{position:sticky;bottom:12px;z-index:4;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--t);color:var(--bg);border-radius:10px;padding:10px 12px;margin-top:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
@@ -27,7 +28,7 @@ dialog{overflow:auto}
 .aviso{background:var(--bg);border:1px dashed var(--b)}
 @media(max-width:520px){.sub{display:block}.g3{grid-template-columns:1fr 1fr}.hide-sm{display:none}main{padding:10px}.c{padding:12px}
  td,th{padding:7px 5px}main .r>button,#fc{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
- header{padding:8px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}#pt .th{width:36px;height:36px}.gi{width:60px;padding:6px}dialog form{padding:14px}}
+ header{padding:8px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}#pt .th{width:36px;height:36px}.qty{width:58px;padding:8px 6px}.gi{width:60px;padding:6px}dialog form{padding:14px}}
 </style></head><body>
 <header><div class="brand"><img src="icon.svg" alt=""><b>Administración</b></div>
 <div class="r"><a class="btn s" href="./">Ver catálogo</a><button id="out" class="s" hidden onclick="salir()">Salir</button></div></header>
@@ -40,7 +41,7 @@ dialog{overflow:auto}
 </form>
 
 <div id="app" hidden>
-<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Presupuesto <span id="nl" class="tag" hidden></span></button></div>
+<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Presupuestos <span id="nl" class="tag" hidden></span></button></div>
 
 <section id="t-prod">
  <div class="c r">
@@ -67,12 +68,16 @@ dialog{overflow:auto}
 </section>
 
 <section id="t-pres" hidden>
- <div class="c"><div class="r"><input id="cl" placeholder="Cliente" oninput="guardaBorrador()"></div></div>
- <div class="c"><input id="qb" type="search" placeholder="Buscar producto para añadir" oninput="renderB()">
+ <div class="c res" id="res" hidden><b id="resT"></b>
+  <p class="m" style="margin:6px 0 10px">El PDF ya se descargó. Puedes enviarlo al cliente o volver a descargarlo.</p>
+  <div class="r"><button class="s" onclick="descargar()">Descargar PDF</button><button id="bcomp" onclick="compartir()">Compartir (WhatsApp, correo…)</button><button class="s" onclick="$('res').hidden=true">Cerrar</button></div></div>
+ <div class="c"><label>Cliente<input id="cl" placeholder="Nombre del cliente" oninput="guardaBorrador()"></label></div>
+ <div class="c"><b>1. Agrega productos</b><input id="qb" type="search" placeholder="Buscar por descripción o código" oninput="renderB()" style="margin-top:8px">
   <div class="w"><table><tbody id="bt"></tbody></table></div></div>
- <div class="c"><b>Líneas</b><div class="w"><table><tbody id="lt"></tbody></table></div>
+ <div class="c"><b>2. Revisa las cantidades</b><div class="w"><table><tbody id="lt"></tbody></table></div>
   <div class="tot" id="tt"></div>
-  <div class="acc"><button class="s" onclick="if(confirm('¿Vaciar el presupuesto?')){L=[];$('cl').value='';rl()}">Vaciar</button><button id="bs" onclick="save()">Guardar, descontar stock y crear PDF</button></div></div>
+  <div class="acc"><button class="s" onclick="if(confirm('¿Vaciar el presupuesto?')){L=[];$('cl').value='';rl()}">Vaciar</button><button id="bs" onclick="save()">Generar presupuesto (PDF)</button></div></div>
+ <div class="c"><b>Últimos presupuestos</b><div class="w"><table><tbody id="hist"></tbody></table></div></div>
 </section>
 </div>
 </main>
@@ -116,7 +121,7 @@ const num=v=>{if(typeof v=='number')return v;let s=String(v??'').replace(/[^\d,.
  if(s.includes(',')&&s.includes('.'))s=s.lastIndexOf(',')>s.lastIndexOf('.')?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
  else s=s.replace(',','.');const n=parseFloat(s);return isNaN(n)?null:n};
 const thumb=u=>`<img class="th" loading="lazy" src="${u?esc(u):PH}" alt="">`;
-const tot=()=>L.reduce((s,l)=>s+l.cantidad*l.precio,0);
+const tot=()=>L.reduce((s,l)=>s+disp(l)*l.precio,0);
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2500)}
 function msg(e){if(e.code=='23505')return 'Ya existe otro producto con ese código.';return e.message||String(e)}
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
@@ -132,7 +137,7 @@ async function login(e){e.preventDefault();const b=e.submitter;b.disabled=true;
  const{error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});b.disabled=false;
  if(error)return alert(error.message=='Invalid login credentials'?'Email o contraseña incorrectos.':error.message);$('pw').value='';show(true)}
 async function salir(){await sb.auth.signOut();show(false)}
-function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres'}
+function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';if(t=='pres')cargaHist()}
 
 /* ---------- productos ---------- */
 async function load(){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){return alert(msg(e))}
@@ -246,25 +251,68 @@ async function imp(f){$('f').value='';if(!f)return;
  alert(`Importación terminada: ${n} nuevos, ${a} actualizados${o?`, ${o} ignorados (están en la papelera)`:''}.`);load()}
 
 /* ---------- presupuesto ---------- */
+// stock actual de un producto y cuánto se puede entregar de una línea
+const stockDe=id=>Math.max(0,+(P.find(p=>p.id==id)?.stock??0));
+const disp=l=>Math.min(l.cantidad,stockDe(l.id));
+let ult=null,H=[];
 function renderB(){const q=$('qb').value.trim(),F=q?filtra(q).slice(0,30):[];
- $('bt').innerHTML=F.map(p=>`<tr><td>${thumb(p.imagen)}<td><span class="cod">${esc(p.codigo||'')}</span><br>${esc(p.nombre)}<td class="n">${money(p.precio)}<td class="n m hide-sm">Stock ${fmt(p.stock)}<td class="n"><button class="s" onclick="add(${p.id})">Añadir</button></tr>`).join('')
+ $('bt').innerHTML=F.map(p=>`<tr><td>${thumb(p.imagen)}<td>${p.codigo?`<span class="cod">${esc(p.codigo)}</span><br>`:''}${esc(p.nombre)}<td class="n">${money(p.precio)}<td class="n hide-sm">${p.stock>0?`<span class="m">Stock ${fmt(p.stock)}</span>`:'<span class="falta">Sin stock</span>'}<td class="n"><button class="s" onclick="add(${p.id})">Añadir</button></tr>`).join('')
   ||(q?'<tr><td class="m">Sin resultados</tr>':'')}
 function add(id){const p=P.find(x=>x.id==id),l=L.find(x=>x.id==id);l?l.cantidad++:L.push({id:p.id,codigo:p.codigo,nombre:p.nombre,precio:+p.precio,cantidad:1});rl();toast('Añadido: '+p.nombre)}
 function guardaBorrador(){guardaLS('borrador',JSON.stringify(L));guardaLS('cliente',$('cl').value)}
-function rl(){$('lt').innerHTML=L.map((l,i)=>`<tr><td>${esc(l.nombre)}<td><input type="number" min="0" step="any" value="${l.cantidad}" style="width:80px" onchange="L[${i}].cantidad=+this.value;rl()"><td class="n">${money(l.precio)}<td class="n">${money(l.cantidad*l.precio)}<td class="n"><button class="s" onclick="L.splice(${i},1);rl()">Quitar</button></tr>`).join('')
+function rl(){$('lt').innerHTML=L.map((l,i)=>{const s=stockDe(l.id),nota=s<=0?'Sin stock: saldrá en rojo en el PDF y no se cobra':s<l.cantidad?`Solo hay ${fmt(s)} en stock: se presupuestan ${fmt(s)}`:'';
+  return `<tr><td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span><br>`:''}${esc(l.nombre)}${nota?`<div class="falta">${nota}</div>`:''}
+  <td><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" onfocus="this.select()" onchange="L[${i}].cantidad=+this.value;rl()">
+  <td class="n hide-sm">${money(l.precio)}<td class="n">${s<=0?'<span class="falta">-</span>':money(disp(l)*l.precio)}
+  <td class="n"><button class="s" title="Quitar" onclick="L.splice(${i},1);rl()">✕</button></tr>`}).join('')
   ||'<tr><td class="m">Busca productos arriba y pulsa "Añadir".</tr>';
  $('tt').textContent='Total: '+money(tot());$('nl').textContent=L.length;$('nl').hidden=!L.length;guardaBorrador()}
-function pdf(n){const{jsPDF}=window.jspdf,d=new jsPDF();let y=20;
- d.setFontSize(16);d.text((CFG.NOMBRE?CFG.NOMBRE+' — ':'')+'Presupuesto Nº '+n,14,y);y+=8;d.setFontSize(10);
- d.text('Cliente: '+$('cl').value+'    Fecha: '+new Date().toLocaleDateString('es'),14,y);y+=10;
- d.text('Código',14,y);d.text('Descripción',40,y);d.text('Cant.',125,y);d.text('Precio',165,y,{align:'right'});d.text('Importe',196,y,{align:'right'});y+=2;d.line(14,y,196,y);y+=5;
- L.forEach(l=>{const t=d.splitTextToSize(String(l.nombre),80);if(y+t.length*5>280){d.addPage();y=20}
-  d.text(String(l.codigo||''),14,y);d.text(t,40,y);d.text(fmt(l.cantidad),125,y);d.text(money(l.precio),165,y,{align:'right'});d.text(money(l.cantidad*l.precio),196,y,{align:'right'});y+=t.length*5+2});
- d.line(14,y,196,y);d.setFontSize(12);d.text('TOTAL: '+money(tot()),196,y+8,{align:'right'});d.save('presupuesto-'+n+'.pdf')}
-async function save(){if(!L.length||L.some(l=>!(l.cantidad>0)))return alert('Añade productos con cantidad mayor que 0.');
+
+// PDF de un presupuesto guardado {id, fecha, cliente, total, lineas:[{codigo,nombre,precio,cantidad,disponible}]}
+function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),R=[185,28,28],N=[20,33,31],G=[95,111,108],W=196;let y=18;
+ d.setFont('helvetica','bold');d.setFontSize(18);d.setTextColor(...N);d.text(CFG.NOMBRE||'Presupuesto',14,y);
+ d.setFontSize(12);d.text('PRESUPUESTO Nº '+p.id,W,y,{align:'right'});y+=7;
+ d.setFont('helvetica','normal');d.setFontSize(10);d.setTextColor(...G);d.text('Fecha: '+new Date(p.fecha).toLocaleDateString('es'),W,y,{align:'right'});
+ d.setTextColor(...N);if(p.cliente)d.text('Cliente: '+p.cliente,14,y);y+=5;
+ d.setDrawColor(15,118,110);d.setLineWidth(.6);d.line(14,y,W,y);y+=8;
+ const cab=()=>{d.setFont('helvetica','bold');d.setFontSize(8.5);d.setTextColor(...G);
+  d.text('CÓDIGO',14,y);d.text('DESCRIPCIÓN',38,y);d.text('CANT.',132,y,{align:'right'});d.text('P. UNIT.',163,y,{align:'right'});d.text('IMPORTE',W,y,{align:'right'});
+  y+=2.5;d.setDrawColor(200);d.setLineWidth(.2);d.line(14,y,W,y);y+=5;d.setFont('helvetica','normal');d.setFontSize(10)};
+ cab();
+ for(const l of p.lineas){const dis=+(l.disponible??l.cantidad),sin=dis<=0,parcial=!sin&&dis<l.cantidad,t=d.splitTextToSize(String(l.nombre),88);
+  const nota=sin?'SIN STOCK - producto no disponible':parcial?`Solo ${fmt(dis)} disponible(s) de ${fmt(l.cantidad)} pedido(s)`:'';
+  const alto=t.length*4.6+(nota?4.4:0);
+  if(y+alto>272){d.addPage();y=20;cab()}
+  d.setTextColor(...(sin?R:N));
+  d.text(String(l.codigo||''),14,y);d.text(t,38,y);d.text(fmt(sin?l.cantidad:dis),132,y,{align:'right'});
+  d.text(money(l.precio),163,y,{align:'right'});d.text(sin?'-':money(dis*l.precio),W,y,{align:'right'});
+  if(nota){d.setTextColor(...R);d.setFont('helvetica','bold');d.setFontSize(8.5);d.text(nota,38,y+t.length*4.6-.4);d.setFont('helvetica','normal');d.setFontSize(10)}
+  y+=alto+1;d.setDrawColor(230);d.line(14,y-3.2,W,y-3.2);y+=1.5}
+ if(y>255){d.addPage();y=20}
+ y+=5;d.setFont('helvetica','bold');d.setFontSize(14);d.setTextColor(...N);d.text('TOTAL: '+money(p.total),W,y,{align:'right'});
+ if(p.lineas.some(l=>+(l.disponible??l.cantidad)<l.cantidad)){y+=9;d.setFont('helvetica','normal');d.setFontSize(9);d.setTextColor(...R);
+  d.text('Los productos marcados en rojo no tienen stock suficiente: solo se cobra la cantidad disponible.',14,y)}
+ return d}
+const nomPdf=p=>('presupuesto-'+p.id+(p.cliente?'-'+p.cliente:'')).normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\w-]+/g,'-').toLowerCase()+'.pdf';
+function descargar(p=ult){pdfDoc(p).save(nomPdf(p))}
+// En el teléfono abre el menú de compartir (WhatsApp, correo…) con el PDF adjunto
+async function compartir(){const f=new File([pdfDoc(ult).output('blob')],nomPdf(ult),{type:'application/pdf'});
+ if(navigator.canShare?.({files:[f]}))try{await navigator.share({files:[f],title:'Presupuesto Nº '+ult.id})}catch{}
+ else descargar()}
+async function save(){const cl=$('cl').value.trim();
+ if(!L.length||L.some(l=>!(l.cantidad>0)))return alert('Añade productos con cantidad mayor que 0.');
+ const sinS=L.filter(l=>disp(l)<l.cantidad).length;
+ if(!confirm(`¿Generar el presupuesto${cl?' para '+cl:''}?\n\nSe descontará del stock la cantidad disponible de cada producto.`+(sinS?`\n${sinS} producto(s) sin stock suficiente saldrán en rojo en el PDF.`:'')))return;
  const b=$('bs');b.disabled=true;
- const{data,error}=await sb.rpc('crear_presupuesto',{p_cliente:$('cl').value,p_lineas:L});b.disabled=false;if(error)return alert(msg(error));
- pdf(data);L=[];$('cl').value='';toast('Presupuesto Nº '+data+' guardado');await load()}
+ const{data,error}=await sb.rpc('crear_presupuesto',{p_cliente:cl,p_lineas:L.map(l=>({id:l.id,nombre:l.nombre,cantidad:l.cantidad}))});b.disabled=false;
+ if(error)return alert(msg(error));
+ if(typeof data!='object')return alert('Falta actualizar la base de datos: ejecuta de nuevo supabase.sql en Supabase.');
+ ult={...data,cliente:cl,fecha:new Date().toISOString()};descargar();
+ $('resT').textContent=`Presupuesto Nº ${data.id}${cl?' · '+cl:''} · Total ${money(data.total)}`;$('res').hidden=false;
+ L=[];$('cl').value='';$('qb').value='';renderB();window.scrollTo(0,0);await load();cargaHist()}
+async function cargaHist(){const{data,error}=await sb.from('presupuestos').select('*').order('id',{ascending:false}).limit(30);if(error)return;H=data;
+ $('hist').innerHTML=H.map((p,i)=>`<tr><td class="cod">Nº ${p.id}<td class="hide-sm">${new Date(p.fecha).toLocaleDateString('es')}<td>${esc(p.cliente||'-')}<td class="n">${money(p.total)}<td class="n"><button class="s" onclick="descargar(H[${i}])">PDF</button></tr>`).join('')
+  ||'<tr><td class="m">Todavía no hay presupuestos.</tr>'}
 
 init();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>

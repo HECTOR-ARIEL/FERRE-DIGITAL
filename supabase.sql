@@ -114,23 +114,26 @@ end $$;
 
 -- Crea el presupuesto y descuenta el stock en una sola operación.
 -- Los precios se toman de la base de datos (no del navegador).
--- Si algún producto no tiene stock suficiente, no se guarda nada.
-create or replace function crear_presupuesto(p_cliente text, p_lineas jsonb)
-returns bigint language plpgsql as $$
-declare l jsonb; n bigint; t numeric := 0; c numeric; pr record; lineas jsonb := '[]';
+-- De cada producto se descuenta y se cobra solo lo que hay en stock ("disponible").
+-- Lo que falta queda registrado para mostrarlo en rojo en el PDF.
+drop function if exists crear_presupuesto(text, jsonb);
+create function crear_presupuesto(p_cliente text, p_lineas jsonb)
+returns jsonb language plpgsql as $$
+declare l jsonb; n bigint; t numeric := 0; c numeric; d numeric; pr record; lineas jsonb := '[]';
 begin
   for l in select * from jsonb_array_elements(p_lineas) loop
     c := (l->>'cantidad')::numeric;
     if c is null or c <= 0 then raise exception 'Cantidad no válida: %', l->>'nombre'; end if;
-    update productos set stock = stock - c
-      where id = (l->>'id')::bigint and stock >= c
-      returning id, codigo, nombre, precio into pr;
-    if not found then raise exception 'Stock insuficiente: %', l->>'nombre'; end if;
-    lineas := lineas || jsonb_build_object('id', pr.id, 'codigo', pr.codigo, 'nombre', pr.nombre, 'precio', pr.precio, 'cantidad', c);
-    t := t + c * pr.precio;
+    select id, codigo, nombre, precio, stock into pr from productos where id = (l->>'id')::bigint for update;
+    if not found then raise exception 'Producto no encontrado: %', l->>'nombre'; end if;
+    d := least(c, greatest(pr.stock, 0));
+    if d > 0 then update productos set stock = stock - d where id = pr.id; end if;
+    lineas := lineas || jsonb_build_object('id', pr.id, 'codigo', pr.codigo, 'nombre', pr.nombre,
+                                           'precio', pr.precio, 'cantidad', c, 'disponible', d);
+    t := t + d * pr.precio;
   end loop;
   insert into presupuestos(cliente, total, lineas) values (p_cliente, t, lineas) returning id into n;
-  return n;
+  return jsonb_build_object('id', n, 'total', t, 'lineas', lineas);
 end $$;
 
 revoke execute on function importar_productos(jsonb, numeric) from public, anon;
