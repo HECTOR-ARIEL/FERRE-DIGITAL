@@ -66,7 +66,7 @@ dialog{overflow:auto}
   <input id="f" type="file" accept=".xlsx,.xls,.csv" hidden onchange="imp(this.files[0])">
   <button class="s" id="bpap" onclick="papelera(true)">Papelera</button>
  </div>
- <div class="c aviso r" id="avpap" hidden><span style="flex:1;min-width:200px"><b>Papelera.</b> Estos productos no salen en el catálogo y al importar el Excel no se vuelven a crear. Selecciónalos y pulsa "Restaurar" para recuperarlos.</span><button class="s" onclick="papelera(false)">← Volver a productos</button></div>
+ <div class="c aviso r" id="avpap" hidden><span style="flex:1;min-width:200px"><b>Papelera.</b> Estos productos no salen en el catálogo y al importar el Excel no se vuelven a crear. Selecciónalos y pulsa "Restaurar" para recuperarlos, o "Eliminar definitivamente" para borrarlos del todo y poder volver a usar su código.</span><button class="s" onclick="papelera(false)">← Volver a productos</button></div>
  <div class="c r" id="gananc" style="justify-content:space-between">
   <div class="mini"><span>Poner</span><input id="gb" inputmode="decimal" placeholder="30"><span>% de ganancia a los <b id="nf">0</b> productos mostrados</span><button class="s" onclick="aplicarGanancia()">Aplicar</button></div>
   <div class="mini"><span>Ganancia para productos nuevos del Excel:</span><input id="gn" inputmode="decimal" onchange="guardaLS('gn',this.value)"><span>%</span></div>
@@ -77,6 +77,7 @@ dialog{overflow:auto}
  <p style="text-align:center"><button id="mas" class="s" hidden onclick="lim+=100;renderP()">Ver más</button></p>
  <div id="selbar" hidden><span><b id="nsel">0</b> seleccionado(s)</span>
   <button class="s" onclick="sel.clear();renderP()">Cancelar</button>
+  <button id="bdef" class="danger" hidden onclick="borrarDefinitivo()">Eliminar definitivamente</button>
   <button id="bsel" onclick="accionSel()">Eliminar</button></div>
  <p class="m">Excel: puedes subir la nota de pedido tal cual llega. Se usan solo las columnas <b>Producto</b> (o Descripción) y <b>Precio</b> (y <b>Stock</b> si existe); el código y el resto de columnas se ignoran. Cada producto se reconoce por su descripción original del Excel: aunque le cambies aquí la descripción o el código, se seguirá actualizando bien.</p>
 </section>
@@ -182,7 +183,7 @@ function renderP(){const F=lista(),np=P.filter(p=>p.borrado).length;$('nf').text
  $('mas').hidden=F.length<=lim;
  $('ckall').checked=F.length>0&&F.every(p=>sel.has(p.id));
  $('selbar').hidden=!sel.size;$('nsel').textContent=sel.size;
- $('bsel').textContent=enPap?'Restaurar':'Eliminar';$('bsel').className=enPap?'':'danger'}
+ $('bsel').textContent=enPap?'Restaurar':'Eliminar';$('bsel').className=enPap?'':'danger';$('bdef').hidden=!enPap}
 // Cambia la ganancia desde la tabla, sin abrir el producto
 async function cambiaGan(id,el){const p=P.find(x=>x.id==id),g=num(el.value);
  if(g===null){el.value=fmtIn(p.ganancia);return alert('Escribe un porcentaje válido.')}
@@ -197,6 +198,17 @@ async function accionSel(){const ids=[...sel],n=ids.length;if(!n)return;
  if(!enPap&&!confirm(`¿Eliminar ${n} producto(s)?\n\nDejarán de salir en el catálogo y el Excel no los volverá a crear.\nPodrás recuperarlos desde la Papelera.`))return;
  const b=$('bsel');b.disabled=true;
  try{await moverPapelera(ids,!enPap);sel.clear();toast(enPap?`${n} producto(s) restaurado(s)`:`${n} producto(s) enviados a la papelera`);await load()}
+ catch(e){alert(msg(e))}finally{b.disabled=false}}
+// Borra de verdad los productos de la papelera (y sus imágenes): su código queda libre
+async function borrarDefinitivo(){const ids=[...sel].filter(id=>P.find(p=>p.id==id)?.borrado),n=ids.length;if(!enPap||!n)return;
+ if(!confirm(`¿Eliminar definitivamente ${n} producto(s)?
+
+Se borran por completo y NO se pueden recuperar. Su código queda libre para usarlo en otro producto.
+Si vuelven a venir en el Excel, se crearán como productos nuevos.`))return;
+ const b=$('bdef');b.disabled=true;
+ try{const imgs=P.filter(p=>sel.has(p.id)&&p.imagen&&!P.some(q=>!sel.has(q.id)&&q.imagen==p.imagen)).map(p=>p.imagen);
+  for(let i=0;i<n;i+=200){const{error}=await sb.from('productos').delete().in('id',ids.slice(i,i+200));if(error)throw error}
+  imgs.forEach(borrarImg);sel.clear();toast(`${n} producto(s) eliminado(s) definitivamente`);await load()}
  catch(e){alert(msg(e))}finally{b.disabled=false}}
 async function aplicarGanancia(){const g=num($('gb').value);if(g===null)return alert('Escribe el porcentaje de ganancia.');
  const ids=lista().map(p=>p.id);if(!ids.length)return;
