@@ -28,7 +28,7 @@ dialog{overflow:auto}
 .aviso{background:var(--bg);border:1px dashed var(--b)}
 @media(max-width:520px){.sub{display:block}.g3{grid-template-columns:1fr 1fr}.hide-sm{display:none}main{padding:10px}.c{padding:12px}
  td,th{padding:7px 5px}main .r>button,#fc{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
- header{padding:8px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}#pt .th{width:36px;height:36px}.qty{width:58px;padding:8px 6px}.gi{width:60px;padding:6px}dialog form{padding:14px}}
+ header{padding:8px 10px}header .brand b{display:none}.tabs{overflow-x:auto}.tabs button{padding:10px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}#pt .th{width:36px;height:36px}.qty{width:58px;padding:8px 6px}.gi{width:60px;padding:6px}dialog form{padding:14px}}
 </style></head><body>
 <header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><b>Administración</b></div>
 <div class="r"><a class="btn s" href="./">Ver catálogo</a><button id="out" class="s" hidden onclick="salir()">Salir</button></div></header>
@@ -41,7 +41,7 @@ dialog{overflow:auto}
 </form>
 
 <div id="app" hidden>
-<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Presupuestos <span id="nl" class="tag" hidden></span></button></div>
+<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Nuevo presupuesto <span id="nl" class="tag" hidden></span></button><button data-t="hist" onclick="tab('hist')">Historial</button></div>
 
 <section id="t-prod">
  <div class="c r">
@@ -69,7 +69,7 @@ dialog{overflow:auto}
 
 <section id="t-pres" hidden>
  <div class="c res" id="res" hidden><b id="resT"></b>
-  <p class="m" style="margin:6px 0 10px">El PDF ya se descargó. Puedes enviarlo al cliente o volver a descargarlo.</p>
+  <p class="m" style="margin:6px 0 10px">El PDF ya se descargó y el presupuesto quedó guardado en el <b>Historial</b>. Puedes enviarlo al cliente o volver a descargarlo.</p>
   <div class="r"><button class="s" onclick="descargar()">Descargar PDF</button><button id="bcomp" onclick="compartir()">Compartir (WhatsApp, correo…)</button><button class="s" onclick="$('res').hidden=true">Cerrar</button></div></div>
  <div class="c"><label>Cliente<input id="cl" placeholder="Nombre del cliente" oninput="guardaBorrador()"></label></div>
  <div class="c"><b>1. Agrega productos</b><input id="qb" type="search" placeholder="Buscar por descripción o código" oninput="renderB()" style="margin-top:8px">
@@ -77,7 +77,12 @@ dialog{overflow:auto}
  <div class="c"><b>2. Revisa las cantidades</b><div class="w"><table><tbody id="lt"></tbody></table></div>
   <div class="tot" id="tt"></div>
   <div class="acc"><button class="s" onclick="if(confirm('¿Vaciar el presupuesto?')){L=[];$('cl').value='';rl()}">Vaciar</button><button id="bs" onclick="save()">Generar presupuesto (PDF)</button></div></div>
- <div class="c"><b>Últimos presupuestos</b><div class="w"><table><tbody id="hist"></tbody></table></div></div>
+</section>
+
+<section id="t-hist" hidden>
+ <div class="c r"><input id="hq" type="search" placeholder="Buscar por cliente o Nº de presupuesto" oninput="clearTimeout(window._th);window._th=setTimeout(()=>{lh=30;cargaHist()},350)"></div>
+ <div class="c w" style="padding:0"><table><thead><tr><th>Nº</th><th>Fecha</th><th>Cliente</th><th class="n hide-sm">Productos</th><th class="n">Total</th><th></th></tr></thead><tbody id="hist"></tbody></table></div>
+ <p style="text-align:center"><button id="hmas" class="s" hidden onclick="lh+=30;cargaHist()">Ver más</button></p>
 </section>
 </div>
 </main>
@@ -137,7 +142,7 @@ async function login(e){e.preventDefault();const b=e.submitter;b.disabled=true;
  const{error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});b.disabled=false;
  if(error)return alert(error.message=='Invalid login credentials'?'Email o contraseña incorrectos.':error.message);$('pw').value='';show(true)}
 async function salir(){await sb.auth.signOut();show(false)}
-function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';if(t=='pres')cargaHist()}
+function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';if(t=='hist')cargaHist()}
 
 /* ---------- productos ---------- */
 async function load(){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){return alert(msg(e))}
@@ -273,39 +278,58 @@ let LOGO=null;
 fetch('logo.jpg').then(r=>r.ok?r.blob():null).then(b=>{if(!b)return;const fr=new FileReader();
  fr.onload=()=>{const i=new Image();i.onload=()=>LOGO={src:fr.result,k:i.height/i.width};i.src=fr.result};fr.readAsDataURL(b)}).catch(()=>{});
 // PDF de un presupuesto guardado {id, fecha, cliente, total, lineas:[{codigo,nombre,precio,cantidad,disponible}]}
-// Colores de la marca: rojo #BD1717, negro y blanco. El rojo en las filas indica falta de stock.
-function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=[13,13,13],G=[110,110,110],W=196,X=14;let y;
- // cabecera: logo a la izquierda, datos del presupuesto a la derecha
- if(LOGO){const w=42;d.addImage(LOGO.src,'JPEG',X,10,w,w*LOGO.k);y=10+w*LOGO.k}
- else{d.setFillColor(...NEG);d.rect(X,10,60,22,'F');d.setTextColor(255);d.setFont('helvetica','bold');d.setFontSize(14);d.text(CFG.NOMBRE||'',X+4,24);y=32}
- d.setFont('helvetica','bold');d.setFontSize(22);d.setTextColor(...ROJO);d.text('PRESUPUESTO',W,22,{align:'right'});
- d.setFontSize(13);d.setTextColor(...NEG);d.text('Nº '+p.id,W,30,{align:'right'});
- d.setFont('helvetica','normal');d.setFontSize(10);d.setTextColor(...G);d.text('Fecha: '+new Date(p.fecha).toLocaleDateString('es'),W,36,{align:'right'});
- if(p.cliente){d.setFontSize(9);d.text('CLIENTE',W,44,{align:'right'});d.setFont('helvetica','bold');d.setFontSize(12);d.setTextColor(...NEG);d.text(String(p.cliente),W,50,{align:'right'})}
- y=Math.max(y,52)+4;d.setFillColor(...ROJO);d.rect(X,y,W-X,1.2,'F');y+=8;
- // encabezado de la tabla: banda negra con texto blanco
- const cab=()=>{d.setFillColor(...NEG);d.rect(X,y-5,W-X,8,'F');d.setFont('helvetica','bold');d.setFontSize(8.5);d.setTextColor(255);
-  d.text('CÓDIGO',X+2,y);d.text('DESCRIPCIÓN',38,y);d.text('CANT.',132,y,{align:'right'});d.text('P. UNIT.',163,y,{align:'right'});d.text('IMPORTE',W-2,y,{align:'right'});
-  y+=9;d.setFont('helvetica','normal');d.setFontSize(10)};
- cab();
- for(const l of p.lineas){const dis=+(l.disponible??l.cantidad),sin=dis<=0,parcial=!sin&&dis<l.cantidad,t=d.splitTextToSize(String(l.nombre),88);
+// Estilo de los presupuestos de Distribuidor DEC: negro, rojo #BD1717 y blanco.
+// El rojo en las filas indica falta de stock.
+function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=[13,13,13],G=[120,120,120],CL=[226,226,226],W=196,X=14;
+ const f=new Date(p.fecha),fecha=f.toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'numeric'}),hora=f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+ // texto con letras espaciadas, alineado a la derecha o a la izquierda
+ const esp=(t,x,y,cs,der)=>{const w=d.getTextWidth(t)+cs*(t.length-1);d.text(t,der?x-w:x,y,{charSpace:cs})};
+ // franja superior negra con filo rojo
+ d.setFillColor(...NEG);d.rect(X,8,W-X,1.6,'F');d.setFillColor(...ROJO);d.rect(X,9.6,W-X,.6,'F');
+ // logo en un recuadro claro
+ const lw=40,lh=LOGO?lw*LOGO.k:30;d.setFillColor(244,244,244);d.roundedRect(X,14,lw+5,lh+5,2,2,'F');
+ if(LOGO)d.addImage(LOGO.src,'JPEG',X+2.5,16.5,lw,lh);
+ else{d.setFillColor(...NEG);d.rect(X+2.5,16.5,lw,lh,'F');d.setTextColor(255);d.setFont('helvetica','bold');d.setFontSize(12);d.text(CFG.NOMBRE||'',X+5,33)}
+ // título y datos
+ d.setFont('helvetica','bold');d.setFontSize(24);d.setTextColor(...NEG);esp('PRESUPUESTO',W,28,1.1,true);
+ d.setFontSize(8.5);d.setFont('helvetica','normal');d.setTextColor(...G);
+ const em='Emisión: ',wf=d.getTextWidth(' '+hora);d.text(' '+hora,W,35,{align:'right'});
+ d.setFont('helvetica','bold');d.setTextColor(...NEG);d.text(fecha,W-wf,35,{align:'right'});
+ d.setFont('helvetica','normal');d.setTextColor(...G);d.text(em,W-wf-d.getTextWidth(fecha),35,{align:'right'});
+ d.setFont('helvetica','bold');d.setFontSize(10);d.setTextColor(...ROJO);d.text('Nº '+p.id,W,41,{align:'right'});
+ let y=Math.max(14+lh+5,44)+5;d.setDrawColor(...CL);d.setLineWidth(.3);d.line(X,y,W,y);y+=5;
+ // cuadro: cliente | total a pagar
+ d.setDrawColor(...CL);d.roundedRect(X,y,W-X,22,2.5,2.5,'S');d.line(105,y+4,105,y+18);
+ d.setFont('helvetica','bold');d.setFontSize(7);d.setTextColor(...G);esp('FACTURAR A',X+6,y+7,.6);esp('TOTAL A PAGAR',W-6,y+7,.6,true);
+ d.setFontSize(14);d.setTextColor(...NEG);d.text(d.splitTextToSize(String(p.cliente||'-'),82)[0],X+6,y+15.5);
+ d.setFontSize(18);d.setTextColor(...ROJO);d.text(money(p.total),W-6,y+16,{align:'right'});
+ y+=30;
+ // tabla
+ const C={cod:X+3,cant:57,des:67,pu:162,sub:W-3};
+ const cab=()=>{d.setFillColor(...NEG);d.roundedRect(X,y-5.5,W-X,8.5,1.5,1.5,'F');d.setFillColor(...ROJO);d.rect(X,y+2.4,W-X,.6,'F');
+  d.setFont('helvetica','bold');d.setFontSize(7);d.setTextColor(255);
+  esp('CÓDIGO',C.cod,y,.5);esp('CANT.',C.cant-4.5,y,.5);esp('DESCRIPCIÓN',C.des,y,.5);esp('P. UNIT',C.pu,y,.5,true);esp('SUBTOTAL',C.sub,y,.5,true);
+  y+=9;d.setFont('helvetica','normal');d.setFontSize(9)};
+ cab();let i=0;
+ for(const l of p.lineas){const dis=+(l.disponible??l.cantidad),sin=dis<=0,parcial=!sin&&dis<l.cantidad,t=d.splitTextToSize(String(l.nombre),66);
   const nota=sin?'SIN STOCK - producto no disponible':parcial?`Solo ${fmt(dis)} disponible(s) de ${fmt(l.cantidad)} pedido(s)`:'';
-  const alto=t.length*4.6+(nota?4.4:0);
-  if(y+alto>262){d.addPage();y=20;cab()}
-  d.setTextColor(...(sin?ROJO:NEG));
-  d.text(String(l.codigo||''),X+2,y);d.text(t,38,y);d.text(fmt(sin?l.cantidad:dis),132,y,{align:'right'});
-  d.text(money(l.precio),163,y,{align:'right'});d.text(sin?'-':money(dis*l.precio),W-2,y,{align:'right'});
-  if(nota){d.setTextColor(...ROJO);d.setFont('helvetica','bold');d.setFontSize(8.5);d.text(nota,38,y+t.length*4.6-.4);d.setFont('helvetica','normal');d.setFontSize(10)}
-  y+=alto+1;d.setDrawColor(225);d.setLineWidth(.2);d.line(X,y-3.2,W,y-3.2);y+=1.5}
- if(y>245){d.addPage();y=20}
- // total: caja negra con texto blanco y borde rojo a la izquierda
- y+=3;d.setFillColor(...NEG);d.rect(120,y,W-120,12,'F');d.setFillColor(...ROJO);d.rect(120,y,2.5,12,'F');
- d.setFont('helvetica','bold');d.setFontSize(10);d.setTextColor(255);d.text('TOTAL',127,y+7.8);d.setFontSize(14);d.text(money(p.total),W-3,y+8,{align:'right'});y+=12;
- if(p.lineas.some(l=>+(l.disponible??l.cantidad)<l.cantidad)){y+=8;d.setFont('helvetica','normal');d.setFontSize(9);d.setTextColor(...ROJO);
-  d.text('Los productos marcados en rojo no tienen stock suficiente: solo se cobra la cantidad disponible.',X,y)}
- // pie en todas las páginas
- const np=d.getNumberOfPages();for(let i=1;i<=np;i++){d.setPage(i);d.setFillColor(...ROJO);d.rect(X,284,W-X,.6,'F');
-  d.setFont('helvetica','normal');d.setFontSize(8);d.setTextColor(...G);d.text(CFG.NOMBRE||'',X,289);if(np>1)d.text(`Página ${i} de ${np}`,W,289,{align:'right'})}
+  const alto=t.length*4.2+(nota?4:0)+3.6;
+  if(y+alto>270){d.addPage();y=20;cab();i=0}
+  if(i++%2){d.setFillColor(247,247,247);d.rect(X,y-4.6,W-X,alto,'F')}
+  d.setFontSize(9);d.setTextColor(...(sin?ROJO:NEG));
+  d.text(String(l.codigo||''),C.cod,y);d.text(fmt(sin?l.cantidad:dis),C.cant,y,{align:'center'});d.text(t,C.des,y);
+  d.text(money(l.precio),C.pu,y,{align:'right'});d.text(sin?'-':money(dis*l.precio),C.sub,y,{align:'right'});
+  if(nota){d.setTextColor(...ROJO);d.setFont('helvetica','bold');d.setFontSize(7.5);d.text(nota,C.des,y+t.length*4.2-.3);d.setFont('helvetica','normal')}
+  y+=alto}
+ d.setDrawColor(...CL);d.line(X,y-3,W,y-3);
+ if(y>250){d.addPage();y=20}
+ if(p.lineas.some(l=>+(l.disponible??l.cantidad)<l.cantidad)){y+=3;d.setFontSize(8.5);d.setTextColor(...ROJO);
+  d.text('Los productos marcados en rojo no tienen stock suficiente: solo se cobra la cantidad disponible.',X,y);y+=3}
+ // pie
+ y+=8;d.setFontSize(7.5);d.setFont('helvetica','normal');d.setTextColor(...G);d.text('Documento generado electrónicamente — '+fecha,X,y);
+ const marca=(CFG.NOMBRE||'').toUpperCase();d.setFont('helvetica','bold');d.setFontSize(7);const mw=d.getTextWidth(marca)+.6*(marca.length-1)+10;
+ d.setFillColor(...NEG);d.roundedRect(W-mw,y-4,mw,6,3,3,'F');d.setTextColor(255);esp(marca,W-5,y,.6,true);
+ const np=d.getNumberOfPages();if(np>1)for(let k=1;k<=np;k++){d.setPage(k);d.setFont('helvetica','normal');d.setFontSize(7.5);d.setTextColor(...G);d.text(`Página ${k} de ${np}`,W,290,{align:'right'})}
  return d}
 const nomPdf=p=>('presupuesto-'+p.id+(p.cliente?'-'+p.cliente:'')).normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\w-]+/g,'-').toLowerCase()+'.pdf';
 function descargar(p=ult){pdfDoc(p).save(nomPdf(p))}
@@ -324,9 +348,15 @@ async function save(){const cl=$('cl').value.trim();
  ult={...data,cliente:cl,fecha:new Date().toISOString()};descargar();
  $('resT').textContent=`Presupuesto Nº ${data.id}${cl?' · '+cl:''} · Total ${money(data.total)}`;$('res').hidden=false;
  L=[];$('cl').value='';$('qb').value='';renderB();window.scrollTo(0,0);await load();cargaHist()}
-async function cargaHist(){const{data,error}=await sb.from('presupuestos').select('*').order('id',{ascending:false}).limit(30);if(error)return;H=data;
- $('hist').innerHTML=H.map((p,i)=>`<tr><td class="cod">Nº ${p.id}<td class="hide-sm">${new Date(p.fecha).toLocaleDateString('es')}<td>${esc(p.cliente||'-')}<td class="n">${money(p.total)}<td class="n"><button class="s" onclick="descargar(H[${i}])">PDF</button></tr>`).join('')
-  ||'<tr><td class="m">Todavía no hay presupuestos.</tr>'}
+// Historial: todos los presupuestos guardados, con búsqueda por cliente o número
+let lh=30;
+async function cargaHist(){const t=$('hq').value.trim().replace(/[,()%*]/g,' ').trim();
+ let q=sb.from('presupuestos').select('*').order('id',{ascending:false}).limit(lh+1);
+ if(t)q=/^\d+$/.test(t)?q.or(`id.eq.${t},cliente.ilike.*${t}*`):q.ilike('cliente',`%${t}%`);
+ const{data,error}=await q;if(error)return alert(msg(error));H=data.slice(0,lh);$('hmas').hidden=data.length<=lh;
+ $('hist').innerHTML=H.map((p,i)=>{const f=new Date(p.fecha),sin=(p.lineas||[]).some(l=>+(l.disponible??l.cantidad)<l.cantidad);
+  return `<tr><td class="cod">${p.id}<td>${f.toLocaleDateString('es')} <span class="m hide-sm">${f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span><td>${esc(p.cliente||'-')}${sin?' <span class="tag" style="color:var(--no)">Faltó stock</span>':''}<td class="n hide-sm">${(p.lineas||[]).length}<td class="n"><b>${money(p.total)}</b><td class="n"><button class="s" onclick="descargar(H[${i}])">PDF</button></tr>`}).join('')
+  ||`<tr><td colspan="6" class="m">${t?'No hay presupuestos que coincidan.':'Todavía no hay presupuestos.'}</tr>`}
 
 init();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>
