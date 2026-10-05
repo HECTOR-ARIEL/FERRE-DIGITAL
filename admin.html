@@ -12,7 +12,7 @@ section>.c{margin-bottom:12px}
 th{font-size:12px;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
 .n{text-align:right;white-space:nowrap}#pt tr{cursor:pointer}#pt tr:hover{background:var(--bg)}tr.off td{opacity:.55}
 .th{width:44px;height:44px;border-radius:6px;object-fit:contain;background:var(--img);border:1px solid var(--b);display:block}
-.sub{display:none}.tag{font-size:11px;padding:1px 6px;border-radius:99px;background:var(--bg);border:1px solid var(--b);color:var(--m)}
+.sub{display:none}.de{min-width:220px}.nom{overflow-wrap:anywhere}.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}.tags:empty{display:none}.tag{white-space:nowrap;font-size:11px;padding:1px 6px;border-radius:99px;background:var(--bg);border:1px solid var(--b);color:var(--m)}
 #fc{width:auto;flex:none}.mini{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mini input{width:90px}
 dialog{border:0;border-radius:12px;padding:0;width:min(580px,calc(100% - 24px));max-height:calc(100% - 24px);background:var(--c);color:var(--t)}
 dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;padding:18px}dialog h2{margin:0;font-size:18px}
@@ -29,12 +29,23 @@ dialog{overflow:auto}
 #selbar,.selbar{position:sticky;bottom:12px;z-index:4;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--t);color:var(--bg);border-radius:10px;padding:10px 12px;margin-top:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 #selbar span,.selbar span{flex:1;min-width:120px}#selbar .s,.selbar .s{background:transparent;color:inherit;border-color:currentColor}
 .aviso{background:var(--bg);border:1px dashed var(--b)}
-@media(max-width:520px){.sub{display:block}.g3{grid-template-columns:1fr 1fr}.hide-sm{display:none}main{padding:10px}.c{padding:12px}
+@media(max-width:520px){.sub{display:block}
+ #pt tr{display:grid;grid-template-columns:30px 1fr auto auto;align-items:center;column-gap:10px;padding:8px 6px;border-bottom:1px solid var(--b)}
+ #pt td,#pt th{border:0;padding:3px 0}#pt td.hide-sm,#pt th.hide-sm{display:none}#pt td.cc{grid-row:1/3}
+ #pt td.de{grid-column:2/5;min-width:0}#pt td.ga{grid-row:2;grid-column:3}#pt td.pv{grid-row:2;grid-column:4}
+ #pt .tags .sub{display:inline}
+ #bt tr{display:grid;grid-template-columns:44px 1fr auto;align-items:center;column-gap:10px;padding:8px 5px;border-bottom:1px solid var(--b)}
+ #bt td{border:0;padding:2px 0}#bt td:nth-child(1){grid-row:1/3}#bt td:nth-child(2){grid-column:2/4}
+ #bt td:nth-child(3){grid-row:2;grid-column:2;text-align:left}#bt td:nth-child(3) br{display:none}#bt td:nth-child(3) span{margin-left:8px}#bt td:nth-child(4){grid-row:2;grid-column:3}#bt td:only-child{grid-column:1/-1;grid-row:auto}
+ #lt tr{display:grid;grid-template-columns:auto 1fr auto;align-items:center;column-gap:10px;padding:8px 5px;border-bottom:1px solid var(--b)}
+ #lt td{border:0;padding:2px 0}#lt td:first-child{grid-column:1/4}#lt td.hide-sm{display:none}
+ table:has(#pt) thead tr{display:grid;grid-template-columns:30px 1fr auto auto;align-items:center;column-gap:10px;padding:0 6px;border-bottom:1px solid var(--b)}
+ table:has(#pt) thead th{border:0;padding:8px 0}table:has(#pt) thead th.hide-sm{display:none}.g3{grid-template-columns:1fr 1fr}.hide-sm{display:none}main{padding:10px}.c{padding:12px}
  td,th{padding:7px 5px}main .r>button,#fc{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
  header{padding:8px 10px}header .brand b{display:none}.tabs{overflow-x:auto}.tabs button{padding:10px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}#pt .th{width:36px;height:36px}.qty{width:58px;padding:8px 6px}.gi{width:60px;padding:6px}dialog form{padding:14px}}
 </style></head><body>
 <header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><b>Administración</b></div>
-<div class="r"><a class="btn s" href="./">Ver catálogo</a><button id="out" class="s" hidden onclick="salir()">Salir</button></div></header>
+<div class="r"><button id="anch" class="s hide-sm" title="Cambiar el ancho de la página" onclick="ancho(1)">↔ Normal</button><a class="btn s" href="./">Ver catálogo</a><button id="out" class="s" hidden onclick="salir()">Salir</button></div></header>
 <main>
 <form id="login" class="c" hidden onsubmit="login(event)">
  <h2>Iniciar sesión</h2>
@@ -142,7 +153,11 @@ const lista=()=>{const c=$('fc').value;return filtra($('q').value,enPap).filter(
 const filtra=(q,enPap=false)=>{const w=norm(q).split(/\s+/).filter(Boolean);return P.filter(p=>!!p.borrado==enPap&&w.every(x=>norm((p.codigo||'')+' '+p.nombre).includes(x)))};
 
 /* ---------- sesión ---------- */
-async function init(){$('gn').value=leeLS('gn')??'30';$('cl').value=leeLS('cliente')||'';const{data}=await sb.auth.getSession();show(!!data.session)}
+// Ancho de la página: normal, ancho o pantalla completa (se recuerda en este equipo)
+const ANCHOS=[['Normal','1100px'],['Ancho','1500px'],['Completo','none']];
+function ancho(paso){const i=((+leeLS('ancho')||0)+(paso||0))%ANCHOS.length;guardaLS('ancho',i);
+ document.querySelector('main').style.maxWidth=ANCHOS[i][1];$('anch').textContent='↔ '+ANCHOS[i][0]}
+async function init(){ancho();$('gn').value=leeLS('gn')??'30';$('cl').value=leeLS('cliente')||'';const{data}=await sb.auth.getSession();show(!!data.session)}
 function show(ok){$('login').hidden=ok;$('app').hidden=!ok;$('out').hidden=!ok;if(ok)load();else $('em').focus()}
 async function login(e){e.preventDefault();const b=e.submitter;b.disabled=true;
  const{error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});b.disabled=false;
@@ -162,7 +177,7 @@ function renderP(){const F=lista(),np=P.filter(p=>p.borrado).length;$('nf').text
  $('bpap').textContent='Papelera'+(np?` (${np})`:'');
  $('pt').innerHTML=F.slice(0,lim).map(p=>`<tr onclick="${enPap?`marca(${p.id})`:`editar(${p.id})`}"${p.activo&&!enPap?'':' class="off"'}>
   <td class="cc" onclick="event.stopPropagation()"><input type="checkbox" class="ck" ${sel.has(p.id)?'checked':''} onchange="marca(${p.id},this.checked)">
-  <td class="hide-sm">${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td>${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}${esc(p.nombre)}${p.activo||enPap?'':' <span class="tag">Oculto</span>'}${p.codigo||enPap?'':' <span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?'':' <span class="tag" style="color:var(--no)">Sin stock</span>'}<td class="n hide-sm">${money(p.costo)}<td class="n" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
+  <td class="hide-sm">${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td class="de">${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}<div class="nom">${esc(p.nombre)}</div><div class="tags">${p.activo||enPap?'':'<span class="tag">Oculto</span>'}${p.codigo||enPap?'':'<span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?`<span class="tag sub">Stock ${fmt(p.stock)}</span>`:'<span class="tag" style="color:var(--no)">Sin stock</span>'}</div><td class="n hide-sm">${money(p.costo)}<td class="n ga" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n pv"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
   ||`<tr><td colspan="8" class="m">${enPap?'La papelera está vacía.':P.length?'Ningún producto coincide con la búsqueda.':'Todavía no hay productos. Importa un Excel o crea uno nuevo.'}</tr>`;
  $('mas').hidden=F.length<=lim;
  $('ckall').checked=F.length>0&&F.every(p=>sel.has(p.id));
