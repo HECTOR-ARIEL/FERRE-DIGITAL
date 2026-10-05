@@ -20,11 +20,14 @@ dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;pa
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.chk{display:flex;gap:8px;align-items:center;color:var(--t);font-size:15px}.chk input{width:auto}
 .acc{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}.acc .danger{margin-right:auto}
 .tot{font-size:20px;text-align:right;margin:12px 0}
+#bt tr.pick{cursor:pointer}#bt tr.pick:hover,#bt tr.pick:active{background:var(--bg)}
+.mas{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:99px;background:var(--a);color:#fff;font-size:20px;font-weight:700}
+@keyframes flash{from{background:rgba(189,23,23,.18)}to{background:transparent}}tr.flash td{animation:flash 1.2s}
 .falta{color:var(--no);font-size:12px;font-weight:600}.qty{width:80px}.res{border-color:var(--a);border-width:2px}
 dialog{overflow:auto}
 .gi{width:74px;padding:6px 8px;text-align:right}.ck{width:20px;height:20px;margin:0;cursor:pointer;accent-color:var(--a)}td.cc,th.cc{width:36px;padding-right:0}
-#selbar{position:sticky;bottom:12px;z-index:4;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--t);color:var(--bg);border-radius:10px;padding:10px 12px;margin-top:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
-#selbar span{flex:1;min-width:120px}#selbar .s{background:transparent;color:inherit;border-color:currentColor}
+#selbar,.selbar{position:sticky;bottom:12px;z-index:4;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--t);color:var(--bg);border-radius:10px;padding:10px 12px;margin-top:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+#selbar span,.selbar span{flex:1;min-width:120px}#selbar .s,.selbar .s{background:transparent;color:inherit;border-color:currentColor}
 .aviso{background:var(--bg);border:1px dashed var(--b)}
 @media(max-width:520px){.sub{display:block}.g3{grid-template-columns:1fr 1fr}.hide-sm{display:none}main{padding:10px}.c{padding:12px}
  td,th{padding:7px 5px}main .r>button,#fc{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
@@ -81,8 +84,11 @@ dialog{overflow:auto}
 
 <section id="t-hist" hidden>
  <div class="c r"><input id="hq" type="search" placeholder="Buscar por cliente o Nº de presupuesto" oninput="clearTimeout(window._th);window._th=setTimeout(()=>{lh=30;cargaHist()},350)"></div>
- <div class="c w" style="padding:0"><table><thead><tr><th>Nº</th><th>Fecha</th><th>Cliente</th><th class="n hide-sm">Productos</th><th class="n">Total</th><th></th></tr></thead><tbody id="hist"></tbody></table></div>
+ <div class="c w" style="padding:0"><table><thead><tr><th class="cc"><input type="checkbox" class="ck" id="hall" title="Seleccionar todos los mostrados" onchange="H.forEach(p=>this.checked?selH.add(p.id):selH.delete(p.id));pintaHist()"></th><th>Nº</th><th>Fecha</th><th>Cliente</th><th class="n hide-sm">Productos</th><th class="n">Total</th><th></th></tr></thead><tbody id="hist"></tbody></table></div>
  <p style="text-align:center"><button id="hmas" class="s" hidden onclick="lh+=30;cargaHist()">Ver más</button></p>
+ <div id="hbar" class="selbar" hidden><span><b id="hsel">0</b> seleccionado(s)</span>
+  <button class="s" onclick="selH.clear();pintaHist()">Cancelar</button><button id="bhdel" class="danger" onclick="borrarHist()">Eliminar</button></div>
+ <p class="m">Los presupuestos se guardan en tu base de datos de Supabase (solo los datos: cliente, productos, cantidades y precios). El PDF se vuelve a crear cada vez que pulsas "PDF", así que casi no ocupan espacio. Eliminar un presupuesto no devuelve el stock que descontó.</p>
 </section>
 </div>
 </main>
@@ -261,9 +267,13 @@ const stockDe=id=>Math.max(0,+(P.find(p=>p.id==id)?.stock??0));
 const disp=l=>Math.min(l.cantidad,stockDe(l.id));
 let ult=null,H=[];
 function renderB(){const q=$('qb').value.trim(),F=q?filtra(q).slice(0,30):[];
- $('bt').innerHTML=F.map(p=>`<tr><td>${thumb(p.imagen)}<td>${p.codigo?`<span class="cod">${esc(p.codigo)}</span><br>`:''}${esc(p.nombre)}<td class="n">${money(p.precio)}<td class="n hide-sm">${p.stock>0?`<span class="m">Stock ${fmt(p.stock)}</span>`:'<span class="falta">Sin stock</span>'}<td class="n"><button class="s" onclick="add(${p.id})">Añadir</button></tr>`).join('')
+ $('bt').innerHTML=F.map(p=>`<tr class="pick" onclick="add(${p.id})" title="Tocar para agregar"><td>${thumb(p.imagen)}<td>${p.codigo?`<span class="cod">${esc(p.codigo)}</span><br>`:''}${esc(p.nombre)}<td class="n">${money(p.precio)}<td class="n hide-sm">${p.stock>0?`<span class="m">Stock ${fmt(p.stock)}</span>`:'<span class="falta">Sin stock</span>'}<td class="n"><span class="mas">+</span></tr>`).join('')
   ||(q?'<tr><td class="m">Sin resultados</tr>':'')}
-function add(id){const p=P.find(x=>x.id==id),l=L.find(x=>x.id==id);l?l.cantidad++:L.push({id:p.id,codigo:p.codigo,nombre:p.nombre,precio:+p.precio,cantidad:1});rl();toast('Añadido: '+p.nombre)}
+// Agrega el producto (o suma 1 si ya estaba) y deja lista su casilla de cantidad para escribir
+function add(id){const p=P.find(x=>x.id==id);let i=L.findIndex(x=>x.id==id);
+ if(i<0){L.push({id:p.id,codigo:p.codigo,nombre:p.nombre,precio:+p.precio,cantidad:1});i=L.length-1}else L[i].cantidad++;
+ rl();const q=document.querySelectorAll('#lt .qty')[i];if(q){q.scrollIntoView({block:'center',behavior:'smooth'});q.focus({preventScroll:true});q.select()}
+ const tr=q?.closest('tr');if(tr){tr.classList.remove('flash');void tr.offsetWidth;tr.classList.add('flash')}}
 function guardaBorrador(){guardaLS('borrador',JSON.stringify(L));guardaLS('cliente',$('cl').value)}
 function rl(){$('lt').innerHTML=L.map((l,i)=>{const s=stockDe(l.id),nota=s<=0?'Sin stock: saldrá en rojo en el PDF y no se cobra':s<l.cantidad?`Solo hay ${fmt(s)} en stock: se presupuestan ${fmt(s)}`:'';
   return `<tr><td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span><br>`:''}${esc(l.nombre)}${nota?`<div class="falta">${nota}</div>`:''}
@@ -349,14 +359,22 @@ async function save(){const cl=$('cl').value.trim();
  $('resT').textContent=`Presupuesto Nº ${data.id}${cl?' · '+cl:''} · Total ${money(data.total)}`;$('res').hidden=false;
  L=[];$('cl').value='';$('qb').value='';renderB();window.scrollTo(0,0);await load();cargaHist()}
 // Historial: todos los presupuestos guardados, con búsqueda por cliente o número
-let lh=30;
+let lh=30;const selH=new Set();
 async function cargaHist(){const t=$('hq').value.trim().replace(/[,()%*]/g,' ').trim();
  let q=sb.from('presupuestos').select('*').order('id',{ascending:false}).limit(lh+1);
  if(t)q=/^\d+$/.test(t)?q.or(`id.eq.${t},cliente.ilike.*${t}*`):q.ilike('cliente',`%${t}%`);
- const{data,error}=await q;if(error)return alert(msg(error));H=data.slice(0,lh);$('hmas').hidden=data.length<=lh;
+ const{data,error}=await q;if(error)return alert(msg(error));H=data.slice(0,lh);$('hmas').hidden=data.length<=lh;pintaHist()}
+function pintaHist(){const t=$('hq').value.trim();
  $('hist').innerHTML=H.map((p,i)=>{const f=new Date(p.fecha),sin=(p.lineas||[]).some(l=>+(l.disponible??l.cantidad)<l.cantidad);
-  return `<tr><td class="cod">${p.id}<td>${f.toLocaleDateString('es')} <span class="m hide-sm">${f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span><td>${esc(p.cliente||'-')}${sin?' <span class="tag" style="color:var(--no)">Faltó stock</span>':''}<td class="n hide-sm">${(p.lineas||[]).length}<td class="n"><b>${money(p.total)}</b><td class="n"><button class="s" onclick="descargar(H[${i}])">PDF</button></tr>`}).join('')
-  ||`<tr><td colspan="6" class="m">${t?'No hay presupuestos que coincidan.':'Todavía no hay presupuestos.'}</tr>`}
+  return `<tr><td class="cc"><input type="checkbox" class="ck" ${selH.has(p.id)?'checked':''} onchange="this.checked?selH.add(${p.id}):selH.delete(${p.id});pintaHist()"><td class="cod">${p.id}<td>${f.toLocaleDateString('es')} <span class="m hide-sm">${f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span><td>${esc(p.cliente||'-')}${sin?' <span class="tag" style="color:var(--no)">Faltó stock</span>':''}<td class="n hide-sm">${(p.lineas||[]).length}<td class="n"><b>${money(p.total)}</b><td class="n"><button class="s" onclick="descargar(H[${i}])">PDF</button></tr>`}).join('')
+  ||`<tr><td colspan="7" class="m">${t?'No hay presupuestos que coincidan.':'Todavía no hay presupuestos.'}</tr>`;
+ $('hall').checked=H.length>0&&H.every(p=>selH.has(p.id));$('hbar').hidden=!selH.size;$('hsel').textContent=selH.size}
+async function borrarHist(){const ids=[...selH],n=ids.length;if(!n)return;
+ if(!confirm(`¿Eliminar ${n} presupuesto(s) del historial?\n\nNo se puede deshacer. El stock que descontaron no se devuelve.`))return;
+ const b=$('bhdel');b.disabled=true;
+ try{for(let i=0;i<n;i+=200){const{error}=await sb.from('presupuestos').delete().in('id',ids.slice(i,i+200));if(error)throw error}
+  selH.clear();toast(`${n} presupuesto(s) eliminado(s)`);await cargaHist()}
+ catch(e){alert(msg(e))}finally{b.disabled=false}}
 
 init();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>
