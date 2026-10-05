@@ -1,11 +1,11 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Catálogo</title>
-<link rel="icon" href="icon.svg"><link rel="stylesheet" href="estilos.css"><meta name="theme-color" content="#0f766e">
+<link rel="icon" href="icon.svg"><link rel="stylesheet" href="estilos.css"><meta name="theme-color" content="#0d0d0d">
 <style>
 .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.top input{flex:1;min-width:200px}
 #mas{display:block;margin:18px auto 0}
 </style></head><body>
-<header><div class="brand"><img src="icon.svg" alt=""><h1 id="tit">Catálogo</h1></div>
+<header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><h1 id="tit">Catálogo</h1></div>
 <a class="btn s" href="admin.html">Administrar</a></header>
 <main>
 <div class="top"><input id="q" type="search" placeholder="Buscar por descripción o código" oninput="lim=48;r()"><span class="m" id="u"></span></div>
@@ -19,7 +19,7 @@ const sb=supabase.createClient(CFG.URL,CFG.KEY),$=id=>document.getElementById(id
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>(CFG.MONEDA||'')+' '+Number(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
 const norm=s=>String(s??'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
-if(CFG.NOMBRE){$('tit').textContent=CFG.NOMBRE;document.title=CFG.NOMBRE+' · Catálogo'}
+if(CFG.NOMBRE)document.title=CFG.NOMBRE+' · Catálogo';
 // Solo se muestran productos con código propio, visibles y fuera de la papelera.
 // Supabase devuelve como máximo 1000 filas por consulta: pedimos por bloques
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}

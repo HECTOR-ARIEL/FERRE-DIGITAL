@@ -1,6 +1,6 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Administración</title>
-<link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg"><link rel="stylesheet" href="estilos.css"><meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg"><link rel="stylesheet" href="estilos.css"><meta name="theme-color" content="#0d0d0d">
 <style>
 header b{font-size:18px}
 #login{max-width:380px;margin:40px auto;display:grid;gap:12px}#login h2{margin:0}label{display:grid;gap:4px;font-size:13px;color:var(--m)}
@@ -30,7 +30,7 @@ dialog{overflow:auto}
  td,th{padding:7px 5px}main .r>button,#fc{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
  header{padding:8px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}#pt .th{width:36px;height:36px}.qty{width:58px;padding:8px 6px}.gi{width:60px;padding:6px}dialog form{padding:14px}}
 </style></head><body>
-<header><div class="brand"><img src="icon.svg" alt=""><b>Administración</b></div>
+<header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><b>Administración</b></div>
 <div class="r"><a class="btn s" href="./">Ver catálogo</a><button id="out" class="s" hidden onclick="salir()">Salir</button></div></header>
 <main>
 <form id="login" class="c" hidden onsubmit="login(event)">
@@ -58,7 +58,7 @@ dialog{overflow:auto}
   <div class="mini"><span>Ganancia para productos nuevos del Excel:</span><input id="gn" inputmode="decimal" onchange="guardaLS('gn',this.value)"><span>%</span></div>
  </div>
  <div class="c w" style="padding:0">
-  <table><thead><tr><th class="cc"><input type="checkbox" class="ck" id="ckall" title="Seleccionar todos los mostrados" onchange="marcaTodos(this.checked)"></th><th></th><th class="hide-sm">Código</th><th>Descripción</th><th class="n hide-sm">Costo</th><th class="n">Ganancia</th><th class="n">Precio venta</th><th class="n hide-sm">Stock</th></tr></thead><tbody id="pt"></tbody></table>
+  <table><thead><tr><th class="cc"><input type="checkbox" class="ck" id="ckall" title="Seleccionar todos los mostrados" onchange="marcaTodos(this.checked)"></th><th class="hide-sm"></th><th class="hide-sm">Código</th><th>Descripción</th><th class="n hide-sm">Costo</th><th class="n">Ganancia</th><th class="n">Precio venta</th><th class="n hide-sm">Stock</th></tr></thead><tbody id="pt"></tbody></table>
  </div>
  <p style="text-align:center"><button id="mas" class="s" hidden onclick="lim+=100;renderP()">Ver más</button></p>
  <div id="selbar" hidden><span><b id="nsel">0</b> seleccionado(s)</span>
@@ -151,7 +151,7 @@ function renderP(){const F=lista(),np=P.filter(p=>p.borrado).length;$('nf').text
  $('bpap').textContent='Papelera'+(np?` (${np})`:'');
  $('pt').innerHTML=F.slice(0,lim).map(p=>`<tr onclick="${enPap?`marca(${p.id})`:`editar(${p.id})`}"${p.activo&&!enPap?'':' class="off"'}>
   <td class="cc" onclick="event.stopPropagation()"><input type="checkbox" class="ck" ${sel.has(p.id)?'checked':''} onchange="marca(${p.id},this.checked)">
-  <td>${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td>${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}${esc(p.nombre)}${p.activo||enPap?'':' <span class="tag">Oculto</span>'}${p.codigo||enPap?'':' <span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?'':' <span class="tag" style="color:var(--no)">Sin stock</span>'}<td class="n hide-sm">${money(p.costo)}<td class="n" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
+  <td class="hide-sm">${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td>${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}${esc(p.nombre)}${p.activo||enPap?'':' <span class="tag">Oculto</span>'}${p.codigo||enPap?'':' <span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?'':' <span class="tag" style="color:var(--no)">Sin stock</span>'}<td class="n hide-sm">${money(p.costo)}<td class="n" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
   ||`<tr><td colspan="8" class="m">${enPap?'La papelera está vacía.':P.length?'Ningún producto coincide con la búsqueda.':'Todavía no hay productos. Importa un Excel o crea uno nuevo.'}</tr>`;
  $('mas').hidden=F.length<=lim;
  $('ckall').checked=F.length>0&&F.every(p=>sel.has(p.id));
@@ -268,30 +268,44 @@ function rl(){$('lt').innerHTML=L.map((l,i)=>{const s=stockDe(l.id),nota=s<=0?'S
   ||'<tr><td class="m">Busca productos arriba y pulsa "Añadir".</tr>';
  $('tt').textContent='Total: '+money(tot());$('nl').textContent=L.length;$('nl').hidden=!L.length;guardaBorrador()}
 
+// Logo para el PDF (se carga una vez al abrir el panel)
+let LOGO=null;
+fetch('logo.jpg').then(r=>r.ok?r.blob():null).then(b=>{if(!b)return;const fr=new FileReader();
+ fr.onload=()=>{const i=new Image();i.onload=()=>LOGO={src:fr.result,k:i.height/i.width};i.src=fr.result};fr.readAsDataURL(b)}).catch(()=>{});
 // PDF de un presupuesto guardado {id, fecha, cliente, total, lineas:[{codigo,nombre,precio,cantidad,disponible}]}
-function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),R=[185,28,28],N=[20,33,31],G=[95,111,108],W=196;let y=18;
- d.setFont('helvetica','bold');d.setFontSize(18);d.setTextColor(...N);d.text(CFG.NOMBRE||'Presupuesto',14,y);
- d.setFontSize(12);d.text('PRESUPUESTO Nº '+p.id,W,y,{align:'right'});y+=7;
- d.setFont('helvetica','normal');d.setFontSize(10);d.setTextColor(...G);d.text('Fecha: '+new Date(p.fecha).toLocaleDateString('es'),W,y,{align:'right'});
- d.setTextColor(...N);if(p.cliente)d.text('Cliente: '+p.cliente,14,y);y+=5;
- d.setDrawColor(15,118,110);d.setLineWidth(.6);d.line(14,y,W,y);y+=8;
- const cab=()=>{d.setFont('helvetica','bold');d.setFontSize(8.5);d.setTextColor(...G);
-  d.text('CÓDIGO',14,y);d.text('DESCRIPCIÓN',38,y);d.text('CANT.',132,y,{align:'right'});d.text('P. UNIT.',163,y,{align:'right'});d.text('IMPORTE',W,y,{align:'right'});
-  y+=2.5;d.setDrawColor(200);d.setLineWidth(.2);d.line(14,y,W,y);y+=5;d.setFont('helvetica','normal');d.setFontSize(10)};
+// Colores de la marca: rojo #BD1717, negro y blanco. El rojo en las filas indica falta de stock.
+function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=[13,13,13],G=[110,110,110],W=196,X=14;let y;
+ // cabecera: logo a la izquierda, datos del presupuesto a la derecha
+ if(LOGO){const w=42;d.addImage(LOGO.src,'JPEG',X,10,w,w*LOGO.k);y=10+w*LOGO.k}
+ else{d.setFillColor(...NEG);d.rect(X,10,60,22,'F');d.setTextColor(255);d.setFont('helvetica','bold');d.setFontSize(14);d.text(CFG.NOMBRE||'',X+4,24);y=32}
+ d.setFont('helvetica','bold');d.setFontSize(22);d.setTextColor(...ROJO);d.text('PRESUPUESTO',W,22,{align:'right'});
+ d.setFontSize(13);d.setTextColor(...NEG);d.text('Nº '+p.id,W,30,{align:'right'});
+ d.setFont('helvetica','normal');d.setFontSize(10);d.setTextColor(...G);d.text('Fecha: '+new Date(p.fecha).toLocaleDateString('es'),W,36,{align:'right'});
+ if(p.cliente){d.setFontSize(9);d.text('CLIENTE',W,44,{align:'right'});d.setFont('helvetica','bold');d.setFontSize(12);d.setTextColor(...NEG);d.text(String(p.cliente),W,50,{align:'right'})}
+ y=Math.max(y,52)+4;d.setFillColor(...ROJO);d.rect(X,y,W-X,1.2,'F');y+=8;
+ // encabezado de la tabla: banda negra con texto blanco
+ const cab=()=>{d.setFillColor(...NEG);d.rect(X,y-5,W-X,8,'F');d.setFont('helvetica','bold');d.setFontSize(8.5);d.setTextColor(255);
+  d.text('CÓDIGO',X+2,y);d.text('DESCRIPCIÓN',38,y);d.text('CANT.',132,y,{align:'right'});d.text('P. UNIT.',163,y,{align:'right'});d.text('IMPORTE',W-2,y,{align:'right'});
+  y+=9;d.setFont('helvetica','normal');d.setFontSize(10)};
  cab();
  for(const l of p.lineas){const dis=+(l.disponible??l.cantidad),sin=dis<=0,parcial=!sin&&dis<l.cantidad,t=d.splitTextToSize(String(l.nombre),88);
   const nota=sin?'SIN STOCK - producto no disponible':parcial?`Solo ${fmt(dis)} disponible(s) de ${fmt(l.cantidad)} pedido(s)`:'';
   const alto=t.length*4.6+(nota?4.4:0);
-  if(y+alto>272){d.addPage();y=20;cab()}
-  d.setTextColor(...(sin?R:N));
-  d.text(String(l.codigo||''),14,y);d.text(t,38,y);d.text(fmt(sin?l.cantidad:dis),132,y,{align:'right'});
-  d.text(money(l.precio),163,y,{align:'right'});d.text(sin?'-':money(dis*l.precio),W,y,{align:'right'});
-  if(nota){d.setTextColor(...R);d.setFont('helvetica','bold');d.setFontSize(8.5);d.text(nota,38,y+t.length*4.6-.4);d.setFont('helvetica','normal');d.setFontSize(10)}
-  y+=alto+1;d.setDrawColor(230);d.line(14,y-3.2,W,y-3.2);y+=1.5}
- if(y>255){d.addPage();y=20}
- y+=5;d.setFont('helvetica','bold');d.setFontSize(14);d.setTextColor(...N);d.text('TOTAL: '+money(p.total),W,y,{align:'right'});
- if(p.lineas.some(l=>+(l.disponible??l.cantidad)<l.cantidad)){y+=9;d.setFont('helvetica','normal');d.setFontSize(9);d.setTextColor(...R);
-  d.text('Los productos marcados en rojo no tienen stock suficiente: solo se cobra la cantidad disponible.',14,y)}
+  if(y+alto>262){d.addPage();y=20;cab()}
+  d.setTextColor(...(sin?ROJO:NEG));
+  d.text(String(l.codigo||''),X+2,y);d.text(t,38,y);d.text(fmt(sin?l.cantidad:dis),132,y,{align:'right'});
+  d.text(money(l.precio),163,y,{align:'right'});d.text(sin?'-':money(dis*l.precio),W-2,y,{align:'right'});
+  if(nota){d.setTextColor(...ROJO);d.setFont('helvetica','bold');d.setFontSize(8.5);d.text(nota,38,y+t.length*4.6-.4);d.setFont('helvetica','normal');d.setFontSize(10)}
+  y+=alto+1;d.setDrawColor(225);d.setLineWidth(.2);d.line(X,y-3.2,W,y-3.2);y+=1.5}
+ if(y>245){d.addPage();y=20}
+ // total: caja negra con texto blanco y borde rojo a la izquierda
+ y+=3;d.setFillColor(...NEG);d.rect(120,y,W-120,12,'F');d.setFillColor(...ROJO);d.rect(120,y,2.5,12,'F');
+ d.setFont('helvetica','bold');d.setFontSize(10);d.setTextColor(255);d.text('TOTAL',127,y+7.8);d.setFontSize(14);d.text(money(p.total),W-3,y+8,{align:'right'});y+=12;
+ if(p.lineas.some(l=>+(l.disponible??l.cantidad)<l.cantidad)){y+=8;d.setFont('helvetica','normal');d.setFontSize(9);d.setTextColor(...ROJO);
+  d.text('Los productos marcados en rojo no tienen stock suficiente: solo se cobra la cantidad disponible.',X,y)}
+ // pie en todas las páginas
+ const np=d.getNumberOfPages();for(let i=1;i<=np;i++){d.setPage(i);d.setFillColor(...ROJO);d.rect(X,284,W-X,.6,'F');
+  d.setFont('helvetica','normal');d.setFontSize(8);d.setTextColor(...G);d.text(CFG.NOMBRE||'',X,289);if(np>1)d.text(`Página ${i} de ${np}`,W,289,{align:'right'})}
  return d}
 const nomPdf=p=>('presupuesto-'+p.id+(p.cliente?'-'+p.cliente:'')).normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\w-]+/g,'-').toLowerCase()+'.pdf';
 function descargar(p=ult){pdfDoc(p).save(nomPdf(p))}
