@@ -1,29 +1,37 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Catálogo</title>
+<link rel="icon" href="icon.svg"><link rel="stylesheet" href="estilos.css"><meta name="theme-color" content="#0f766e">
 <style>
-:root{--bg:#f4f6f5;--c:#fff;--t:#14211f;--m:#5f6f6c;--a:#0f766e;--b:#dbe3e1;--ok:#166534;--no:#b91c1c}
-@media(prefers-color-scheme:dark){:root{--bg:#0e1514;--c:#162120;--t:#e8f0ee;--m:#93a5a1;--b:#263634;--ok:#4ade80;--no:#f87171}}
-*{box-sizing:border-box}body{margin:0;font:16px system-ui,sans-serif;background:var(--bg);color:var(--t)}
-main{max-width:860px;margin:auto;padding:16px}h1{margin:8px 0 12px}
-input{width:100%;font:inherit;padding:11px;border:1px solid var(--b);border-radius:8px;background:var(--c);color:var(--t)}
-.w{overflow-x:auto;margin-top:12px;background:var(--c);border:1px solid var(--b);border-radius:8px}
-table{width:100%;border-collapse:collapse}td,th{padding:10px;border-bottom:1px solid var(--b);text-align:left}
-td.n,th.n{text-align:right}.ok{color:var(--ok)}.no{color:var(--no)}.m{color:var(--m);font-size:14px}
-</style></head><body><main>
-<h1>Catálogo</h1><input id="q" placeholder="Buscar producto o código" oninput="r()">
-<div class="w"><table><thead><tr><th>Código<th>Producto<th class="n">Precio<th class="n">Stock</tr></thead><tbody id="t"></tbody></table></div>
-<p class="m" id="u"></p></main>
+.top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.top input{flex:1;min-width:200px}
+#mas{display:block;margin:18px auto 0}
+</style></head><body>
+<header><div class="brand"><img src="icon.svg" alt=""><h1 id="tit">Catálogo</h1></div>
+<a class="btn s" href="admin.html">Administrar</a></header>
+<main>
+<div class="top"><input id="q" type="search" placeholder="Buscar por descripción o código" oninput="lim=48;r()"><span class="m" id="u"></span></div>
+<div class="grid" id="g"></div>
+<button id="mas" class="s" hidden onclick="lim+=48;r()">Ver más productos</button>
+</main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script>
-const sb=supabase.createClient(CFG.URL,CFG.KEY);let P=[];
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const eur=n=>Number(n).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2});
-async function load(){const{data,error}=await sb.from('productos').select('codigo,nombre,precio,stock').order('nombre');
- if(error){document.getElementById('u').textContent='No se pudo cargar el catálogo.';return}
- P=data;r();document.getElementById('u').textContent='Actualizado a las '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}
-function r(){const q=document.getElementById('q').value.toLowerCase();
- document.getElementById('t').innerHTML=P.filter(p=>(p.codigo+' '+p.nombre).toLowerCase().includes(q)).map(p=>
- `<tr><td>${esc(p.codigo)}<td>${esc(p.nombre)}<td class="n">${eur(p.precio)}<td class="n ${p.stock>0?'ok':'no'}">${p.stock>0?p.stock:'Agotado'}</tr>`).join('')}
-load();setInterval(load,60000);
+const sb=supabase.createClient(CFG.URL,CFG.KEY),$=id=>document.getElementById(id);let P=[],lim=48;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>(CFG.MONEDA||'')+' '+Number(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
+const norm=s=>String(s??'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
+if(CFG.NOMBRE){$('tit').textContent=CFG.NOMBRE;document.title=CFG.NOMBRE+' · Catálogo'}
+// Supabase devuelve como máximo 1000 filas por consulta: pedimos por bloques
+async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
+async function load(){
+ try{P=await todos(()=>sb.from('productos').select('id,codigo,nombre,precio,imagen').eq('activo',true).order('nombre'))}
+ catch(e){$('u').textContent='No se pudo cargar el catálogo.';return}
+ r();$('u').textContent=P.length+' productos'}
+function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
+ const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return w.every(x=>s.includes(x))});
+ $('g').innerHTML=F.slice(0,lim).map(p=>`<article class="card">
+  <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(p.nombre)}">`:'Sin imagen'}</div>
+  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(p.nombre)}</h2><span class="pr">${money(p.precio)}</span></div></article>`).join('')
+  ||'<p class="m">No hay productos que coincidan con la búsqueda.</p>';
+ $('mas').hidden=F.length<=lim}
+load();setInterval(load,300000);
 </script></body></html>
