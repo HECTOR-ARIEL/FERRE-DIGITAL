@@ -1,0 +1,56 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Presupuestos</title>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#0f766e">
+<style>
+:root{--bg:#f4f6f5;--c:#fff;--t:#14211f;--m:#5f6f6c;--a:#0f766e;--b:#dbe3e1}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1514;--c:#162120;--t:#e8f0ee;--m:#93a5a1;--b:#263634}}
+*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:var(--bg);color:var(--t)}
+main{max-width:920px;margin:auto;padding:12px}.c{background:var(--c);border:1px solid var(--b);border-radius:8px;padding:14px;margin:12px 0}
+input,button{font:inherit;padding:9px 11px;border:1px solid var(--b);border-radius:8px;background:var(--c);color:var(--t)}
+button{background:var(--a);color:#fff;border:0;cursor:pointer}button.s{background:var(--c);color:var(--t);border:1px solid var(--b)}
+.r{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}.r>input{flex:1;min-width:130px}
+table{width:100%;border-collapse:collapse}td,th{padding:6px;border-bottom:1px solid var(--b);text-align:left}.w{overflow:auto}.m{color:var(--m)}
+</style></head><body><main>
+<div id="login" class="c" hidden><b>Acceso</b><div class="r"><input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Contraseña"><button onclick="login()">Entrar</button></div></div>
+<div id="app" hidden>
+<div class="c"><b>Productos</b>
+<div class="r"><input id="q" placeholder="Buscar..." oninput="render()"><button class="s" onclick="$('f').click()">Importar Excel</button><input id="f" type="file" accept=".xlsx,.xls,.csv" hidden onchange="imp(this.files[0])"></div>
+<div class="w" style="max-height:280px"><table><tr><th>Código<th>Producto<th>Precio<th>Stock<th></tr><tbody id="pt"></tbody></table></div>
+<p class="m">Columnas del Excel: codigo, nombre, precio y, si quieres, stock.</p></div>
+<div class="c"><b>Nuevo presupuesto</b><div class="r"><input id="cl" placeholder="Cliente"></div>
+<div class="w"><table><tbody id="lt"></tbody></table></div><h3 id="tt"></h3>
+<button onclick="save()">Guardar, descontar stock y crear PDF</button></div></div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js"></script>
+<script>
+const sb=supabase.createClient(CFG.URL,CFG.KEY),$=id=>document.getElementById(id);let P=[],L=[];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const eur=n=>Number(n).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2});
+const tot=()=>L.reduce((s,l)=>s+l.cantidad*l.precio,0);
+async function init(){const{data}=await sb.auth.getSession();show(!!data.session)}
+function show(ok){$('login').hidden=ok;$('app').hidden=!ok;if(ok)load()}
+async function login(){const{error}=await sb.auth.signInWithPassword({email:$('em').value,password:$('pw').value});error?alert(error.message):show(true)}
+async function load(){const{data,error}=await sb.from('productos').select('*').order('nombre');if(error)return alert(error.message);P=data;render();rl()}
+function render(){const q=$('q').value.toLowerCase();$('pt').innerHTML=P.filter(p=>(p.codigo+' '+p.nombre).toLowerCase().includes(q)).map(p=>
+ `<tr><td>${esc(p.codigo)}<td>${esc(p.nombre)}<td>${eur(p.precio)}<td>${p.stock}<td><button class="s" onclick="add(${p.id})">Añadir</button></tr>`).join('')}
+function add(id){const p=P.find(x=>x.id==id),l=L.find(x=>x.id==id);l?l.cantidad++:L.push({id:p.id,codigo:p.codigo,nombre:p.nombre,precio:+p.precio,cantidad:1});rl()}
+function rl(){$('lt').innerHTML=L.map((l,i)=>`<tr><td>${esc(l.nombre)}<td><input type="number" min="0" step="any" value="${l.cantidad}" style="width:80px" onchange="L[${i}].cantidad=+this.value;rl()"><td>${eur(l.precio)}<td>${eur(l.cantidad*l.precio)}<td><button class="s" onclick="L.splice(${i},1);rl()">Quitar</button></tr>`).join('');$('tt').textContent='Total: '+eur(tot())}
+async function imp(f){if(!f)return;const wb=XLSX.read(await f.arrayBuffer());
+ const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).map(o=>Object.fromEntries(Object.entries(o).map(([a,b])=>[a.trim().toLowerCase(),b])));
+ const hs=rows.some(r=>'stock' in r);
+ const out=rows.filter(r=>r.codigo!==undefined&&r.nombre!==undefined).map(r=>{const o={codigo:String(r.codigo).trim(),nombre:String(r.nombre),precio:Number(r.precio)||0};if(hs)o.stock=Number(r.stock)||0;return o});
+ if(!out.length)return alert('No encontré las columnas codigo, nombre y precio.');
+ const{error}=await sb.from('productos').upsert(out,{onConflict:'codigo'});
+ if(error)return alert(error.message);alert(out.length+' productos importados');$('f').value='';load()}
+function pdf(n){const{jsPDF}=window.jspdf,d=new jsPDF();let y=20;d.setFontSize(16);d.text('Presupuesto Nº '+n,14,y);y+=8;d.setFontSize(10);
+ d.text('Cliente: '+$('cl').value+'    Fecha: '+new Date().toLocaleDateString('es'),14,y);y+=10;
+ d.text('Código',14,y);d.text('Producto',40,y);d.text('Cant.',120,y);d.text('Precio',150,y,{align:'right'});d.text('Importe',196,y,{align:'right'});y+=6;
+ L.forEach(l=>{if(y>275){d.addPage();y=20}d.text(String(l.codigo),14,y);d.text(String(l.nombre).slice(0,45),40,y);d.text(String(l.cantidad),120,y);d.text(eur(l.precio),150,y,{align:'right'});d.text(eur(l.cantidad*l.precio),196,y,{align:'right'});y+=6});
+ d.setFontSize(12);d.text('TOTAL: '+eur(tot()),196,y+8,{align:'right'});d.save('presupuesto-'+n+'.pdf')}
+async function save(){if(!L.length||L.some(l=>!(l.cantidad>0)))return alert('Añade productos con cantidad mayor que 0.');
+ const{data,error}=await sb.rpc('crear_presupuesto',{p_cliente:$('cl').value,p_lineas:L});if(error)return alert(error.message);
+ pdf(data);L=[];$('cl').value='';await load()}
+init();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>
