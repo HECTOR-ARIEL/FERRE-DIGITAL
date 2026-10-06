@@ -10,7 +10,7 @@
 <main>
 <div class="top"><input id="q" type="search" placeholder="Buscar por descripción o código" oninput="lim=48;r()"><span class="m" id="u"></span></div>
 <div class="grid" id="g"></div>
-<button id="mas" class="s" hidden onclick="lim+=48;r()">Ver más productos</button>
+<p id="mas" class="m" hidden style="text-align:center">Cargando más productos…</p>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
@@ -33,7 +33,9 @@ function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
   <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(p.nombre)}">`:'Sin imagen'}</div>
   <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(p.nombre)}</h2><span class="pr">${money(p.precio)}</span>${p.stock>0?'':'<span class="sin">Sin stock</span>'}</div></article>`).join('')
   ||`<p class="m" style="grid-column:1/-1">${P.length?'No hay productos que coincidan con la búsqueda.':'Todavía no hay productos en el catálogo.'}</p>`;
- $('mas').hidden=F.length<=lim}
+ $('mas').hidden=F.length<=lim;masObs.unobserve($('mas'));masObs.observe($('mas'))}
+// Al acercarse al final se cargan más productos solos, sin botón
+const masObs=new IntersectionObserver(e=>{if(e[0].isIntersecting&&!$('mas').hidden){lim+=48;r()}},{rootMargin:'800px'});
 // Cada 10 s pregunta si hubo cambios en administración; solo entonces recarga los productos
 let ver;
 async function revisa(){const{data}=await sb.from('cambios').select('ts').eq('id',1).maybeSingle();const v=data?.ts;if(!v||v!==ver){ver=v;load()}}

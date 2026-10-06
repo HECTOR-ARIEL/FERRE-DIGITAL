@@ -7,7 +7,7 @@ header b{font-size:18px}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--b);margin-bottom:14px}
 .tabs button{background:none;border:0;border-bottom:3px solid transparent;border-radius:0;color:var(--m);padding:10px 14px}
 .tabs button.on{color:var(--t);border-bottom-color:var(--a);font-weight:600}.tabs button:hover{background:none;color:var(--t)}
-section>.c{margin-bottom:12px}
+section>.c{margin-bottom:12px}.tel{display:none}@media(pointer:coarse){.tel{display:inline-flex}}
 .w{overflow:auto}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid var(--b);text-align:left;vertical-align:middle}
 th{font-size:12px;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
 .n{text-align:right;white-space:nowrap}#pt tr{cursor:pointer}#pt tr:hover{background:var(--bg)}tr.off td{opacity:.55}
@@ -74,7 +74,7 @@ dialog{overflow:auto}
  <div class="c w" style="padding:0">
   <table><thead><tr><th class="cc"><input type="checkbox" class="ck" id="ckall" title="Seleccionar todos los mostrados" onchange="marcaTodos(this.checked)"></th><th class="hide-sm"></th><th class="hide-sm">Código</th><th>Descripción</th><th class="n hide-sm">Costo</th><th class="n">Ganancia</th><th class="n">Precio venta</th><th class="n hide-sm">Stock</th></tr></thead><tbody id="pt"></tbody></table>
  </div>
- <p style="text-align:center"><button id="mas" class="s" hidden onclick="lim+=100;renderP()">Ver más</button></p>
+ <p style="text-align:center"><span id="mas" class="m" hidden>Cargando más productos…</span></p>
  <div id="selbar" hidden><span><b id="nsel">0</b> seleccionado(s)</span>
   <button class="s" onclick="sel.clear();renderP()">Cancelar</button>
   <button id="bdef" class="danger" hidden onclick="borrarDefinitivo()">Eliminar definitivamente</button>
@@ -108,8 +108,9 @@ dialog{overflow:auto}
 <dialog id="dlg"><form onsubmit="guardarProd(event)">
  <h2 id="dt">Editar producto</h2>
  <div class="foto"><img id="fimg" class="th" alt="">
-  <div><button type="button" class="s" onclick="$('fi').click()">Cambiar imagen</button><button type="button" class="s" id="fqi" onclick="quitarImagen()">Quitar imagen</button></div>
-  <input id="fi" type="file" accept="image/*" hidden onchange="elegirImg(this.files[0])"></div>
+  <div><button type="button" class="s tel" onclick="$('fc2').click()">📷 Sacar foto</button><button type="button" class="s" onclick="$('fi').click()">Elegir imagen</button><button type="button" class="s" id="fqi" onclick="quitarImagen()">Quitar imagen</button></div>
+  <input id="fi" type="file" accept="image/*" hidden onchange="elegirImg(this.files[0])">
+  <input id="fc2" type="file" accept="image/*" capture="environment" hidden onchange="elegirImg(this.files[0])"></div>
  <label>Código<input id="fcod" autocomplete="off" placeholder="Sin código no aparece en el catálogo"></label>
  <label>Descripción<textarea id="fdes" rows="2" required></textarea></label>
  <div class="g3">
@@ -131,6 +132,8 @@ dialog{overflow:auto}
 <script>
 const sb=supabase.createClient(CFG.URL,CFG.KEY),$=id=>document.getElementById(id);
 const leeLS=k=>{try{return localStorage.getItem(k)}catch{return null}},guardaLS=(k,v)=>{try{localStorage.setItem(k,v)}catch{}};
+// Al acercarse al final de la lista se cargan 100 productos más, sin botón
+const masObs=new IntersectionObserver(e=>{if(e[0].isIntersecting&&!$('mas').hidden){lim+=100;renderP()}},{rootMargin:'800px'});
 let P=[],L=JSON.parse(leeLS('borrador')||'[]'),ed=null,nuevaImg=null,quitarImg=false,lim=100,enPap=false;const sel=new Set();
 const PH='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44"><path d="M12 30l7-8 5 6 3-3 5 5" fill="none" stroke="#b5c2bf" stroke-width="2"/><circle cx="28" cy="16" r="3" fill="#b5c2bf"/></svg>');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -180,7 +183,7 @@ function renderP(){const F=lista(),np=P.filter(p=>p.borrado).length;$('nf').text
   <td class="cc" onclick="event.stopPropagation()"><input type="checkbox" class="ck" ${sel.has(p.id)?'checked':''} onchange="marca(${p.id},this.checked)">
   <td class="hide-sm">${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td class="de">${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}<div class="nom">${esc(p.nombre)}</div><div class="tags">${p.activo||enPap?'':'<span class="tag">Oculto</span>'}${p.codigo||enPap?'':'<span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?`<span class="tag sub">Stock ${fmt(p.stock)}</span>`:'<span class="tag" style="color:var(--no)">Sin stock</span>'}</div><td class="n hide-sm">${money(p.costo)}<td class="n ga" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n pv"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
   ||`<tr><td colspan="8" class="m">${enPap?'La papelera está vacía.':P.length?'Ningún producto coincide con la búsqueda.':'Todavía no hay productos. Importa un Excel o crea uno nuevo.'}</tr>`;
- $('mas').hidden=F.length<=lim;
+ $('mas').hidden=F.length<=lim;masObs.unobserve($('mas'));masObs.observe($('mas'));
  $('ckall').checked=F.length>0&&F.every(p=>sel.has(p.id));
  $('selbar').hidden=!sel.size;$('nsel').textContent=sel.size;
  $('bsel').textContent=enPap?'Restaurar':'Eliminar';$('bsel').className=enPap?'':'danger';$('bdef').hidden=!enPap}
@@ -225,7 +228,7 @@ const fmtIn=n=>String(red(Number(n)||0,4)).replace('.',',');
 function verImg(u){$('fimg').src=u||PH;$('fqi').hidden=!u}
 function deCosto(){const c=num($('fcos').value)||0,g=num($('fgan').value)||0;$('fven').value=dos(red(c*(1+g/100),2))}
 function deVenta(){const c=num($('fcos').value)||0,v=num($('fven').value);if(c>0&&v!==null)$('fgan').value=fmtIn(red((v/c-1)*100,4))}
-async function elegirImg(f){$('fi').value='';if(!f)return;try{nuevaImg=await reducir(f);quitarImg=false;verImg(URL.createObjectURL(nuevaImg))}catch(e){alert(e.message)}}
+async function elegirImg(f){$('fi').value='';$('fc2').value='';if(!f)return;try{nuevaImg=await reducir(f);quitarImg=false;verImg(URL.createObjectURL(nuevaImg))}catch(e){alert(e.message)}}
 function quitarImagen(){nuevaImg=null;quitarImg=true;verImg(null)}
 // Reduce la foto (máx. 1000 px, JPEG) para que ocupe poco espacio y cargue rápido
 function reducir(f,max=1000){return new Promise((ok,ko)=>{const i=new Image();
