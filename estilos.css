@@ -29,3 +29,10 @@ button:disabled{opacity:.6;cursor:wait}
 .agotado .img img{opacity:.5}.agotado .pr{color:var(--m)}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--neg);color:#fff;border-left:4px solid var(--a);padding:10px 16px;border-radius:8px;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 @media(max-width:520px){input,select,textarea{font-size:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}main{padding:12px}.card .b{padding:8px 10px 10px}.pr{font-size:17px}}
+
+/* Índice A-Z en el margen derecho: tocar o deslizar el dedo para saltar a esa letra */
+.abc{position:fixed;right:3px;top:calc(50% + 30px);transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;height:min(calc(100vh - 140px),560px);padding:4px 0;border-radius:99px;background:var(--c);border:1px solid var(--b);box-shadow:var(--sh);user-select:none;-webkit-user-select:none;touch-action:none}
+.abc b{flex:1;display:grid;place-items:center;min-height:0;width:24px;font-size:11px;line-height:1;font-weight:700;color:var(--a);cursor:pointer}
+.abc b.no{color:var(--m);opacity:.35;cursor:default}
+.abc-ver{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:7;width:72px;height:72px;display:grid;place-items:center;border-radius:14px;background:var(--neg);color:#fff;font-size:38px;font-weight:800;border:2px solid var(--a);pointer-events:none}
+.con-abc{padding-right:34px!important}

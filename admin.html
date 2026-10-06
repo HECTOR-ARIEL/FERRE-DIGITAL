@@ -7,7 +7,7 @@ header b{font-size:18px}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--b);margin-bottom:14px}
 .tabs button{background:none;border:0;border-bottom:3px solid transparent;border-radius:0;color:var(--m);padding:10px 14px}
 .tabs button.on{color:var(--t);border-bottom-color:var(--a);font-weight:600}.tabs button:hover{background:none;color:var(--t)}
-section>.c{margin-bottom:12px}.tel{display:none}@media(pointer:coarse){.tel{display:inline-flex}}
+section>.c{margin-bottom:12px}#pt tr{scroll-margin-top:96px}.tel{display:none}@media(pointer:coarse){.tel{display:inline-flex}}
 .w{overflow:auto}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid var(--b);text-align:left;vertical-align:middle}
 th{font-size:12px;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
 .n{text-align:right;white-space:nowrap}#pt tr{cursor:pointer}#pt tr:hover{background:var(--bg)}tr.off td{opacity:.55}
@@ -57,7 +57,7 @@ dialog{overflow:auto}
 <div id="app" hidden>
 <div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Nuevo presupuesto <span id="nl" class="tag" hidden></span></button><button data-t="hist" onclick="tab('hist')">Historial</button></div>
 
-<section id="t-prod">
+<section id="t-prod" class="con-abc"><nav class="abc" id="abc" aria-label="Índice alfabético"></nav>
  <div class="c r">
   <input id="q" type="search" placeholder="Buscar por descripción o código" oninput="lim=100;renderP()">
   <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option></select>
@@ -132,6 +132,16 @@ dialog{overflow:auto}
 <script>
 const sb=supabase.createClient(CFG.URL,CFG.KEY),$=id=>document.getElementById(id);
 const leeLS=k=>{try{return localStorage.getItem(k)}catch{return null}},guardaLS=(k,v)=>{try{localStorage.setItem(k,v)}catch{}};
+// Índice A-Z: la barra (el) salta al primer producto de la letra; ir(letra) hace el salto
+const LETRAS='#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),letra=s=>{const c=norm(s).replace(/^[^a-z0-9]+/,'')[0]||'#';return/[a-z]/.test(c)?c.toUpperCase():'#'};
+function pintaAbc(el,F){const hay=new Set(F.map(p=>letra(p.nombre)));el.innerHTML=LETRAS.map(l=>`<b data-l="${l}"${hay.has(l)?'':' class="no"'}>${l}</b>`).join('')}
+function gestoAbc(el,ir){let ult='',t;const ver=document.createElement('div');ver.className='abc-ver';ver.hidden=true;document.body.append(ver);
+ const toca=e=>{const b=document.elementFromPoint(e.clientX,e.clientY)?.closest('.abc b');if(!b||b.classList.contains('no')||b.dataset.l==ult)return;
+  ult=b.dataset.l;ver.textContent=ult;ver.hidden=false;clearTimeout(t);t=setTimeout(()=>ver.hidden=true,700);ir(ult)};
+ el.addEventListener('pointerdown',e=>{ult='';el.setPointerCapture?.(e.pointerId);toca(e)});
+ el.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType=='touch')toca(e)});el.addEventListener('pointerup',()=>ult='')}
+function irLetra(l){const F=lista(),i=F.findIndex(p=>letra(p.nombre)==l);if(i<0)return;if(i>=lim){lim=i+100;renderP()}$('r'+F[i].id)?.scrollIntoView({block:'start'})}
+gestoAbc($('abc'),irLetra);
 // Al acercarse al final de la lista se cargan 100 productos más, sin botón
 const masObs=new IntersectionObserver(e=>{if(e[0].isIntersecting&&!$('mas').hidden){lim+=100;renderP()}},{rootMargin:'800px'});
 let P=[],L=JSON.parse(leeLS('borrador')||'[]'),ed=null,nuevaImg=null,quitarImg=false,lim=100,enPap=false;const sel=new Set();
@@ -179,7 +189,8 @@ function papelera(v){enPap=v;$('fc').value='';sel.clear();lim=100;$('q').value='
  document.querySelectorAll('#t-prod>.c.r:first-child>button').forEach(b=>b.hidden=v);renderP()}
 function renderP(){const F=lista(),np=P.filter(p=>p.borrado).length;$('nf').textContent=F.length;
  $('bpap').textContent='Papelera'+(np?` (${np})`:'');
- $('pt').innerHTML=F.slice(0,lim).map(p=>`<tr onclick="${enPap?`marca(${p.id})`:`editar(${p.id})`}"${p.activo&&!enPap?'':' class="off"'}>
+ pintaAbc($('abc'),F);
+ $('pt').innerHTML=F.slice(0,lim).map(p=>`<tr id="r${p.id}" onclick="${enPap?`marca(${p.id})`:`editar(${p.id})`}"${p.activo&&!enPap?'':' class="off"'}>
   <td class="cc" onclick="event.stopPropagation()"><input type="checkbox" class="ck" ${sel.has(p.id)?'checked':''} onchange="marca(${p.id},this.checked)">
   <td class="hide-sm">${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td class="de">${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}<div class="nom">${esc(p.nombre)}</div><div class="tags">${p.activo||enPap?'':'<span class="tag">Oculto</span>'}${p.codigo||enPap?'':'<span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?`<span class="tag sub">Stock ${fmt(p.stock)}</span>`:'<span class="tag" style="color:var(--no)">Sin stock</span>'}</div><td class="n hide-sm">${money(p.costo)}<td class="n ga" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n pv"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
   ||`<tr><td colspan="8" class="m">${enPap?'La papelera está vacía.':P.length?'Ningún producto coincide con la búsqueda.':'Todavía no hay productos. Importa un Excel o crea uno nuevo.'}</tr>`;

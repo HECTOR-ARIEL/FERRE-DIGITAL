@@ -3,11 +3,11 @@
 <link rel="icon" href="icon.svg"><link rel="stylesheet" href="estilos.css"><meta name="theme-color" content="#0d0d0d">
 <style>
 .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.top input{flex:1;min-width:200px}
-#mas{display:block;margin:18px auto 0}
+#mas{display:block;margin:18px auto 0}.card{scroll-margin-top:96px}
 </style></head><body>
 <header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><h1 id="tit">Catálogo</h1></div>
 <a class="btn s" href="admin.html">Administrar</a></header>
-<main>
+<main class="con-abc"><nav class="abc" id="abc" aria-label="Índice alfabético"></nav>
 <div class="top"><input id="q" type="search" placeholder="Buscar por descripción o código" oninput="lim=48;r()"><span class="m" id="u"></span></div>
 <div class="grid" id="g"></div>
 <p id="mas" class="m" hidden style="text-align:center">Cargando más productos…</p>
@@ -29,11 +29,23 @@ async function load(){
  r();$('u').textContent=P.length+' productos'}
 function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
  const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return w.every(x=>s.includes(x))});
- $('g').innerHTML=F.slice(0,lim).map(p=>`<article class="card${p.stock>0?'':' agotado'}">
+ FL=F;pintaAbc($('abc'),F);
+ $('g').innerHTML=F.slice(0,lim).map(p=>`<article id="a${p.id}" class="card${p.stock>0?'':' agotado'}">
   <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(p.nombre)}">`:'Sin imagen'}</div>
   <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(p.nombre)}</h2><span class="pr">${money(p.precio)}</span>${p.stock>0?'':'<span class="sin">Sin stock</span>'}</div></article>`).join('')
   ||`<p class="m" style="grid-column:1/-1">${P.length?'No hay productos que coincidan con la búsqueda.':'Todavía no hay productos en el catálogo.'}</p>`;
  $('mas').hidden=F.length<=lim;masObs.unobserve($('mas'));masObs.observe($('mas'))}
+// Índice A-Z: la barra (el) salta al primer producto de la letra; ir(letra) hace el salto
+const LETRAS='#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),letra=s=>{const c=norm(s).replace(/^[^a-z0-9]+/,'')[0]||'#';return/[a-z]/.test(c)?c.toUpperCase():'#'};
+function pintaAbc(el,F){const hay=new Set(F.map(p=>letra(p.nombre)));el.innerHTML=LETRAS.map(l=>`<b data-l="${l}"${hay.has(l)?'':' class="no"'}>${l}</b>`).join('')}
+function gestoAbc(el,ir){let ult='',t;const ver=document.createElement('div');ver.className='abc-ver';ver.hidden=true;document.body.append(ver);
+ const toca=e=>{const b=document.elementFromPoint(e.clientX,e.clientY)?.closest('.abc b');if(!b||b.classList.contains('no')||b.dataset.l==ult)return;
+  ult=b.dataset.l;ver.textContent=ult;ver.hidden=false;clearTimeout(t);t=setTimeout(()=>ver.hidden=true,700);ir(ult)};
+ el.addEventListener('pointerdown',e=>{ult='';el.setPointerCapture?.(e.pointerId);toca(e)});
+ el.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType=='touch')toca(e)});el.addEventListener('pointerup',()=>ult='')}
+let FL=[];
+function irLetra(l){const i=FL.findIndex(p=>letra(p.nombre)==l);if(i<0)return;if(i>=lim){lim=i+48;r()}$('a'+FL[i].id)?.scrollIntoView({block:'start'})}
+gestoAbc($('abc'),irLetra);
 // Al acercarse al final se cargan más productos solos, sin botón
 const masObs=new IntersectionObserver(e=>{if(e[0].isIntersecting&&!$('mas').hidden){lim+=48;r()}},{rootMargin:'800px'});
 // Cada 10 s pregunta si hubo cambios en administración; solo entonces recarga los productos
