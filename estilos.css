@@ -18,10 +18,11 @@ button:disabled{opacity:.6;cursor:wait}
 .m{color:var(--m)}.r{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.r>input{flex:1;min-width:160px;width:auto}
 .c{background:var(--c);border:1px solid var(--b);border-radius:10px;padding:16px;box-shadow:var(--sh)}
 .cod{font:12px ui-monospace,Consolas,monospace;color:var(--m)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px;margin-top:14px}
 .card{background:var(--c);border:1px solid var(--b);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--sh);transition:border-color .15s}.card:hover{border-color:var(--a)}
-.card .img{aspect-ratio:1;background:var(--img);display:grid;place-items:center;border-bottom:1px solid var(--b);color:#9a9a9a;font-size:13px}
-.card .img img{width:100%;height:100%;object-fit:contain}
+.card .img{position:relative;overflow:hidden;aspect-ratio:1;background:var(--img);display:grid;place-items:center;border-bottom:1px solid var(--b);color:#9a9a9a;font-size:13px}
+/* la foto entra entera en un cuadrado fijo, sea alta o ancha: todas las tarjetas quedan iguales */
+.card .img img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:8px}
 .card .b{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1}
 .card h2{font-size:14px;font-weight:500;margin:0;flex:1}
 .pr{font-size:19px;font-weight:800}
