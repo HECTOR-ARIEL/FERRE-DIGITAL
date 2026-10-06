@@ -2,13 +2,20 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Catálogo</title>
 <link rel="icon" href="icon.svg"><link rel="stylesheet" href="estilos.css"><meta name="theme-color" content="#0d0d0d">
 <style>
-.top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.top input{flex:1;min-width:200px}
-#mas{display:block;margin:18px auto 0}.card{scroll-margin-top:96px}
+.top{position:sticky;top:var(--hh,75px);z-index:4;display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-16px -34px 0 -16px;padding:12px 34px 12px 16px;background:var(--bg);border-bottom:1px solid var(--b)}
+/* buscador con lupa y botón para borrar */
+.bus{position:relative;flex:1;min-width:200px}.bus svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--m);pointer-events:none}
+.bus input{padding-left:42px;padding-right:42px;font-size:16px;border-radius:99px}.bus input::-webkit-search-cancel-button{display:none}
+.bus button{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:34px;height:34px;padding:0;border-radius:99px;background:var(--bg);color:var(--t);border:0;font-size:18px}
+#mas{display:block;margin:18px auto 0}.card{scroll-margin-top:calc(var(--hh,75px) + 76px)}
+@media(max-width:520px){.top{margin:-12px -34px 0 -12px;padding:10px 34px 10px 12px}.top .m{font-size:12px}.bus{min-width:0}}
 </style></head><body>
 <header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><h1 id="tit">Catálogo</h1></div>
 <a class="btn s" href="admin.html">Administrar</a></header>
 <main class="con-abc"><nav class="abc" id="abc" aria-label="Índice alfabético"></nav>
-<div class="top"><input id="q" type="search" placeholder="Buscar por descripción o código" oninput="lim=48;r()"><span class="m" id="u"></span></div>
+<div class="top"><div class="bus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+ <input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Buscar nombre o código" aria-label="Buscar productos" oninput="busca()" onkeydown="if(event.key=='Enter')this.blur()">
+ <button id="qx" type="button" hidden title="Borrar búsqueda" onclick="$('q').value='';busca();$('q').focus()">✕</button></div><span class="m" id="u"></span></div>
 <div class="grid" id="g"></div>
 <p id="mas" class="m" hidden style="text-align:center">Cargando más productos…</p>
 </main>
@@ -29,7 +36,7 @@ async function load(){
  r();$('u').textContent=P.length+' productos'}
 function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
  const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return w.every(x=>s.includes(x))});
- FL=F;pintaAbc($('abc'),F);
+ FL=F;pintaAbc($('abc'),F);if(P.length)$('u').textContent=$('q').value.trim()?`${F.length} de ${P.length}`:P.length+' productos';
  $('g').innerHTML=F.slice(0,lim).map(p=>`<article id="a${p.id}" class="card${p.stock>0?'':' agotado'}">
   <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(p.nombre)}">`:'Sin imagen'}</div>
   <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(p.nombre)}</h2><span class="pr">${money(p.precio)}</span>${p.stock>0?'':'<span class="sin">Sin stock</span>'}</div></article>`).join('')
@@ -44,6 +51,10 @@ function gestoAbc(el,ir){let ult='',t;const ver=document.createElement('div');ve
  el.addEventListener('pointerdown',e=>{ult='';el.setPointerCapture?.(e.pointerId);toca(e)});
  el.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType=='touch')toca(e)});el.addEventListener('pointerup',()=>ult='')}
 let FL=[];
+// Buscar: muestra los resultados desde arriba y el contador de coincidencias
+function busca(){lim=48;r();$('qx').hidden=!$('q').value;if(scrollY>0)scrollTo(0,0)}
+// Altura de la cabecera, para que el buscador quede pegado justo debajo
+const hh=()=>document.documentElement.style.setProperty('--hh',document.querySelector('header').offsetHeight+'px');hh();addEventListener('resize',hh);
 function irLetra(l){const i=FL.findIndex(p=>letra(p.nombre)==l);if(i<0)return;if(i>=lim){lim=i+48;r()}$('a'+FL[i].id)?.scrollIntoView({block:'start'})}
 gestoAbc($('abc'),irLetra);
 // Al acercarse al final se cargan más productos solos, sin botón
