@@ -36,3 +36,9 @@ button:disabled{opacity:.6;cursor:wait}
 .abc b.no{color:var(--m);opacity:.35;cursor:default}
 .abc-ver{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:7;width:72px;height:72px;display:grid;place-items:center;border-radius:14px;background:var(--neg);color:#fff;font-size:38px;font-weight:800;border:2px solid var(--a);pointer-events:none}
 .con-abc{padding-right:34px!important}
+/* Buscador con lupa (catálogo y administración): queda fijo bajo la cabecera al bajar */
+.top{position:sticky;top:var(--hh,75px);z-index:4;display:flex;gap:10px;align-items:center;background:var(--bg);border-bottom:1px solid var(--b)}
+/* buscador con lupa y botón para borrar */
+.bus{position:relative;flex:1;min-width:200px}.bus svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--m);pointer-events:none}
+.bus input{padding-left:42px;padding-right:42px;font-size:16px;border-radius:99px}.bus input::-webkit-search-cancel-button{display:none}
+.bus button{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:34px;height:34px;padding:0;border-radius:99px;background:var(--bg);color:var(--t);border:0;font-size:18px}
