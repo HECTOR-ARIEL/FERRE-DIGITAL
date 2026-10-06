@@ -37,6 +37,20 @@ from (select id, lower(regexp_replace(trim(nombre), '\s+', ' ', 'g')) k,
 where p.id = s.id and s.n = 1 and p.clave is null;
 create unique index if not exists productos_clave_key on productos(clave);
 
+-- ===================== SECTORES =====================
+-- Cada producto puede estar en un sector (Herramientas, Electricidad...). Los sectores se crean desde el panel.
+create table if not exists sectores(
+  id bigint generated always as identity primary key,
+  nombre text not null unique
+);
+-- Al borrar un sector, sus productos quedan "sin sector" (no se borran)
+alter table productos add column if not exists sector_id bigint references sectores(id) on delete set null;
+create index if not exists productos_sector_idx on productos(sector_id);
+-- Sectores iniciales (solo la primera vez, cuando todavía no hay ninguno)
+insert into sectores(nombre)
+  select x from unnest(array['Herramientas','Jardinería','Electricidad','Grasas','Lubricantes']) x
+  where not exists (select 1 from sectores);
+
 -- ===================== PRESUPUESTOS =====================
 create table if not exists presupuestos(
   id bigint generated always as identity primary key,
@@ -49,6 +63,11 @@ create table if not exists presupuestos(
 -- ===================== PERMISOS =====================
 alter table productos enable row level security;
 alter table presupuestos enable row level security;
+alter table sectores enable row level security;
+drop policy if exists "ver sectores" on sectores;
+drop policy if exists "admin sectores" on sectores;
+create policy "ver sectores" on sectores for select using (true);
+create policy "admin sectores" on sectores for all to authenticated using (true) with check (true);
 drop policy if exists "catalogo publico" on productos;
 drop policy if exists "admin productos" on productos;
 drop policy if exists "admin presupuestos" on presupuestos;
@@ -58,7 +77,7 @@ create policy "admin productos" on productos for all to authenticated using (tru
 create policy "admin presupuestos" on presupuestos for all to authenticated using (true) with check (true);
 -- Los visitantes no pueden ver tu costo ni tu % de ganancia
 revoke select on productos from anon;
-grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado) on productos to anon;
+grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado, sector_id) on productos to anon;
 
 -- ===================== AVISO DE CAMBIOS =====================
 -- Una sola fila con la hora del último cambio en productos.
@@ -73,6 +92,9 @@ language plpgsql security definer set search_path = public as $$
 begin update cambios set ts = now() where id = 1; return null; end $$;
 drop trigger if exists productos_cambio on productos;
 create trigger productos_cambio after insert or update or delete on productos
+  for each statement execute function marcar_cambio();
+drop trigger if exists sectores_cambio on sectores;
+create trigger sectores_cambio after insert or update or delete on sectores
   for each statement execute function marcar_cambio();
 
 -- ===================== IMÁGENES =====================

@@ -14,7 +14,8 @@ th{font-size:12px;font-weight:600;color:var(--m);text-transform:uppercase;letter
 .n{text-align:right;white-space:nowrap}#pt tr{cursor:pointer}#pt tr:hover{background:var(--bg)}tr.off td{opacity:.55}
 .th{width:44px;height:44px;border-radius:6px;object-fit:contain;background:var(--img);border:1px solid var(--b);display:block}
 .sub{display:none}.de{min-width:220px}.nom{overflow-wrap:anywhere}.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}.tags:empty{display:none}.tag{white-space:nowrap;font-size:11px;padding:1px 6px;border-radius:99px;background:var(--bg);border:1px solid var(--b);color:var(--m)}
-#fc{width:auto;flex:none}.mini{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mini input{width:90px}
+#fc,#fs{width:auto;flex:none}.tag.sec{color:var(--t);border-color:var(--a)}#ssec{width:auto;padding:7px 10px;background:transparent;color:inherit;border-color:currentColor}#ssec option{color:var(--t);background:var(--c)}
+.secl{display:grid;gap:8px}.secl .r{flex-wrap:nowrap}.secl .r>input{min-width:0;width:0;flex:1 1 0}#dsec form{grid-template-columns:minmax(0,1fr)}.secl .m{font-size:13px;white-space:nowrap}.mini{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mini input{width:90px}
 dialog{border:0;border-radius:12px;padding:0;width:min(580px,calc(100% - 24px));max-height:calc(100% - 24px);background:var(--c);color:var(--t)}
 dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;padding:18px}dialog h2{margin:0;font-size:18px}
 .foto{display:flex;gap:14px;align-items:center}.foto .th{width:110px;height:110px}.foto>div{display:grid;gap:8px}
@@ -42,7 +43,7 @@ dialog{overflow:auto}
  #lt td{border:0;padding:2px 0}#lt td:first-child{grid-column:1/4}#lt td.hide-sm{display:none}
  table:has(#pt) thead tr{display:grid;grid-template-columns:30px 1fr auto auto;align-items:center;column-gap:10px;padding:0 6px;border-bottom:1px solid var(--b)}
  table:has(#pt) thead th{border:0;padding:8px 0}table:has(#pt) thead th.hide-sm{display:none}.g3{grid-template-columns:1fr 1fr}.hide-sm{display:none}main{padding:10px}.c{padding:12px}
- td,th{padding:7px 5px}main .r>button,#fc{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
+ td,th{padding:7px 5px}main .r>button,#fc,#fs{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
  header{padding:8px 10px}header .brand b{display:none}.tabs{overflow-x:auto}.tabs button{padding:10px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}#pt .th{width:36px;height:36px}.qty{width:58px;padding:8px 6px}.gi{width:60px;padding:6px}dialog form{padding:14px}}
 </style></head><body>
 <header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><b>Administración</b></div>
@@ -62,11 +63,13 @@ dialog{overflow:auto}
  <div class="top"><div class="bus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
   <input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Nombre o código" aria-label="Buscar productos" oninput="lim=100;renderP();if(scrollY>0)window.scrollTo(0,0)" onkeydown="if(event.key=='Enter')this.blur()">
   <button id="qx" type="button" hidden title="Borrar búsqueda" onclick="$('q').value='';lim=100;renderP();$('q').focus()">✕</button></div><span class="m" id="u"></span></div>
- <div class="c r">
+ <div class="c r" id="tbar">
+  <select id="fs" onchange="lim=100;renderP()" title="Filtrar por sector"></select>
   <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option></select>
   <button onclick="editar()">+ Nuevo producto</button>
   <button class="s" onclick="$('f').click()">Importar Excel</button>
   <input id="f" type="file" accept=".xlsx,.xls,.csv" hidden onchange="imp(this.files[0])">
+  <button class="s" onclick="abrirSectores()">Sectores</button>
   <button class="s" id="bpap" onclick="papelera(true)">Papelera</button>
  </div>
  <div class="c aviso r" id="avpap" hidden><span style="flex:1;min-width:200px"><b>Papelera.</b> Estos productos no salen en el catálogo y al importar el Excel no se vuelven a crear. Selecciónalos y pulsa "Restaurar" para recuperarlos, o "Eliminar definitivamente" para borrarlos del todo y poder volver a usar su código.</span><button class="s" onclick="papelera(false)">← Volver a productos</button></div>
@@ -80,6 +83,7 @@ dialog{overflow:auto}
  <p style="text-align:center"><span id="mas" class="m" hidden>Cargando más productos…</span></p>
  <div id="selbar" hidden><span><b id="nsel">0</b> seleccionado(s)</span>
   <button class="s" onclick="sel.clear();renderP()">Cancelar</button>
+  <select id="ssec" onchange="asignarSector(this.value);this.value=''"></select>
   <button id="bdef" class="danger" hidden onclick="borrarDefinitivo()">Eliminar definitivamente</button>
   <button id="bsel" onclick="accionSel()">Eliminar</button></div>
  <p class="m">Excel: puedes subir la nota de pedido tal cual llega. Se usan solo las columnas <b>Producto</b> (o Descripción) y <b>Precio</b> (y <b>Stock</b> si existe); el código y el resto de columnas se ignoran. Cada producto se reconoce por su descripción original del Excel: aunque le cambies aquí la descripción o el código, se seguirá actualizando bien.</p>
@@ -108,6 +112,14 @@ dialog{overflow:auto}
 </div>
 </main>
 
+<dialog id="dsec"><form method="dialog" onsubmit="return false">
+ <h2>Sectores</h2>
+ <p class="m" style="margin:0;font-size:14px">Escribe en un sector para cambiarle el nombre. Si borras un sector, sus productos quedan "sin sector" (no se borran).</p>
+ <div class="secl" id="secl"></div>
+ <div class="r"><input id="snuevo" placeholder="Nuevo sector (ej. Pinturería)" onkeydown="if(event.key=='Enter'){event.preventDefault();nuevoSector()}"><button type="button" onclick="nuevoSector()">+ Agregar</button></div>
+ <div class="acc"><button type="button" class="s" onclick="$('dsec').close()">Cerrar</button></div>
+</form></dialog>
+
 <dialog id="dlg"><form onsubmit="guardarProd(event)">
  <h2 id="dt">Editar producto</h2>
  <div class="foto"><img id="fimg" class="th" alt="">
@@ -121,7 +133,7 @@ dialog{overflow:auto}
   <label>Ganancia %<input id="fgan" inputmode="decimal" oninput="deCosto()"></label>
   <label>Precio venta<input id="fven" inputmode="decimal" oninput="deVenta()"></label>
  </div>
- <div class="g3"><label>Stock<input id="fsto" inputmode="decimal"></label></div>
+ <div class="g3"><label>Stock<input id="fsto" inputmode="decimal"></label><label id="lsec" style="grid-column:span 2">Sector<select id="fsec"></select></label></div>
  <label class="chk"><input id="fact" type="checkbox"> Visible en el catálogo</label>
  <p class="m" id="fclave" style="margin:0;font-size:13px"></p>
  <div class="acc"><button type="button" class="danger" id="fdel" onclick="eliminar()">Eliminar</button>
@@ -167,7 +179,7 @@ function toast(t){const d=document.createElement('div');d.className='toast';d.te
 function msg(e){if(e.code=='23505')return 'Ya existe otro producto con ese código.';return e.message||String(e)}
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 // lo que se ve en la tabla de productos: búsqueda + filtro de código (+ papelera)
-const lista=()=>{const c=$('fc').value;return filtra($('q').value,enPap).filter(p=>!c||(c=='c')==!!p.codigo)};
+const lista=()=>{const c=$('fc').value,f=$('fs').value;return filtra($('q').value,enPap).filter(p=>(!c||(c=='c')==!!p.codigo)&&(!f||(f=='-'?!p.sector_id:p.sector_id==f)))};
 // busca dentro de los productos normales, o de la papelera si enPap=true
 const filtra=(q,enPap=false)=>{const w=norm(q).split(/\s+/).filter(Boolean);return P.filter(p=>!!p.borrado==enPap&&w.every(x=>norm((p.codigo||'')+' '+p.nombre).includes(x)))};
 
@@ -186,23 +198,24 @@ function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList
 
 /* ---------- productos ---------- */
 async function load(){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){return alert(msg(e))}
+ await cargaSectores();
  // los precios del presupuesto en curso se actualizan con los de la base
  L=L.filter(l=>P.some(p=>p.id==l.id&&!p.borrado)).map(l=>{const p=P.find(x=>x.id==l.id);return{...l,codigo:p.codigo,nombre:p.nombre,precio:+p.precio}});
  for(const id of sel)if(!P.some(p=>p.id==id))sel.delete(id);
  renderP();renderB();rl()}
 function papelera(v){enPap=v;$('fc').value='';sel.clear();lim=100;$('q').value='';$('avpap').hidden=!v;$('gananc').hidden=v;
- document.querySelectorAll('#t-prod>.c.r:first-child>button').forEach(b=>b.hidden=v);renderP()}
+ document.querySelectorAll('#tbar>button').forEach(b=>b.hidden=v);$('fs').value='';renderP()}
 function renderP(){const F=lista(),np=P.filter(p=>p.borrado).length;$('nf').textContent=F.length;
  $('bpap').textContent='Papelera'+(np?` (${np})`:'');
  pintaAbc($('abc'),F);$('qx').hidden=!$('q').value;$('u').textContent=$('q').value.trim()?`${F.length} de ${P.filter(p=>!!p.borrado==enPap).length}`:F.length+' productos';
  $('pt').innerHTML=F.slice(0,lim).map(p=>`<tr id="r${p.id}" onclick="${enPap?`marca(${p.id})`:`editar(${p.id})`}"${p.activo&&!enPap?'':' class="off"'}>
   <td class="cc" onclick="event.stopPropagation()"><input type="checkbox" class="ck" ${sel.has(p.id)?'checked':''} onchange="marca(${p.id},this.checked)">
-  <td class="hide-sm">${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td class="de">${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}<div class="nom">${esc(p.nombre)}</div><div class="tags">${p.activo||enPap?'':'<span class="tag">Oculto</span>'}${p.codigo||enPap?'':'<span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?`<span class="tag sub">Stock ${fmt(p.stock)}</span>`:'<span class="tag" style="color:var(--no)">Sin stock</span>'}</div><td class="n hide-sm">${money(p.costo)}<td class="n ga" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n pv"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
+  <td class="hide-sm">${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td class="de">${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}<div class="nom">${esc(p.nombre)}</div><div class="tags">${p.sector_id&&S.nom[p.sector_id]?`<span class="tag sec">${esc(S.nom[p.sector_id])}</span>`:''}${p.activo||enPap?'':'<span class="tag">Oculto</span>'}${p.codigo||enPap?'':'<span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?`<span class="tag sub">Stock ${fmt(p.stock)}</span>`:'<span class="tag" style="color:var(--no)">Sin stock</span>'}</div><td class="n hide-sm">${money(p.costo)}<td class="n ga" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n pv"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
   ||`<tr><td colspan="8" class="m">${enPap?'La papelera está vacía.':P.length?'Ningún producto coincide con la búsqueda.':'Todavía no hay productos. Importa un Excel o crea uno nuevo.'}</tr>`;
  $('mas').hidden=F.length<=lim;masObs.unobserve($('mas'));masObs.observe($('mas'));
  $('ckall').checked=F.length>0&&F.every(p=>sel.has(p.id));
  $('selbar').hidden=!sel.size;$('nsel').textContent=sel.size;
- $('bsel').textContent=enPap?'Restaurar':'Eliminar';$('bsel').className=enPap?'':'danger';$('bdef').hidden=!enPap}
+ $('bsel').textContent=enPap?'Restaurar':'Eliminar';$('bsel').className=enPap?'':'danger';$('bdef').hidden=!enPap;$('ssec').hidden=enPap||!S.ok}
 // Cambia la ganancia desde la tabla, sin abrir el producto
 async function cambiaGan(id,el){const p=P.find(x=>x.id==id),g=num(el.value);
  if(g===null){el.value=fmtIn(p.ganancia);return alert('Escribe un porcentaje válido.')}
@@ -229,6 +242,33 @@ Si vuelven a venir en el Excel, se crearán como productos nuevos.`))return;
   for(let i=0;i<n;i+=200){const{error}=await sb.from('productos').delete().in('id',ids.slice(i,i+200));if(error)throw error}
   imgs.forEach(borrarImg);sel.clear();toast(`${n} producto(s) eliminado(s) definitivamente`);await load()}
  catch(e){alert(msg(e))}finally{b.disabled=false}}
+/* ---------- sectores ---------- */
+// S.lista: [{id,nombre}] · S.nom: id → nombre · S.ok: false si todavía no se ejecutó el SQL de sectores
+const S={lista:[],nom:{},ok:false};
+async function cargaSectores(){const{data,error}=await sb.from('sectores').select('id,nombre').order('nombre');
+ S.ok=!error&&(!P.length||'sector_id'in P[0]);S.lista=error?[]:data;S.nom=Object.fromEntries(S.lista.map(x=>[x.id,x.nombre]));pintaSectores()}
+function pintaSectores(){const n={};for(const p of P)if(!p.borrado)n[p.sector_id||'-']=(n[p.sector_id||'-']||0)+1;
+ const f=$('fs').value,op=S.lista.map(x=>`<option value="${x.id}">${esc(x.nombre)}${n[x.id]?` (${n[x.id]})`:''}</option>`).join('');
+ $('fs').innerHTML=`<option value="">Todos los sectores</option>${op}<option value="-">Sin sector${n['-']?` (${n['-']})`:''}</option>`;
+ $('fs').value=S.nom[f]||f=='-'?f:'';$('fs').hidden=!S.ok;
+ $('fsec').innerHTML='<option value="">Sin sector</option>'+S.lista.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('');
+ $('ssec').innerHTML='<option value="">Mover a sector…</option>'+S.lista.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('')+'<option value="0">Quitar sector</option>';
+ $('secl').innerHTML=S.lista.map(x=>`<div class="r"><input value="${esc(x.nombre)}" onchange="renombrarSector(${x.id},this)"><span class="m">${n[x.id]||0} prod.</span><button type="button" class="danger" onclick="borrarSector(${x.id})">Borrar</button></div>`).join('')||'<p class="m" style="margin:0">Todavía no hay sectores.</p>'}
+function abrirSectores(){if(!S.ok)return alert('Para usar sectores, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).');pintaSectores();$('dsec').showModal()}
+const errSec=e=>e.code=='23505'?'Ya existe un sector con ese nombre.':msg(e);
+async function nuevoSector(){const n=$('snuevo').value.trim().replace(/\s+/g,' ');if(!n)return $('snuevo').focus();
+ const{error}=await sb.from('sectores').insert({nombre:n});if(error)return alert(errSec(error));$('snuevo').value='';toast('Sector creado: '+n);await cargaSectores();renderP()}
+async function renombrarSector(id,el){const n=el.value.trim().replace(/\s+/g,' ');if(!n||n==S.nom[id]){el.value=S.nom[id];return}
+ const{error}=await sb.from('sectores').update({nombre:n}).eq('id',id);if(error){el.value=S.nom[id];return alert(errSec(error))}toast('Sector renombrado');await cargaSectores();renderP()}
+async function borrarSector(id){const c=P.filter(p=>p.sector_id==id).length;
+ if(!confirm(`¿Borrar el sector "${S.nom[id]}"?`+(c?`\n\nSus ${c} producto(s) quedan "sin sector". Los productos NO se borran.`:'')))return;
+ const{error}=await sb.from('sectores').delete().eq('id',id);if(error)return alert(msg(error));
+ for(const p of P)if(p.sector_id==id)p.sector_id=null;if($('fs').value==id)$('fs').value='';toast('Sector borrado');await cargaSectores();renderP()}
+// Pone el sector elegido a todos los productos seleccionados (0 = quitar sector)
+async function asignarSector(v){if(v==='')return;const ids=[...sel],n=ids.length,id=+v||null;if(!n)return;
+ if(!confirm(id?`¿Poner ${n} producto(s) en el sector "${S.nom[id]}"?`:`¿Quitar el sector a ${n} producto(s)?`))return;
+ for(let i=0;i<n;i+=200){const{error}=await sb.from('productos').update({sector_id:id}).in('id',ids.slice(i,i+200));if(error)return alert(msg(error))}
+ sel.clear();toast(id?`${n} producto(s) movidos a ${S.nom[id]}`:'Sector quitado');load()}
 async function aplicarGanancia(){const g=num($('gb').value);if(g===null)return alert('Escribe el porcentaje de ganancia.');
  const ids=lista().map(p=>p.id);if(!ids.length)return;
  if(!confirm(`¿Poner ${fmt(g)} % de ganancia a ${ids.length} producto(s)?`))return;
@@ -237,7 +277,7 @@ async function aplicarGanancia(){const g=num($('gb').value);if(g===null)return a
 
 function editar(id){ed=id?P.find(p=>p.id==id):{codigo:'',nombre:'',costo:0,ganancia:num($('gn').value)??0,stock:0,activo:true,imagen:null};
  nuevaImg=null;quitarImg=false;$('dt').textContent=id?'Editar producto':'Nuevo producto';
- $('fcod').value=ed.codigo||'';$('fdes').value=ed.nombre;$('fcos').value=fmtIn(ed.costo);$('fgan').value=fmtIn(ed.ganancia);$('fsto').value=fmtIn(ed.stock);$('fact').checked=ed.activo;
+ $('fcod').value=ed.codigo||'';$('fdes').value=ed.nombre;$('fcos').value=fmtIn(ed.costo);$('fgan').value=fmtIn(ed.ganancia);$('fsto').value=fmtIn(ed.stock);$('fact').checked=ed.activo;$('fsec').value=ed.sector_id??(id?'':$('fs').value.replace('-',''));$('lsec').hidden=!S.ok;
  deCosto();verImg(ed.imagen);$('fdel').hidden=!id;
  $('fclave').textContent=ed.clave?'Vinculado al Excel como: "'+ed.clave+'"':'';$('dlg').showModal()}
 const fmtIn=n=>String(red(Number(n)||0,4)).replace('.',',');
@@ -255,7 +295,7 @@ function reducir(f,max=1000){return new Promise((ok,ko)=>{const i=new Image();
 const rutaImg=u=>{const k='/object/public/imagenes/',i=(u||'').indexOf(k);return i<0?null:decodeURIComponent(u.slice(i+k.length))};
 function borrarImg(u){const r=rutaImg(u);if(r)sb.storage.from('imagenes').remove([r])}
 async function guardarProd(e){e.preventDefault();
- const o={codigo:$('fcod').value.trim()||null,nombre:$('fdes').value.trim().replace(/\s+/g,' '),costo:num($('fcos').value)??0,ganancia:num($('fgan').value)??0,stock:num($('fsto').value)??0,activo:$('fact').checked};
+ const o={codigo:$('fcod').value.trim()||null,nombre:$('fdes').value.trim().replace(/\s+/g,' '),costo:num($('fcos').value)??0,ganancia:num($('fgan').value)??0,stock:num($('fsto').value)??0,activo:$('fact').checked};if(S.ok)o.sector_id=+$('fsec').value||null;
  if(!o.nombre)return alert('La descripción es obligatoria.');
  const b=$('fsave');b.disabled=true;
  try{const vieja=ed.imagen;

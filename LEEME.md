@@ -34,3 +34,9 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Si no existe, se crea con el % de ganancia indicado en "Ganancia para productos nuevos".
 - Si cambias la descripción en el panel, el producto sigue vinculado a su fila del Excel.
 - Si en el Excel del proveedor cambia la descripción, se creará como producto nuevo.
+
+## Sectores
+- Botón **Sectores** (pestaña Productos): crear, renombrar o borrar sectores. Al borrar uno, sus productos quedan "sin sector".
+- Cada producto tiene su sector en la ficha. Para muchos a la vez: márcalos y usa **Mover a sector…** en la barra de abajo.
+- En el catálogo, los clientes ven un botón por sector (solo los que tienen productos).
+- Si los sectores no aparecen, ejecuta otra vez `supabase.sql` en Supabase.
