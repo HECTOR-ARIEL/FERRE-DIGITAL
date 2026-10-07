@@ -199,7 +199,7 @@ async function salir(){await sb.auth.signOut();show(false)}
 function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';if(t=='hist')cargaHist()}
 
 /* ---------- productos ---------- */
-async function load(){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){return alert(msg(e))}
+async function load(silencio){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){if(silencio)throw e;return alert(msg(e))}
  await cargaSectores();
  // los precios del presupuesto en curso se actualizan con los de la base
  L=L.filter(l=>P.some(p=>p.id==l.id&&!p.borrado)).map(l=>{const p=P.find(x=>x.id==l.id);return{...l,codigo:p.codigo,nombre:p.nombre,precio:+p.precio}});
@@ -479,9 +479,15 @@ async function save(){const cl=$('cl').value.trim();
  const{data,error}=await sb.rpc('crear_presupuesto',{p_cliente:cl,p_lineas:L.map(l=>({id:l.id,nombre:l.nombre,cantidad:l.cantidad}))});b.disabled=false;
  if(error)return alert(msg(error));
  if(typeof data!='object')return alert('Falta actualizar la base de datos: ejecuta de nuevo supabase.sql en Supabase.');
- ult={...data,cliente:cl,fecha:new Date().toISOString()};descargar();
- $('resT').textContent=`Presupuesto Nº ${data.id}${cl?' · '+cl:''} · Total ${money(data.total)}`;$('res').hidden=false;
- L=[];$('cl').value='';$('qb').value='';renderB();window.scrollTo(0,0);await load();cargaHist()}
+ // El presupuesto ya está guardado y el stock descontado. La pantalla se actualiza con el stock que
+ // devolvió la base (sin otra consulta): en el iPhone, la descarga del PDF puede cortar las consultas en curso.
+ for(const l of data.lineas||[]){const p=P.find(x=>x.id==l.id);if(p)p.stock=+p.stock-(+l.disponible||0)}
+ ult={...data,cliente:cl,fecha:new Date().toISOString()};
+ L=[];$('cl').value='';$('qb').value='';guardaBorrador();renderB();rl();renderP();
+ $('resT').textContent=`Presupuesto Nº ${data.id}${cl?' · '+cl:''} · Total ${money(data.total)}`;$('res').hidden=false;window.scrollTo(0,0);
+ descargar();setTimeout(refrescar,2000)}
+// Recarga productos e historial en segundo plano; si la conexión falla, reintenta sin mostrar errores
+async function refrescar(n=0){try{await load(true)}catch{if(n<3)setTimeout(()=>refrescar(n+1),4000*(n+1))}}
 // Historial: todos los presupuestos guardados, con búsqueda por cliente o número
 let lh=30;const selH=new Set();
 async function cargaHist(){const t=$('hq').value.trim().replace(/[,()%*]/g,' ').trim();
