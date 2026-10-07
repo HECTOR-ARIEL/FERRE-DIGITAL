@@ -69,6 +69,8 @@ dialog{overflow:auto}
   <button onclick="editar()">+ Nuevo producto</button>
   <button class="s" onclick="$('f').click()">Importar Excel</button>
   <input id="f" type="file" accept=".xlsx,.xls,.csv" hidden onchange="imp(this.files[0])">
+  <button class="s" id="bcant" onclick="$('fq').click()">Importar cantidades</button>
+  <input id="fq" type="file" accept=".xlsx,.xls,.csv" hidden onchange="impCant(this.files[0])">
   <button class="s" onclick="abrirSectores()">Sectores</button>
   <button class="s" id="bpap" onclick="papelera(true)">Papelera</button>
  </div>
@@ -312,6 +314,42 @@ async function eliminar(){
  if(!confirm(`¿Eliminar "${ed.nombre}"?\n\nDejará de salir en el catálogo y el Excel no lo volverá a crear.\nPodrás recuperarlo desde la Papelera.`))return;
  try{await moverPapelera([ed.id],true)}catch(e){return alert(msg(e))}
  $('dlg').close();toast('Producto enviado a la papelera');load()}
+
+/* ---------- importar Excel de cantidades ---------- */
+// Suma la cantidad de cada fila al stock actual del producto.
+// Cada fila se reconoce por su descripción (la original del Excel de precios o la que tiene en el panel);
+// si no coincide ninguna y el Excel trae una columna "Código", se busca por tu código.
+async function impCant(f){$('fq').value='';if(!f)return;
+ let filas;try{const wb=XLSX.read(await f.arrayBuffer());filas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''})}catch{return alert('No se pudo leer el archivo.')}
+ const t=c=>norm(c).replace(/[.:]/g,'').replace(/\s+/g,' ');let h=-1,cd,cq,cc;
+ for(let i=0;i<Math.min(filas.length,60)&&h<0;i++){const H=filas[i].map(t);
+  cd=H.findIndex(x=>['producto','productos','descripcion','nombre','detalle','articulo'].includes(x));
+  cq=H.findIndex(x=>['cantidad','cantidades','cant','unidades','stock'].includes(x));
+  if(cq>=0&&cd>=0){h=i;cc=H.findIndex(x=>['codigo','cod'].includes(x))}
+  else if(cq>=0&&(cc=H.findIndex(x=>['codigo','cod'].includes(x)))>=0){h=i;cd=-1}}
+ if(h<0)return alert('No encontré la fila de títulos.\n\nEl Excel necesita una columna "Cantidad" y otra "Producto" (o "Descripción") o "Código".');
+ const k=x=>norm(x).replace(/\s+/g,' '),porDes=new Map(),porCod=new Map();
+ for(const p of P){if(p.borrado)continue;if(p.clave)porDes.set(k(p.clave),p);porDes.set(k(p.nombre),p);if(p.codigo)porCod.set(k(p.codigo),p)}
+ const suma=new Map(),noEnc=[];let filasOk=0,xCod=0,vacias=0;
+ for(const r of filas.slice(h+1)){const d=cd>=0?String(r[cd]??'').trim():'',c=cc>=0?String(r[cc]??'').trim():'',q=num(r[cq]);
+  if(cd>=0?!d:!c)continue;if(!q){vacias++;continue}
+  let p=d&&porDes.get(k(d));if(!p&&c){p=porCod.get(k(c));if(p)xCod++}
+  if(!p){noEnc.push(d||c);continue}
+  suma.set(p.id,(suma.get(p.id)||0)+q);filasOk++}
+ if(!suma.size)return alert(`No reconocí ningún producto de "${f.name}".`+(noEnc.length?`\n\nPor ejemplo: ${noEnc.slice(0,5).join(' · ')}`:''));
+ const tot=[...suma.values()].reduce((a,b)=>a+b,0);
+ if(!confirm(`Leí "${f.name}" (títulos en la fila ${h+1}).\n\n`+
+  `· ${suma.size} productos reconocidos → se SUMA la cantidad a su stock actual (total ${fmt(tot)} unidades).\n`+
+  (xCod?`  (${xCod} de ellos se reconocieron por el código)\n`:'')+
+  (noEnc.length?`· ${noEnc.length} filas no coinciden con ningún producto → se ignoran.\n  Ej.: ${noEnc.slice(0,5).join(' · ')}${noEnc.length>5?'…':''}\n`:'')+
+  (vacias?`· ${vacias} productos del Excel sin cantidad → se ignoran.\n`:'')+
+  `\nEjemplo: si un producto tiene stock 10 y el Excel dice 5, quedará en 15.\n\n¿Continuar?`))return;
+ const b=$('bcant'),L2=[...suma].map(([id,cantidad])=>({id,cantidad}));b.disabled=true;let n=0;
+ try{for(let i=0;i<L2.length;i+=500){b.textContent=`Sumando… ${Math.round(i/L2.length*100)} %`;
+   const{data,error}=await sb.rpc('sumar_stock',{p_filas:L2.slice(i,i+500)});
+   if(error){alert(error.code=='PGRST202'||/sumar_stock/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run) y vuelve a intentarlo.':msg(error));break}n+=data}}
+ finally{b.disabled=false;b.textContent='Importar cantidades'}
+ if(n){alert(`Listo: se sumó stock a ${n} producto(s).`+(noEnc.length?`\n\n${noEnc.length} filas no se reconocieron:\n${noEnc.slice(0,15).join('\n')}${noEnc.length>15?'\n…':''}`:''));load()}}
 
 /* ---------- importar Excel ---------- */
 async function imp(f){$('f').value='';if(!f)return;

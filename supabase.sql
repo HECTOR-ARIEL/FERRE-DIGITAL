@@ -158,7 +158,23 @@ begin
   return jsonb_build_object('id', n, 'total', t, 'lineas', lineas);
 end $$;
 
+-- Importar Excel de cantidades: SUMA la cantidad al stock que ya tiene cada producto.
+-- Recibe [{id, cantidad}] (el panel ya reconoció cada fila). Los productos en la papelera se ignoran.
+create or replace function sumar_stock(p_filas jsonb)
+returns int language plpgsql as $$
+declare f jsonb; n int := 0;
+begin
+  for f in select * from jsonb_array_elements(p_filas) loop
+    update productos set stock = stock + (f->>'cantidad')::numeric
+      where id = (f->>'id')::bigint and not borrado;
+    if found then n := n + 1; end if;
+  end loop;
+  return n;
+end $$;
+
 revoke execute on function importar_productos(jsonb, numeric) from public, anon;
+revoke execute on function sumar_stock(jsonb) from public, anon;
+grant execute on function sumar_stock(jsonb) to authenticated;
 revoke execute on function crear_presupuesto(text, jsonb) from public, anon;
 grant execute on function importar_productos(jsonb, numeric) to authenticated;
 grant execute on function crear_presupuesto(text, jsonb) to authenticated;

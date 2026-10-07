@@ -40,3 +40,8 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Cada producto tiene su sector en la ficha. Para muchos a la vez: márcalos y usa **Mover a sector…** en la barra de abajo.
 - En el catálogo, los clientes ven un botón por sector (solo los que tienen productos).
 - Si los sectores no aparecen, ejecuta otra vez `supabase.sql` en Supabase.
+
+## Importar cantidades (stock)
+- Botón **Importar cantidades**: el Excel necesita una columna **Cantidad** (o Cant. / Unidades / Stock) y otra **Producto** (o Descripción) y/o **Código**.
+- La cantidad se **suma** al stock actual (stock 10 + Excel 5 = 15). Antes de sumar muestra cuántos reconoció y cuáles no.
+- Cada fila se reconoce por la descripción; si no coincide, por tu código.
