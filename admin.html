@@ -1,6 +1,6 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Administración</title>
-<link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg"><link rel="stylesheet" href="estilos.css"><meta name="theme-color" content="#0d0d0d">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg"><link rel="stylesheet" href="estilos.css"><script src="tema.js"></script><meta name="theme-color" content="#0d0d0d">
 <style>
 header b{font-size:18px}
 #login{max-width:380px;margin:40px auto;display:grid;gap:12px}#login h2{margin:0}label{display:grid;gap:4px;font-size:13px;color:var(--m)}
@@ -46,8 +46,8 @@ dialog{overflow:auto}
  td,th{padding:7px 5px}main .r>button,#fc,#fs{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
  header{padding:8px 10px}header .brand b{display:none}.tabs{overflow-x:auto}.tabs button{padding:10px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}#pt .th{width:36px;height:36px}.qty{width:58px;padding:8px 6px}.gi{width:60px;padding:6px}dialog form{padding:14px}}
 </style></head><body>
-<header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><b>Administración</b></div>
-<div class="r"><button id="anch" class="s hide-sm" title="Cambiar el ancho de la página" onclick="ancho(1)">↔ Normal</button><a class="btn s" href="./">Ver catálogo</a><button id="out" class="s" hidden onclick="salir()">Salir</button></div></header>
+<header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><b>Administración</b></div><div class="datos"><b>Héctor Ariel De Cia</b><span>Alias: <b class="sel">distri.dec</b></span><a href="tel:+543516522035">Tel: 351-6522-035</a></div>
+<div class="r"><button id="tema" class="s" onclick="cambiarTema()">◐</button><button id="anch" class="s hide-sm" title="Cambiar el ancho de la página" onclick="ancho(1)">↔ Normal</button><a class="btn s" href="./">Ver catálogo</a><button id="out" class="s" hidden onclick="salir()">Salir</button></div></header>
 <main>
 <form id="login" class="c" hidden onsubmit="login(event)">
  <h2>Iniciar sesión</h2>

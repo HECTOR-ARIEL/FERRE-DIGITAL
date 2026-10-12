@@ -1,5 +1,7 @@
-:root{--bg:#f4f4f4;--c:#fff;--t:#111;--m:#666;--a:#bd1717;--a2:#961212;--b:#e0e0e0;--img:#fff;--no:#bd1717;--neg:#0d0d0d;--sh:0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.05)}
-@media(prefers-color-scheme:dark){:root{--bg:#0b0b0b;--c:#171717;--t:#f2f2f2;--m:#a3a3a3;--a2:#d42020;--b:#2b2b2b;--img:#f4f4f4;--no:#f05252;--sh:none}}
+:root{--bg:#f4f4f4;--c:#fff;--t:#111;--m:#666;--a:#bd1717;--a2:#961212;--b:#e0e0e0;--img:#fff;--no:#bd1717;--neg:#0d0d0d;--sh:0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.05);color-scheme:light}
+/* Modo oscuro: automático según el dispositivo, o elegido con el botón del tema (tema.js) */
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0b0b0b;--c:#171717;--t:#f2f2f2;--m:#a3a3a3;--a2:#d42020;--b:#2b2b2b;--img:#f4f4f4;--no:#f05252;--sh:none;color-scheme:dark}}
+:root[data-theme=dark]{--bg:#0b0b0b;--c:#171717;--t:#f2f2f2;--m:#a3a3a3;--a2:#d42020;--b:#2b2b2b;--img:#f4f4f4;--no:#f05252;--sh:none;color-scheme:dark}
 *{box-sizing:border-box}[hidden]{display:none!important}
 body{margin:0;font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--t)}
 header{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px;background:var(--neg);color:#fff;border-bottom:3px solid var(--a)}
@@ -43,3 +45,9 @@ button:disabled{opacity:.6;cursor:wait}
 .bus{position:relative;flex:1;min-width:200px}.bus svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--m);pointer-events:none}
 .bus input{padding-left:42px;padding-right:42px;font-size:16px;border-radius:99px}.bus input::-webkit-search-cancel-button{display:none}
 .bus button{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:34px;height:34px;padding:0;border-radius:99px;background:var(--bg);color:var(--t);border:0;font-size:18px}
+/* Botón de tema en la cabecera: en el teléfono solo se ve el ícono */
+#tema{min-width:44px}@media(max-width:520px){#tema .tx{display:none}}
+/* Datos de contacto y alias para transferencias, en la cabecera */
+.datos{display:flex;flex-direction:column;gap:1px;margin-right:auto;padding-left:14px;border-left:1px solid #4a4a4a;font-size:13px;line-height:1.35;color:#d4d4d4}
+.datos b{color:#fff}.datos .sel{user-select:all;-webkit-user-select:all}.datos a{color:inherit;text-decoration:none}.datos a:hover{text-decoration:underline}
+@media(max-width:760px){header{flex-wrap:wrap;row-gap:6px}.datos{order:3;flex-basis:100%;flex-direction:row;flex-wrap:wrap;column-gap:14px;padding:6px 0 0;border-left:0;border-top:1px solid #333;font-size:12px}}
