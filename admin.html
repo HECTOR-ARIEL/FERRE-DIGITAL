@@ -98,9 +98,13 @@ dialog{overflow:auto}
  <div class="c"><label>Cliente<input id="cl" placeholder="Nombre del cliente" oninput="guardaBorrador()"></label></div>
  <div class="c"><b>1. Agrega productos</b><input id="qb" type="search" placeholder="Buscar por descripción o código" oninput="renderB()" style="margin-top:8px">
   <div class="w"><table><tbody id="bt"></tbody></table></div></div>
- <div class="c"><b>2. Revisa las cantidades</b><div class="w"><table><tbody id="lt"></tbody></table></div>
+ <div class="c" id="paso2"><b>2. Revisa las cantidades</b><div class="w"><table><tbody id="lt"></tbody></table></div>
   <div class="tot" id="tt"></div>
-  <div class="acc"><button class="s" onclick="if(confirm('¿Vaciar el presupuesto?')){L=[];$('cl').value='';rl()}">Vaciar</button><button id="bs" onclick="save()">Generar presupuesto (PDF)</button></div></div>
+  <div class="acc"><button class="s" onclick="if(confirm('¿Vaciar el presupuesto?')){L=[];$('cl').value='';rl();renderB()}">Vaciar</button><button id="bs" onclick="save()">Generar presupuesto (PDF)</button></div></div>
+ <div id="pbar" class="selbar" hidden><span><b id="pn">0</b> producto(s) · <b id="ptot"></b></span>
+  <button class="s" onclick="$('qb').scrollIntoView({block:'center',behavior:'smooth'});$('qb').focus({preventScroll:true})">Buscar</button>
+  <button class="s" onclick="$('paso2').scrollIntoView({block:'start',behavior:'smooth'})">Ver lista</button>
+  <button onclick="save()">Generar PDF</button></div>
 </section>
 
 <section id="t-hist" hidden>
@@ -390,22 +394,30 @@ async function imp(f){$('f').value='';if(!f)return;
 const stockDe=id=>Math.max(0,+(P.find(p=>p.id==id)?.stock??0));
 const disp=l=>Math.min(l.cantidad,stockDe(l.id));
 let ult=null,H=[];
+// Resultados de la búsqueda: si el producto ya está en el presupuesto, su cantidad se cambia ahí mismo
 function renderB(){const q=$('qb').value.trim(),F=q?filtra(q).slice(0,30):[];
- $('bt').innerHTML=F.map(p=>`<tr class="pick" onclick="add(${p.id})" title="Tocar para agregar"><td>${thumb(p.imagen)}<td>${p.codigo?`<span class="cod">${esc(p.codigo)}</span><br>`:''}${esc(p.nombre)}<td class="n">${money(p.precio)}<br>${p.stock>0?`<span class="m" style="font-size:12px">Stock ${fmt(p.stock)}</span>`:'<span class="falta">Sin stock</span>'}<td class="n"><span class="mas">+</span></tr>`).join('')
+ $('bt').innerHTML=F.map(p=>{const l=L.find(x=>x.id==p.id);return `<tr id="b${p.id}" class="pick" onclick="add(${p.id})" title="Tocar para agregar"><td>${thumb(p.imagen)}<td>${p.codigo?`<span class="cod">${esc(p.codigo)}</span><br>`:''}${esc(p.nombre)}<td class="n">${money(p.precio)}<br>${p.stock>0?`<span class="m" style="font-size:12px">Stock ${fmt(p.stock)}</span>`:'<span class="falta">Sin stock</span>'}<td class="n">${l?`<input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" title="Cantidad en el presupuesto (Enter para volver a buscar)" onclick="event.stopPropagation()" onfocus="this.select()" onkeydown="if(event.key=='Enter'){event.preventDefault();$('qb').focus();$('qb').select()}" onchange="setCant(${p.id},this.value)">`:'<span class="mas">+</span>'}</tr>`}).join('')
   ||(q?'<tr><td class="m">Sin resultados</tr>':'')}
-// Agrega el producto (o suma 1 si ya estaba) y deja lista su casilla de cantidad para escribir
-function add(id){const p=P.find(x=>x.id==id);let i=L.findIndex(x=>x.id==id);
- if(i<0){L.push({id:p.id,codigo:p.codigo,nombre:p.nombre,precio:+p.precio,cantidad:1});i=L.length-1}else L[i].cantidad++;
- rl();const q=document.querySelectorAll('#lt .qty')[i];if(q){q.scrollIntoView({block:'center',behavior:'smooth'});q.focus({preventScroll:true});q.select()}
- const tr=q?.closest('tr');if(tr){tr.classList.remove('flash');void tr.offsetWidth;tr.classList.add('flash')}}
+// Cantidad de una línea: se acepta 0 (por ejemplo, un producto sin stock que igual quieres que figure)
+function setCant(id,v){const l=L.find(x=>x.id==id);if(!l)return;const n=num(v);l.cantidad=n>0?n:0;rl();renderB()}
+// Agrega el producto (o suma 1 si ya estaba) sin moverse de la búsqueda: la cantidad se cambia en la misma fila
+function add(id){const p=P.find(x=>x.id==id);let l=L.find(x=>x.id==id);
+ if(!l)L.push(l={id:p.id,codigo:p.codigo,nombre:p.nombre,precio:+p.precio,cantidad:1});else l.cantidad++;
+ rl();renderB();toast(`Agregado: ${p.nombre} (cantidad ${fmt(l.cantidad)})`);
+ const tr=$('b'+id),q=tr?.querySelector('.qty');if(tr)tr.classList.add('flash');
+ // con mouse queda lista la casilla para escribir la cantidad; en el teléfono no se abre el teclado
+ if(q&&matchMedia('(pointer:fine)').matches){q.focus({preventScroll:true});q.select()}}
 function guardaBorrador(){guardaLS('borrador',JSON.stringify(L));guardaLS('cliente',$('cl').value)}
 function rl(){$('lt').innerHTML=L.map((l,i)=>{const s=stockDe(l.id),nota=s<=0?'Sin stock: saldrá en rojo en el PDF y no se cobra':s<l.cantidad?`Solo hay ${fmt(s)} en stock: se presupuestan ${fmt(s)}`:'';
   return `<tr><td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span><br>`:''}${esc(l.nombre)}${nota?`<div class="falta">${nota}</div>`:`<div class="m" style="font-size:12px">Stock ${fmt(s)}</div>`}
-  <td><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" onfocus="this.select()" onchange="L[${i}].cantidad=+this.value;rl()">
+  <td><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" onfocus="this.select()" onchange="setCant(${l.id},this.value)">
   <td class="n hide-sm">${money(l.precio)}<td class="n">${s<=0?'<span class="falta">-</span>':money(disp(l)*l.precio)}
   <td class="n"><button class="s" title="Quitar" onclick="L.splice(${i},1);rl()">✕</button></tr>`}).join('')
   ||'<tr><td class="m">Busca productos arriba y pulsa "Añadir".</tr>';
- $('tt').textContent='Total: '+money(tot());$('nl').textContent=L.length;$('nl').hidden=!L.length;guardaBorrador()}
+ $('tt').textContent='Total: '+money(tot());$('nl').textContent=L.length;$('nl').hidden=!L.length;
+ $('pbar').hidden=!L.length;$('pn').textContent=L.length;$('ptot').textContent=money(tot());guardaBorrador()}
+// una línea sale en rojo si no hay nada disponible o hay menos de lo pedido
+const falta=l=>{const d=+(l.disponible??l.cantidad);return d<=0||d<l.cantidad};
 
 // Logo para el PDF (se carga una vez al abrir el panel)
 let LOGO=null;
@@ -457,7 +469,7 @@ function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=
   y+=alto}
  d.setDrawColor(...CL);d.line(X,y-3,W,y-3);
  if(y>250){d.addPage();y=20}
- if(p.lineas.some(l=>+(l.disponible??l.cantidad)<l.cantidad)){y+=3;d.setFontSize(8.5);d.setTextColor(...ROJO);
+ if(p.lineas.some(falta)){y+=3;d.setFontSize(8.5);d.setTextColor(...ROJO);
   d.text('Los productos marcados en rojo no tienen stock suficiente: solo se cobra la cantidad disponible.',X,y);y+=3}
  // pie
  y+=8;d.setFontSize(7.5);d.setFont('helvetica','normal');d.setTextColor(...G);d.text('Documento generado electrónicamente — '+fecha,X,y);
@@ -472,12 +484,13 @@ async function compartir(){const f=new File([pdfDoc(ult).output('blob')],nomPdf(
  if(navigator.canShare?.({files:[f]}))try{await navigator.share({files:[f],title:'Presupuesto Nº '+ult.id})}catch{}
  else descargar()}
 async function save(){const cl=$('cl').value.trim();
- if(!L.length||L.some(l=>!(l.cantidad>0)))return alert('Añade productos con cantidad mayor que 0.');
- const sinS=L.filter(l=>disp(l)<l.cantidad).length;
+ if(!L.length)return alert('Añade productos al presupuesto.');
+ if(L.some(l=>!(l.cantidad>=0)))return alert('Revisa las cantidades: hay alguna que no es válida.');
+ const sinS=L.filter(l=>disp(l)<=0||disp(l)<l.cantidad).length;
  if(!confirm(`¿Generar el presupuesto${cl?' para '+cl:''}?\n\nSe descontará del stock la cantidad disponible de cada producto.`+(sinS?`\n${sinS} producto(s) sin stock suficiente saldrán en rojo en el PDF.`:'')))return;
  const b=$('bs');b.disabled=true;
  const{data,error}=await sb.rpc('crear_presupuesto',{p_cliente:cl,p_lineas:L.map(l=>({id:l.id,nombre:l.nombre,cantidad:l.cantidad}))});b.disabled=false;
- if(error)return alert(msg(error));
+ if(error)return alert(/Cantidad no válida/.test(error.message)?'Para poder usar cantidad 0, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
  if(typeof data!='object')return alert('Falta actualizar la base de datos: ejecuta de nuevo supabase.sql en Supabase.');
  // El presupuesto ya está guardado y el stock descontado. La pantalla se actualiza con el stock que
  // devolvió la base (sin otra consulta): en el iPhone, la descarga del PDF puede cortar las consultas en curso.
@@ -495,7 +508,7 @@ async function cargaHist(){const t=$('hq').value.trim().replace(/[,()%*]/g,' ').
  if(t)q=/^\d+$/.test(t)?q.or(`id.eq.${t},cliente.ilike.*${t}*`):q.ilike('cliente',`%${t}%`);
  const{data,error}=await q;if(error)return alert(msg(error));H=data.slice(0,lh);$('hmas').hidden=data.length<=lh;pintaHist()}
 function pintaHist(){const t=$('hq').value.trim();
- $('hist').innerHTML=H.map((p,i)=>{const f=new Date(p.fecha),sin=(p.lineas||[]).some(l=>+(l.disponible??l.cantidad)<l.cantidad);
+ $('hist').innerHTML=H.map((p,i)=>{const f=new Date(p.fecha),sin=(p.lineas||[]).some(falta);
   return `<tr><td class="cc"><input type="checkbox" class="ck" ${selH.has(p.id)?'checked':''} onchange="this.checked?selH.add(${p.id}):selH.delete(${p.id});pintaHist()"><td class="cod">${p.id}<td>${f.toLocaleDateString('es')} <span class="m hide-sm">${f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span><td>${esc(p.cliente||'-')}${sin?' <span class="tag" style="color:var(--no)">Faltó stock</span>':''}<td class="n hide-sm">${(p.lineas||[]).length}<td class="n"><b>${money(p.total)}</b><td class="n"><button class="s" onclick="descargar(H[${i}])">PDF</button></tr>`}).join('')
   ||`<tr><td colspan="7" class="m">${t?'No hay presupuestos que coincidan.':'Todavía no hay presupuestos.'}</tr>`;
  $('hall').checked=H.length>0&&H.every(p=>selH.has(p.id));$('hbar').hidden=!selH.size;$('hsel').textContent=selH.size}

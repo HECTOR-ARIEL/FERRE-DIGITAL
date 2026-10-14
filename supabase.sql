@@ -145,7 +145,7 @@ declare l jsonb; n bigint; t numeric := 0; c numeric; d numeric; pr record; line
 begin
   for l in select * from jsonb_array_elements(p_lineas) loop
     c := (l->>'cantidad')::numeric;
-    if c is null or c <= 0 then raise exception 'Cantidad no válida: %', l->>'nombre'; end if;
+    if c is null or c < 0 then raise exception 'Cantidad no válida: %', l->>'nombre'; end if;
     select id, codigo, nombre, precio, stock into pr from productos where id = (l->>'id')::bigint for update;
     if not found then raise exception 'Producto no encontrado: %', l->>'nombre'; end if;
     d := least(c, greatest(pr.stock, 0));
