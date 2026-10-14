@@ -60,9 +60,22 @@ create table if not exists presupuestos(
   lineas jsonb
 );
 
+-- ===================== PEDIDOS AL PROVEEDOR =====================
+-- Cada pedido enviado recuerda hasta qué presupuesto incluyó:
+-- el siguiente pedido cuenta las ventas a partir de ahí.
+create table if not exists pedidos(
+  id bigint generated always as identity primary key,
+  fecha timestamptz default now(),
+  hasta_presupuesto bigint not null default 0,
+  lineas jsonb                              -- [{id, nombre, cantidad}] lo que se pidió
+);
+
 -- ===================== PERMISOS =====================
 alter table productos enable row level security;
 alter table presupuestos enable row level security;
+alter table pedidos enable row level security;
+drop policy if exists "admin pedidos" on pedidos;
+create policy "admin pedidos" on pedidos for all to authenticated using (true) with check (true);
 alter table sectores enable row level security;
 drop policy if exists "ver sectores" on sectores;
 drop policy if exists "admin sectores" on sectores;

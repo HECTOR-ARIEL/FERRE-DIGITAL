@@ -45,3 +45,12 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Botón **Importar cantidades**: el Excel necesita una columna **Cantidad** (o Cant. / Unidades / Stock) y otra **Producto** (o Descripción) y/o **Código**.
 - La cantidad se **suma** al stock actual (stock 10 + Excel 5 = 15). Antes de sumar muestra cuántos reconoció y cuáles no.
 - Cada fila se reconoce por la descripción; si no coincide, por tu código.
+
+## Pedido al proveedor (pestaña Pedido)
+- Suma todo lo vendido en los presupuestos **desde el último pedido enviado**: lo vendido + lo que faltó por falta de stock.
+- Productos por bulto (la descripción del proveedor dice "MINIMO 6", "MIN 10", "MINIMO 12 UNID"…): se piden bultos completos, y solo si el stock quedó por debajo de 5 (o de la mitad del bulto en los de 20 o más).
+- Puedes cambiar cualquier cantidad antes de completar la nota.
+- **Completar nota de pedido**: eliges la nota del proveedor (.xlsx) y se descarga una copia con las cantidades escritas en la columna "Cantidad", con el mismo formato. El original no se toca.
+- **Marcar pedido como enviado**: después de mandar la nota. El siguiente pedido cuenta desde ahí. Hazlo antes de borrar presupuestos del Historial.
+- Cuando llega la mercadería: sube la misma nota completa en "Importar cantidades" para sumar el stock.
+- La primera vez hay que ejecutar otra vez `supabase.sql` (crea la tabla de pedidos).

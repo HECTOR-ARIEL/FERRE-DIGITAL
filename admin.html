@@ -35,7 +35,7 @@ dialog{overflow:auto}
  #pt tr{display:grid;grid-template-columns:30px 1fr auto auto;align-items:center;column-gap:10px;padding:8px 6px;border-bottom:1px solid var(--b)}
  #pt td,#pt th{border:0;padding:3px 0}#pt td.hide-sm,#pt th.hide-sm{display:none}#pt td.cc{grid-row:1/3}
  #pt td.de{grid-column:2/5;min-width:0}#pt td.ga{grid-row:2;grid-column:3}#pt td.pv{grid-row:2;grid-column:4}
- #pt .tags .sub{display:inline}
+ #pt .tags .sub,#pedt .tags .sub{display:inline}
  #bt tr{display:grid;grid-template-columns:44px 1fr auto;align-items:center;column-gap:10px;padding:8px 5px;border-bottom:1px solid var(--b)}
  #bt td{border:0;padding:2px 0}#bt td:nth-child(1){grid-row:1/3}#bt td:nth-child(2){grid-column:2/4}
  #bt td:nth-child(3){grid-row:2;grid-column:2;text-align:left}#bt td:nth-child(3) br{display:none}#bt td:nth-child(3) span{margin-left:8px}#bt td:nth-child(4){grid-row:2;grid-column:3}#bt td:only-child{grid-column:1/-1;grid-row:auto}
@@ -57,7 +57,7 @@ dialog{overflow:auto}
 </form>
 
 <div id="app" hidden>
-<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Nuevo presupuesto <span id="nl" class="tag" hidden></span></button><button data-t="hist" onclick="tab('hist')">Historial</button></div>
+<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Nuevo presupuesto <span id="nl" class="tag" hidden></span></button><button data-t="hist" onclick="tab('hist')">Historial</button><button data-t="ped" onclick="tab('ped')">Pedido</button></div>
 
 <section id="t-prod" class="con-abc"><nav class="abc" id="abc" aria-label="Índice alfabético"></nav>
  <div class="top"><div class="bus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
@@ -113,7 +113,19 @@ dialog{overflow:auto}
  <p style="text-align:center"><button id="hmas" class="s" hidden onclick="lh+=30;cargaHist()">Ver más</button></p>
  <div id="hbar" class="selbar" hidden><span><b id="hsel">0</b> seleccionado(s)</span>
   <button class="s" onclick="selH.clear();pintaHist()">Cancelar</button><button id="bhdel" class="danger" onclick="borrarHist()">Eliminar</button></div>
- <p class="m">Los presupuestos se guardan en tu base de datos de Supabase (solo los datos: cliente, productos, cantidades y precios). El PDF se vuelve a crear cada vez que pulsas "PDF", así que casi no ocupan espacio. Eliminar un presupuesto no devuelve el stock que descontó.</p>
+ <p class="m">Los presupuestos se guardan en tu base de datos de Supabase (solo los datos: cliente, productos, cantidades y precios). El PDF se vuelve a crear cada vez que pulsas "PDF", así que casi no ocupan espacio. Eliminar un presupuesto no devuelve el stock que descontó. <b>Antes de eliminar presupuestos, marca el pedido como enviado</b> (pestaña Pedido): si no, sus ventas no se cuentan en el pedido.</p>
+</section>
+
+<section id="t-ped" hidden>
+ <div class="c"><b>Ventas desde el último pedido</b><p class="m" id="pedinfo" style="margin:6px 0 0"></p></div>
+ <div class="c w" style="padding:0"><table><thead><tr><th>Producto</th><th class="n hide-sm">Vendido</th><th class="n hide-sm">Faltó</th><th class="n hide-sm">Stock</th><th class="n">Pedir</th></tr></thead><tbody id="pedt"></tbody></table></div>
+ <div class="c aviso" id="pedres" hidden></div>
+ <div class="c acc"><button class="s" id="benv" onclick="marcarEnviado()">Marcar pedido como enviado</button><button id="bnota" onclick="$('fp').click()">Completar nota de pedido (Excel)</button>
+  <input id="fp" type="file" accept=".xlsx" hidden onchange="completarNota(this.files[0])"></div>
+ <p class="m"><b>Cómo se calcula:</b> se pide lo vendido más lo que faltó (lo que pidieron y no había stock). Los productos que en la nota del proveedor dicen "MINIMO 6", "MIN 10"… se piden por bulto completo, y solo si el stock quedó por debajo de 5 (o de la mitad del bulto en los de 20 o más). Puedes cambiar cualquier cantidad antes de completar la nota.<br>
+ <b>Completar nota de pedido:</b> elige la nota de pedido del proveedor (.xlsx). Se escriben las cantidades en su columna "Cantidad" y se descarga una copia completa, con el mismo formato. Tu archivo original no se toca.<br>
+ <b>Marcar pedido como enviado:</b> hazlo después de mandar la nota. El próximo pedido empieza a contar desde ahí.<br>
+ <b>Cuando llega la mercadería:</b> sube esa misma nota completa en Productos &gt; "Importar cantidades" para sumar el stock (corrige antes lo que no haya llegado).</p>
 </section>
 </div>
 </main>
@@ -149,6 +161,7 @@ dialog{overflow:auto}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="config.js"></script>
 <script>
 const sb=supabase.createClient(CFG.URL,CFG.KEY),$=id=>document.getElementById(id);
@@ -200,7 +213,7 @@ async function login(e){e.preventDefault();const b=e.submitter;b.disabled=true;
  const{error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});b.disabled=false;
  if(error)return alert(error.message=='Invalid login credentials'?'Email o contraseña incorrectos.':error.message);$('pw').value='';show(true)}
 async function salir(){await sb.auth.signOut();show(false)}
-function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';if(t=='hist')cargaHist()}
+function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';$('t-ped').hidden=t!='ped';if(t=='hist')cargaHist();if(t=='ped')cargaPedido()}
 
 /* ---------- productos ---------- */
 async function load(silencio){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){if(silencio)throw e;return alert(msg(e))}
@@ -518,6 +531,83 @@ async function borrarHist(){const ids=[...selH],n=ids.length;if(!n)return;
  try{for(let i=0;i<n;i+=200){const{error}=await sb.from('presupuestos').delete().in('id',ids.slice(i,i+200));if(error)throw error}
   selH.clear();toast(`${n} presupuesto(s) eliminado(s)`);await cargaHist()}
  catch(e){alert(msg(e))}finally{b.disabled=false}}
+
+/* ---------- pedido al proveedor ---------- */
+// Bulto según la descripción del proveedor: "(MINIMO 12)", "MINIMO 6 UNID", "MIN 10", "MINIM0 12"… ("X 100 UNID" no es bulto)
+const bultoDe=s=>{const m=String(s||'').match(/\bMIN(?:IM[O0])?\.?\s*(?:DE\s*)?(\d+)/i);return m?+m[1]:0};
+// Un producto por bulto se pide solo si el stock quedó por debajo de 5 (de la mitad del bulto en los de 20 o más)
+const limiteDe=b=>b>=20?b/2:5;
+let PED={lineas:[],hasta:0,n:0};
+// Suma lo vendido en los presupuestos posteriores al último pedido enviado
+async function cargaPedido(){$('pedinfo').textContent='Cargando…';$('pedt').innerHTML='';$('pedres').hidden=true;PED={lineas:[],hasta:0,n:0};pintaPedido(true);
+ const u=await sb.from('pedidos').select('hasta_presupuesto').order('id',{ascending:false}).limit(1);
+ if(u.error)return $('pedinfo').textContent=/pedidos/.test(u.error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(u.error);
+ const desde=u.data[0]?.hasta_presupuesto||0;let pres;
+ try{pres=await todos(()=>sb.from('presupuestos').select('id,lineas').gt('id',desde).order('id'))}catch(e){return $('pedinfo').textContent=msg(e)}
+ const M=new Map();
+ for(const pr of pres)for(const l of pr.lineas||[]){const d=+(l.disponible??l.cantidad)||0,c=+l.cantidad||0,x=M.get(l.id)||{id:l.id,nombre:l.nombre,vendido:0,falto:0};
+  x.vendido+=d;x.falto+=Math.max(0,c-d);M.set(l.id,x)}
+ PED={hasta:pres.length?pres[pres.length-1].id:desde,n:pres.length,lineas:[...M.values()].map(x=>{const p=P.find(q=>q.id==x.id),st=p?Math.max(0,+p.stock):null,
+   b=bultoDe(p?.clave||p?.nombre||x.nombre),total=x.vendido+x.falto;let pedir=total,nota='';
+   if(b){if(st!=null&&st>=limiteDe(b)){pedir=0;nota=`Bulto x${b} · quedan ${fmt(st)}, no se pide`}else{pedir=Math.max(1,Math.ceil(total/b))*b;nota=`Bulto x${b}`}}
+   return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',stock:st,bulto:b,pedir,nota}}).sort((a,b)=>b.vendido+b.falto-a.vendido-a.falto||a.nombre.localeCompare(b.nombre))};
+ pintaPedido()}
+function pintaPedido(cargando){const n=PED.lineas.filter(l=>l.pedir>0).length;
+ if(!cargando)$('pedinfo').textContent=PED.n?`${PED.n} presupuesto(s) desde el último pedido (hasta el Nº ${PED.hasta}) · ${n} producto(s) para pedir.`:'No hay presupuestos nuevos desde el último pedido.';
+ $('pedt').innerHTML=PED.lineas.map((l,i)=>`<tr${l.pedir>0?'':' class="off"'}><td><div class="nom">${esc(l.nombre)}</div>${l.clave&&norm(l.clave)!=norm(l.nombre)?`<div class="m" style="font-size:12px">Proveedor: ${esc(l.clave.toUpperCase())}</div>`:''}${l.clave?'':'<div class="falta">No viene de la nota del proveedor: pídelo a mano</div>'}
+  <div class="tags">${l.nota?`<span class="tag">${esc(l.nota)}</span>`:''}<span class="tag sub">Vendido ${fmt(l.vendido)}</span>${l.falto?`<span class="tag sub" style="color:var(--no)">Faltó ${fmt(l.falto)}</span>`:''}<span class="tag sub">Stock ${l.stock==null?'-':fmt(l.stock)}</span></div>
+  <td class="n hide-sm">${fmt(l.vendido)}<td class="n hide-sm">${l.falto?`<span class="falta">${fmt(l.falto)}</span>`:'-'}<td class="n hide-sm">${l.stock==null?'-':fmt(l.stock)}
+  <td class="n"><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.pedir}" onfocus="this.select()" onchange="PED.lineas[${i}].pedir=Math.max(0,num(this.value)||0);pintaPedido()"></tr>`).join('')
+  ||(cargando?'':'<tr><td class="m">Nada para pedir por ahora.</tr>');
+ $('bnota').disabled=!n;$('benv').disabled=!PED.n}
+// Escribe las cantidades en la nota de pedido del proveedor y descarga una copia (el original no se toca)
+async function completarNota(f){$('fp').value='';if(!f)return;
+ let buf,ws,filas;try{buf=await f.arrayBuffer();const wb=XLSX.read(buf);ws=wb.Sheets[wb.SheetNames[0]];filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',blankrows:true})}catch{return alert('No se pudo leer el archivo. Tiene que ser la nota de pedido en formato .xlsx.')}
+ const R=XLSX.utils.decode_range(ws['!ref']),t=c=>norm(c).replace(/[.:]/g,'').replace(/\s+/g,' ');let h=-1,cd,cq;
+ for(let i=0;i<Math.min(filas.length,60)&&h<0;i++){const H=filas[i].map(t);
+  cd=H.findIndex(x=>['producto','productos','descripcion','nombre','detalle','articulo'].includes(x));cq=H.findIndex(x=>x.startsWith('cantidad')||x=='cant');if(cd>=0&&cq>=0)h=i}
+ if(h<0)return alert('No encontré la fila de títulos con las columnas "Producto" y "Cantidad".');
+ // cada producto se reconoce por su descripción original del proveedor (la misma clave que al importar precios)
+ const Q=PED.lineas.filter(l=>l.pedir>0),porClave=new Map(Q.filter(l=>l.clave).map(l=>[l.clave,l])),poner=new Map(),hay=new Set();let previas=0;
+ for(let i=h+1;i<filas.length;i++){const d=String(filas[i][cd]??'').trim().replace(/\s+/g,' ').toLowerCase();if(!d)continue;
+  const l=porClave.get(d);if(num(filas[i][cq])&&!l)previas++;
+  if(l&&!hay.has(l.clave)){hay.add(l.clave);poner.set(XLSX.utils.encode_cell({r:R.s.r+i,c:R.s.c+cq}),l.pedir)}}
+ const noEnc=Q.filter(l=>!hay.has(l.clave));
+ if(!poner.size)return alert(`Ninguno de los productos a pedir aparece en "${f.name}".`);
+ if(!confirm(`Se van a escribir ${poner.size} cantidades en la columna "Cantidad" de "${f.name}" y se descargará una copia completa.\n`+
+  (previas?`\nOjo: el archivo ya tenía ${previas} cantidades de otros productos; se dejan como están.\n`:'')+
+  (noEnc.length?`\n${noEnc.length} producto(s) no están en la nota y hay que pedirlos a mano:\n${noEnc.slice(0,10).map(l=>`· ${l.nombre} (${fmt(l.pedir)})`).join('\n')}${noEnc.length>10?'\n…':''}\n`:'')+
+  '\n¿Continuar?'))return;
+ const b=$('bnota');b.disabled=true;b.textContent='Completando…';
+ try{const blob=await escribirCantidades(buf,poner),a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=f.name.replace(/\.xlsx$/i,'')+' - completa.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000)}
+ catch(e){return alert('No se pudo completar la nota: '+e.message)}finally{b.disabled=false;b.textContent='Completar nota de pedido (Excel)'}
+ $('pedres').innerHTML=`<b>Listo:</b> se descargó la nota con ${poner.size} producto(s) cargados. Revísala, mándasela al proveedor y luego pulsa "Marcar pedido como enviado".`+
+  (noEnc.length?`<div class="falta" style="margin-top:6px">Pedir a mano (no están en la nota): ${noEnc.map(l=>`${esc(l.nombre)} (${fmt(l.pedir)})`).join(' · ')}</div>`:'');$('pedres').hidden=false}
+// Cambia solo las casillas de cantidad dentro del archivo: colores, fórmulas y comentarios quedan igual
+async function escribirCantidades(buf,poner){const z=await JSZip.loadAsync(buf),X=new DOMParser(),S=new XMLSerializer();
+ const lee=async n=>{const f=z.file(n);if(!f)throw new Error('falta '+n);return X.parseFromString(await f.async('string'),'application/xml')};
+ const wbx=await lee('xl/workbook.xml'),rid=wbx.getElementsByTagName('sheet')[0].getAttribute('r:id'),rels=await lee('xl/_rels/workbook.xml.rels');
+ let ruta=[...rels.getElementsByTagName('Relationship')].find(r=>r.getAttribute('Id')==rid).getAttribute('Target');ruta=ruta.startsWith('/')?ruta.slice(1):'xl/'+ruta;
+ const doc=await lee(ruta),NS=doc.documentElement.namespaceURI,sd=doc.getElementsByTagName('sheetData')[0];
+ const filas=new Map([...sd.getElementsByTagName('row')].map(r=>[+r.getAttribute('r'),r]));
+ const col=ref=>ref.replace(/\d+/g,'').split('').reduce((a,c)=>a*26+c.charCodeAt(0)-64,0);
+ for(const[ref,v]of poner){const nr=+ref.replace(/\D+/g,'');let row=filas.get(nr);
+  if(!row){row=doc.createElementNS(NS,'row');row.setAttribute('r',nr);const sig=[...filas.keys()].filter(k=>k>nr).sort((a,b)=>a-b)[0];sd.insertBefore(row,sig?filas.get(sig):null);filas.set(nr,row)}
+  const cs=[...row.getElementsByTagName('c')];let c=cs.find(x=>x.getAttribute('r')==ref);
+  if(!c){c=doc.createElementNS(NS,'c');c.setAttribute('r',ref);row.insertBefore(c,cs.find(x=>col(x.getAttribute('r'))>col(ref))||null)}
+  c.removeAttribute('t');while(c.firstChild)c.removeChild(c.firstChild);const e=doc.createElementNS(NS,'v');e.textContent=String(v);c.appendChild(e)}
+ z.file(ruta,S.serializeToString(doc),{createFolders:false});
+ // que Excel recalcule los totales al abrir el archivo
+ let cp=wbx.getElementsByTagName('calcPr')[0];
+ if(!cp){cp=wbx.createElementNS(wbx.documentElement.namespaceURI,'calcPr');wbx.documentElement.insertBefore(cp,wbx.getElementsByTagName('extLst')[0]||null)}
+ cp.setAttribute('fullCalcOnLoad','1');z.file('xl/workbook.xml',S.serializeToString(wbx),{createFolders:false});
+ return z.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
+async function marcarEnviado(){if(!PED.n)return;
+ if(!confirm(`¿Marcar el pedido como enviado?\n\nLas ventas de estos ${PED.n} presupuesto(s) ya no se contarán en el próximo pedido.`))return;
+ const b=$('benv');b.disabled=true;
+ const{error}=await sb.from('pedidos').insert({hasta_presupuesto:PED.hasta,lineas:PED.lineas.filter(l=>l.pedir>0).map(l=>({id:l.id,nombre:l.clave||l.nombre,cantidad:l.pedir}))});
+ b.disabled=false;if(error)return alert(msg(error));toast('Pedido marcado como enviado');cargaPedido()}
 
 init();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>
