@@ -554,8 +554,7 @@ async function cargaPedido(){$('pedinfo').textContent='Cargando…';$('pedt').in
  pintaPedido()}
 function pintaPedido(cargando){const n=PED.lineas.filter(l=>l.pedir>0).length;
  if(!cargando)$('pedinfo').textContent=PED.n?`${PED.n} presupuesto(s) desde el último pedido (hasta el Nº ${PED.hasta}) · ${n} producto(s) para pedir.`:'No hay presupuestos nuevos desde el último pedido.';
- $('pedt').innerHTML=PED.lineas.map((l,i)=>`<tr${l.pedir>0?'':' class="off"'}><td><div class="nom">${esc(l.nombre)}</div>${l.clave&&norm(l.clave)!=norm(l.nombre)?`<div class="m" style="font-size:12px">Proveedor: ${esc(l.clave.toUpperCase())}</div>`:''}${l.clave?'':'<div class="falta">No viene de la nota del proveedor: pídelo a mano</div>'}
-  <div class="tags">${l.nota?`<span class="tag">${esc(l.nota)}</span>`:''}<span class="tag sub">Vendido ${fmt(l.vendido)}</span>${l.falto?`<span class="tag sub" style="color:var(--no)">Faltó ${fmt(l.falto)}</span>`:''}<span class="tag sub">Stock ${l.stock==null?'-':fmt(l.stock)}</span></div>
+ $('pedt').innerHTML=PED.lineas.map((l,i)=>`<tr${l.pedir>0?'':' class="off"'}><td><div class="nom">${esc(l.nombre)}</div>${l.clave&&norm(l.clave)!=norm(l.nombre)?`<div class="m" style="font-size:12px">Proveedor: ${esc(l.clave.toUpperCase())}</div>`:''}  <div class="tags">${l.nota?`<span class="tag">${esc(l.nota)}</span>`:''}<span class="tag sub">Vendido ${fmt(l.vendido)}</span>${l.falto?`<span class="tag sub" style="color:var(--no)">Faltó ${fmt(l.falto)}</span>`:''}<span class="tag sub">Stock ${l.stock==null?'-':fmt(l.stock)}</span></div>
   <td class="n hide-sm">${fmt(l.vendido)}<td class="n hide-sm">${l.falto?`<span class="falta">${fmt(l.falto)}</span>`:'-'}<td class="n hide-sm">${l.stock==null?'-':fmt(l.stock)}
   <td class="n"><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.pedir}" onfocus="this.select()" onchange="PED.lineas[${i}].pedir=Math.max(0,num(this.value)||0);pintaPedido()"></tr>`).join('')
   ||(cargando?'':'<tr><td class="m">Nada para pedir por ahora.</tr>');
@@ -576,14 +575,13 @@ async function completarNota(f){$('fp').value='';if(!f)return;
  if(!poner.size)return alert(`Ninguno de los productos a pedir aparece en "${f.name}".`);
  if(!confirm(`Se van a escribir ${poner.size} cantidades en la columna "Cantidad" de "${f.name}" y se descargará una copia completa.\n`+
   (previas?`\nOjo: el archivo ya tenía ${previas} cantidades de otros productos; se dejan como están.\n`:'')+
-  (noEnc.length?`\n${noEnc.length} producto(s) no están en la nota y hay que pedirlos a mano:\n${noEnc.slice(0,10).map(l=>`· ${l.nombre} (${fmt(l.pedir)})`).join('\n')}${noEnc.length>10?'\n…':''}\n`:'')+
   '\n¿Continuar?'))return;
  const b=$('bnota');b.disabled=true;b.textContent='Completando…';
  try{const blob=await escribirCantidades(buf,poner),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download=f.name.replace(/\.xlsx$/i,'')+' - completa.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000)}
  catch(e){return alert('No se pudo completar la nota: '+e.message)}finally{b.disabled=false;b.textContent='Completar nota de pedido (Excel)'}
  $('pedres').innerHTML=`<b>Listo:</b> se descargó la nota con ${poner.size} producto(s) cargados. Revísala, mándasela al proveedor y luego pulsa "Marcar pedido como enviado".`+
-  (noEnc.length?`<div class="falta" style="margin-top:6px">Pedir a mano (no están en la nota): ${noEnc.map(l=>`${esc(l.nombre)} (${fmt(l.pedir)})`).join(' · ')}</div>`:'');$('pedres').hidden=false}
+  (noEnc.length?` Los otros ${noEnc.length} producto(s) vendidos no están en esta nota (son de otro proveedor) y se dejaron afuera.`:'');$('pedres').hidden=false}
 // Cambia solo las casillas de cantidad dentro del archivo: colores, fórmulas y comentarios quedan igual
 async function escribirCantidades(buf,poner){const z=await JSZip.loadAsync(buf),X=new DOMParser(),S=new XMLSerializer();
  const lee=async n=>{const f=z.file(n);if(!f)throw new Error('falta '+n);return X.parseFromString(await f.async('string'),'application/xml')};
