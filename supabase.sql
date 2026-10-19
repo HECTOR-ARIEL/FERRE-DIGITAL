@@ -15,6 +15,7 @@ alter table productos add column if not exists ganancia numeric(9,4) not null de
 alter table productos add column if not exists imagen text;                                -- URL de la foto
 alter table productos add column if not exists clave text;  -- descripción original del Excel (no se edita)
 alter table productos add column if not exists borrado boolean not null default false;  -- en la papelera
+alter table productos add column if not exists minimo numeric(12,2);  -- compra mínima en el catálogo (vacío = por unidad)
 alter table productos alter column codigo drop not null;
 
 -- Versión anterior: "precio" era un número fijo. Ahora pasa a ser el costo,
@@ -110,7 +111,7 @@ create policy "admin productos" on productos for all to authenticated using (tru
 create policy "admin presupuestos" on presupuestos for all to authenticated using (true) with check (true);
 -- Los visitantes no pueden ver tu costo ni tu % de ganancia
 revoke select on productos from anon;
-grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado, sector_id) on productos to anon;
+grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado, sector_id, minimo) on productos to anon;
 
 -- ===================== AVISO DE CAMBIOS =====================
 -- Una sola fila con la hora del último cambio en productos.
@@ -242,9 +243,10 @@ begin
   for l in select * from jsonb_array_elements(p_lineas) loop
     c := (l->>'cantidad')::numeric;
     if c is null or c <= 0 or c > 100000 then raise exception 'Cantidad no válida'; end if;
-    select id, codigo, nombre, precio, stock into pr from productos
+    select id, codigo, nombre, precio, stock, minimo into pr from productos
       where id = (l->>'id')::bigint and activo and not borrado for update;
     continue when not found;
+    if coalesce(pr.minimo, 0) > c then c := pr.minimo; end if;  -- respeta la compra mínima
     d := least(c, greatest(pr.stock, 0));
     if d > 0 then update productos set stock = stock - d where id = pr.id; end if;
     if d < c then falta := true; end if;
@@ -263,7 +265,7 @@ grant execute on function enviar_solicitud(text, text, text, jsonb) to anon, aut
 -- Pedidos web: descartar devuelve al stock lo reservado; recuperar un descartado lo vuelve a reservar.
 create or replace function estado_solicitud(p_id bigint, p_estado text)
 returns void language plpgsql as $$
-declare s record; l jsonb; c numeric; d numeric; st numeric; lineas jsonb := '[]';
+declare s record; l jsonb; c numeric; d numeric; st numeric; nuevas jsonb := '[]';
 begin
   select * into s from solicitudes where id = p_id for update;
   if not found then raise exception 'No existe el pedido web Nº %', p_id; end if;
@@ -271,7 +273,7 @@ begin
     for l in select * from jsonb_array_elements(s.lineas) loop
       update productos set stock = stock + coalesce((l->>'reservado')::numeric, 0)
         where id = (l->>'id')::bigint and coalesce((l->>'reservado')::numeric, 0) > 0;
-      lineas := lineas || jsonb_set(l, '{reservado}', '0');
+      nuevas := nuevas || jsonb_set(l, '{reservado}', '0');
     end loop;
   elsif s.estado = 'descartado' and p_estado = 'nuevo' then
     for l in select * from jsonb_array_elements(s.lineas) loop
@@ -279,15 +281,51 @@ begin
       select stock into st from productos where id = (l->>'id')::bigint for update;
       d := case when found then least(c, greatest(st, 0)) else 0 end;
       if d > 0 then update productos set stock = stock - d where id = (l->>'id')::bigint; end if;
-      lineas := lineas || jsonb_set(l, '{reservado}', to_jsonb(d));
+      nuevas := nuevas || jsonb_set(l, '{reservado}', to_jsonb(d));
     end loop;
   else
     raise exception 'No se puede pasar el pedido de "%" a "%"', s.estado, p_estado;
   end if;
-  update solicitudes set estado = p_estado, lineas = estado_solicitud.lineas where id = p_id;
+  update solicitudes set estado = p_estado, lineas = nuevas where id = p_id;
 end $$;
 revoke execute on function estado_solicitud(bigint, text) from public, anon;
 grant execute on function estado_solicitud(bigint, text) to authenticated;
+
+-- Pedidos web: cambiar la cantidad de un producto de un pedido nuevo (0 = quitarlo).
+-- Devuelve al stock lo que tenía reservado y vuelve a reservar la cantidad nueva (lo que haya).
+create or replace function cantidad_solicitud(p_id bigint, p_producto bigint, p_cantidad numeric)
+returns jsonb language plpgsql as $$
+declare s record; l jsonb; v_nuevas jsonb := '[]'; v_total numeric := 0; v_r numeric; v_d numeric; v_st numeric; v_hay boolean := false;
+begin
+  if p_cantidad is null or p_cantidad < 0 or p_cantidad > 100000 then raise exception 'Cantidad no válida'; end if;
+  select * into s from solicitudes where id = p_id for update;
+  if not found then raise exception 'No existe el pedido web Nº %', p_id; end if;
+  if s.estado <> 'nuevo' then raise exception 'Solo se pueden editar pedidos nuevos (este está %)', s.estado; end if;
+  for l in select * from jsonb_array_elements(s.lineas) loop
+    if (l->>'id')::bigint = p_producto then
+      v_hay := true;
+      v_r := coalesce((l->>'reservado')::numeric, 0);
+      update productos set stock = stock + v_r where id = p_producto returning stock into v_st;
+      v_d := least(p_cantidad, greatest(coalesce(v_st, 0), 0));
+      if v_d > 0 then update productos set stock = stock - v_d where id = p_producto returning stock into v_st; end if;
+      if p_cantidad > 0 then
+        l := jsonb_set(jsonb_set(l, '{cantidad}', to_jsonb(p_cantidad)), '{reservado}', to_jsonb(v_d));
+      else
+        l := null;
+      end if;
+    end if;
+    if l is not null then
+      v_nuevas := v_nuevas || l;
+      v_total := v_total + (l->>'cantidad')::numeric * (l->>'precio')::numeric;
+    end if;
+  end loop;
+  if not v_hay then raise exception 'Ese producto ya no está en el pedido'; end if;
+  if jsonb_array_length(v_nuevas) = 0 then raise exception 'No se puede dejar el pedido vacío: usa Descartar'; end if;
+  update solicitudes set lineas = v_nuevas, total = v_total where id = p_id;
+  return jsonb_build_object('lineas', v_nuevas, 'total', v_total, 'stock', v_st);
+end $$;
+revoke execute on function cantidad_solicitud(bigint, bigint, numeric) from public, anon;
+grant execute on function cantidad_solicitud(bigint, bigint, numeric) to authenticated;
 
 revoke execute on function importar_productos(jsonb, numeric) from public, anon;
 revoke execute on function sumar_stock(jsonb) from public, anon;

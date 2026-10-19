@@ -14,7 +14,7 @@ th{font-size:12px;font-weight:600;color:var(--m);text-transform:uppercase;letter
 .n{text-align:right;white-space:nowrap}#pt tr{cursor:pointer}#pt tr:hover{background:var(--bg)}tr.off td{opacity:.55}
 .th{width:44px;height:44px;border-radius:6px;object-fit:contain;background:var(--img);border:1px solid var(--b);display:block}
 .sub{display:none}.de{min-width:220px}.nom{overflow-wrap:anywhere}.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}.tags:empty{display:none}.tag{white-space:nowrap;font-size:11px;padding:1px 6px;border-radius:99px;background:var(--bg);border:1px solid var(--b);color:var(--m)}
-#fc,#fs{width:auto;flex:none}.tag.sec{color:var(--t);border-color:var(--a)}#ssec{width:auto;padding:7px 10px;background:transparent;color:inherit;border-color:currentColor}#ssec option{color:var(--t);background:var(--c)}
+#fc,#fs{width:auto;flex:none}.tag.sec{color:var(--t);border-color:var(--a)}#ssec,#smin{width:auto;padding:7px 10px;background:transparent;color:inherit;border-color:currentColor}#ssec option,#smin option{color:var(--t);background:var(--c)}.tag.mn{color:var(--a);border-color:var(--a);font-weight:600}
 .secl{display:grid;gap:8px}.secl .r{flex-wrap:nowrap}.secl .r>input{min-width:0;width:0;flex:1 1 0}#dsec form{grid-template-columns:minmax(0,1fr)}.secl .m{font-size:13px;white-space:nowrap}.mini{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mini input{width:90px}
 dialog{border:0;border-radius:12px;padding:0;width:min(580px,calc(100% - 24px));max-height:calc(100% - 24px);background:var(--c);color:var(--t)}
 dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;padding:18px}dialog h2{margin:0;font-size:18px}
@@ -33,6 +33,10 @@ dialog{overflow:auto}
 .aviso{background:var(--bg);border:1px dashed var(--b)}
 .tag.nw{background:var(--a);color:#fff;border-color:var(--a);font-weight:700}
 .wp{display:grid;gap:8px}.wp.nuevo{border-left:4px solid var(--a)}.wp .cab{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}.wp .cab b{font-size:16px}
+.stw{display:flex;align-items:center;gap:4px}.stw button{width:34px;height:34px;padding:0;font-size:18px;flex:none}.stw .qty{width:64px;text-align:center;padding:6px 4px}
+/* teléfono: en cada producto del pedido web, la descripción arriba y cantidad · subtotal · quitar abajo */
+@media(max-width:520px){.wp tr{display:grid;grid-template-columns:auto 1fr auto;align-items:center;column-gap:8px;padding:8px 0;border-bottom:1px solid var(--b)}
+ .wp td{border:0;padding:2px 0;width:auto!important}.wp td:nth-child(2){grid-row:1;grid-column:1/-1;overflow-wrap:anywhere}.wp td:nth-child(1){grid-row:2;grid-column:1}.wp td:nth-child(3){grid-row:2;grid-column:2}.wp td:nth-child(4){grid-row:2;grid-column:3}}
 .wp .nota{background:var(--bg);border-radius:8px;padding:8px 10px;font-size:14px;white-space:pre-wrap}.wp table td{padding:5px 6px;font-size:14px}
 @media(max-width:520px){.sub{display:block}#t-prod .top{margin:-14px -34px 12px -10px;padding:10px 34px 10px 10px}#t-prod .top .m{font-size:12px}.bus{min-width:0}
  #pt tr{display:grid;grid-template-columns:30px 1fr auto auto;align-items:center;column-gap:10px;padding:8px 6px;border-bottom:1px solid var(--b)}
@@ -69,7 +73,7 @@ dialog{overflow:auto}
   <button id="qx" type="button" hidden title="Borrar búsqueda" onclick="$('q').value='';lim=100;renderP();$('q').focus()">✕</button></div><span class="m" id="u"></span></div>
  <div class="c r" id="tbar">
   <select id="fs" onchange="lim=100;renderP()" title="Filtrar por sector"></select>
-  <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option></select>
+  <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option><option value="m">Con compra mínima</option><option value="u">Por unidad</option><option value="x">Dicen MINIMO pero van por unidad</option></select>
   <button onclick="editar()">+ Nuevo producto</button>
   <button class="s" onclick="$('f').click()">Importar Excel</button>
   <input id="f" type="file" accept=".xlsx,.xls,.csv" hidden onchange="imp(this.files[0])">
@@ -90,6 +94,7 @@ dialog{overflow:auto}
  <div id="selbar" hidden><span><b id="nsel">0</b> seleccionado(s)</span>
   <button class="s" onclick="sel.clear();renderP()">Cancelar</button>
   <select id="ssec" onchange="asignarSector(this.value);this.value=''"></select>
+  <select id="smin" onchange="asignarMinimo(this.value);this.value=''"><option value="">Compra mínima…</option><option value="d">Según la descripción (MINIMO…)</option><option value="0">Por unidad</option></select>
   <button id="bdef" class="danger" hidden onclick="borrarDefinitivo()">Eliminar definitivamente</button>
   <button id="bsel" onclick="accionSel()">Eliminar</button></div>
  <p class="m">Excel: puedes subir la nota de pedido tal cual llega. Se usan solo las columnas <b>Producto</b> (o Descripción) y <b>Precio</b> (y <b>Stock</b> si existe); el código y el resto de columnas se ignoran. Cada producto se reconoce por su descripción original del Excel: aunque le cambies aquí la descripción o el código, se seguirá actualizando bien.</p>
@@ -173,6 +178,8 @@ dialog{overflow:auto}
   <label>Precio venta<input id="fven" inputmode="decimal" oninput="deVenta()"></label>
  </div>
  <div class="g3"><label>Stock<input id="fsto" inputmode="decimal"></label><label id="lsec" style="grid-column:span 2">Sector<select id="fsec"></select></label></div>
+ <div class="g3" id="lmin"><label>Compra mínima<input id="fmin" inputmode="decimal" placeholder="Por unidad"></label>
+  <div style="grid-column:span 2;display:grid;gap:4px;align-content:end"><button type="button" class="s" id="fminb" onclick="$('fmin').value=this.dataset.n"></button><span class="m" style="font-size:12px">Vacío = se vende por unidad. Con número, el cliente no puede pedir menos.</span></div></div>
  <label class="chk"><input id="fact" type="checkbox"> Visible en el catálogo</label>
  <p class="m" id="fclave" style="margin:0;font-size:13px"></p>
  <div class="acc"><button type="button" class="danger" id="fdel" onclick="eliminar()">Eliminar</button>
@@ -221,7 +228,7 @@ function toast(t){const d=document.createElement('div');d.className='toast';d.te
 function msg(e){if(e.code=='23505')return 'Ya existe otro producto con ese código.';return e.message||String(e)}
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 // lo que se ve en la tabla de productos: búsqueda + filtro de código (+ papelera)
-const lista=()=>{const c=$('fc').value,f=$('fs').value;return filtra($('q').value,enPap).filter(p=>(!c||(c=='c')==!!p.codigo)&&(!f||(f=='-'?!p.sector_id:p.sector_id==f)))};
+const lista=()=>{const c=$('fc').value,f=$('fs').value;return filtra($('q').value,enPap).filter(p=>(!c||(c=='m'?p.minimo>0:c=='u'?!(p.minimo>0):c=='x'?!(p.minimo>0)&&bultoDe(p.clave||p.nombre)>0:(c=='c')==!!p.codigo))&&(!f||(f=='-'?!p.sector_id:p.sector_id==f)))};
 // busca dentro de los productos normales, o de la papelera si enPap=true
 const filtra=(q,enPap=false)=>{const w=norm(q).split(/\s+/).filter(Boolean);return P.filter(p=>!!p.borrado==enPap&&w.every(x=>norm((p.codigo||'')+' '+p.nombre).includes(x)))};
 
@@ -255,6 +262,7 @@ function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList
 
 /* ---------- productos ---------- */
 async function load(silencio){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){if(silencio)throw e;return alert(msg(e))}
+ MIN_OK=!P.length||'minimo'in P[0];  // false si todavía no se ejecutó el SQL de compra mínima
  await cargaSectores();
  // los precios del presupuesto en curso se actualizan con los de la base
  L=L.filter(l=>P.some(p=>p.id==l.id&&!p.borrado)).map(l=>{const p=P.find(x=>x.id==l.id);return{...l,codigo:p.codigo,nombre:p.nombre,precio:+p.precio}});
@@ -267,12 +275,12 @@ function renderP(){const F=lista(),np=P.filter(p=>p.borrado).length;$('nf').text
  pintaAbc($('abc'),F);$('qx').hidden=!$('q').value;$('u').textContent=$('q').value.trim()?`${F.length} de ${P.filter(p=>!!p.borrado==enPap).length}`:F.length+' productos';
  $('pt').innerHTML=F.slice(0,lim).map(p=>`<tr id="r${p.id}" onclick="${enPap?`marca(${p.id})`:`editar(${p.id})`}"${p.activo&&!enPap?'':' class="off"'}>
   <td class="cc" onclick="event.stopPropagation()"><input type="checkbox" class="ck" ${sel.has(p.id)?'checked':''} onchange="marca(${p.id},this.checked)">
-  <td class="hide-sm">${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td class="de">${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}<div class="nom">${esc(p.nombre)}</div><div class="tags">${p.sector_id&&S.nom[p.sector_id]?`<span class="tag sec">${esc(S.nom[p.sector_id])}</span>`:''}${p.activo||enPap?'':'<span class="tag">Oculto</span>'}${p.codigo||enPap?'':'<span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?`<span class="tag sub">Stock ${fmt(p.stock)}</span>`:'<span class="tag" style="color:var(--no)">Sin stock</span>'}</div><td class="n hide-sm">${money(p.costo)}<td class="n ga" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n pv"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
+  <td class="hide-sm">${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td class="de">${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}<div class="nom">${esc(p.nombre)}</div><div class="tags">${p.sector_id&&S.nom[p.sector_id]?`<span class="tag sec">${esc(S.nom[p.sector_id])}</span>`:''}${p.minimo>0?`<span class="tag mn" title="Compra mínima en el catálogo">Mín. ${fmt(p.minimo)}</span>`:''}${p.activo||enPap?'':'<span class="tag">Oculto</span>'}${p.codigo||enPap?'':'<span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?`<span class="tag sub">Stock ${fmt(p.stock)}</span>`:'<span class="tag" style="color:var(--no)">Sin stock</span>'}</div><td class="n hide-sm">${money(p.costo)}<td class="n ga" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n pv"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
   ||`<tr><td colspan="8" class="m">${enPap?'La papelera está vacía.':P.length?'Ningún producto coincide con la búsqueda.':'Todavía no hay productos. Importa un Excel o crea uno nuevo.'}</tr>`;
  $('mas').hidden=F.length<=lim;masObs.unobserve($('mas'));masObs.observe($('mas'));
  $('ckall').checked=F.length>0&&F.every(p=>sel.has(p.id));
  $('selbar').hidden=!sel.size;$('nsel').textContent=sel.size;
- $('bsel').textContent=enPap?'Restaurar':'Eliminar';$('bsel').className=enPap?'':'danger';$('bdef').hidden=!enPap;$('ssec').hidden=enPap||!S.ok}
+ $('bsel').textContent=enPap?'Restaurar':'Eliminar';$('bsel').className=enPap?'':'danger';$('bdef').hidden=!enPap;$('ssec').hidden=enPap||!S.ok;$('smin').hidden=enPap||!MIN_OK}
 // Cambia la ganancia desde la tabla, sin abrir el producto
 async function cambiaGan(id,el){const p=P.find(x=>x.id==id),g=num(el.value);
  if(g===null){el.value=fmtIn(p.ganancia);return alert('Escribe un porcentaje válido.')}
@@ -326,6 +334,14 @@ async function asignarSector(v){if(v==='')return;const ids=[...sel],n=ids.length
  if(!confirm(id?`¿Poner ${n} producto(s) en el sector "${S.nom[id]}"?`:`¿Quitar el sector a ${n} producto(s)?`))return;
  for(let i=0;i<n;i+=200){const{error}=await sb.from('productos').update({sector_id:id}).in('id',ids.slice(i,i+200));if(error)return alert(msg(error))}
  sel.clear();toast(id?`${n} producto(s) movidos a ${S.nom[id]}`:'Sector quitado');load()}
+// Compra mínima de los seleccionados: "d" = el número que dice la descripción del proveedor (MINIMO 12…), "0" = por unidad
+let MIN_OK=false;
+async function asignarMinimo(v){if(v==='')return;const L2=P.filter(p=>sel.has(p.id));if(!L2.length)return;const g=new Map();let sin=0;
+ for(const p of L2){const m=v=='d'?bultoDe(p.clave||p.nombre):0;if(v=='d'&&!m){sin++;continue}const k=m>1?m:null;g.set(k,[...(g.get(k)||[]),p.id])}
+ const n=L2.length-sin;if(!n)return alert('Ninguno de los productos seleccionados dice "MINIMO" en la descripción. Pon la compra mínima a mano en la ficha de cada producto.');
+ if(!confirm(v=='d'?`¿Poner compra mínima según la descripción a ${n} producto(s)?`+(sin?`\n\n${sin} no dicen "MINIMO" en la descripción y se dejan como están.`:''):`¿Vender por unidad ${n} producto(s)? (sin compra mínima)`))return;
+ for(const[k,ids]of g)for(let i=0;i<ids.length;i+=200){const{error}=await sb.from('productos').update({minimo:k}).in('id',ids.slice(i,i+200));if(error)return alert(msg(error))}
+ sel.clear();toast(v=='d'?`Compra mínima puesta a ${n} producto(s)`:`${n} producto(s) por unidad`);load()}
 async function aplicarGanancia(){const g=num($('gb').value);if(g===null)return alert('Escribe el porcentaje de ganancia.');
  const ids=lista().map(p=>p.id);if(!ids.length)return;
  if(!confirm(`¿Poner ${fmt(g)} % de ganancia a ${ids.length} producto(s)?`))return;
@@ -335,6 +351,8 @@ async function aplicarGanancia(){const g=num($('gb').value);if(g===null)return a
 function editar(id){ed=id?P.find(p=>p.id==id):{codigo:'',nombre:'',costo:0,ganancia:num($('gn').value)??0,stock:0,activo:true,imagen:null};
  nuevaImg=null;quitarImg=false;$('dt').textContent=id?'Editar producto':'Nuevo producto';
  $('fcod').value=ed.codigo||'';$('fdes').value=ed.nombre;$('fcos').value=fmtIn(ed.costo);$('fgan').value=fmtIn(ed.ganancia);$('fsto').value=fmtIn(ed.stock);$('fact').checked=ed.activo;$('fsec').value=ed.sector_id??(id?'':$('fs').value.replace('-',''));$('lsec').hidden=!S.ok;
+ const bd=bultoDe(ed.clave||ed.nombre);$('fmin').value=ed.minimo>0?fmtIn(ed.minimo):'';$('lmin').hidden=!MIN_OK;
+ $('fminb').hidden=!bd;$('fminb').dataset.n=bd;$('fminb').textContent=`Usar el de la descripción (${bd})`;
  deCosto();verImg(ed.imagen);$('fdel').hidden=!id;
  $('fclave').textContent=ed.clave?'Vinculado al Excel como: "'+ed.clave+'"':'';$('dlg').showModal()}
 const fmtIn=n=>String(red(Number(n)||0,4)).replace('.',',');
@@ -353,6 +371,7 @@ const rutaImg=u=>{const k='/object/public/imagenes/',i=(u||'').indexOf(k);return
 function borrarImg(u){const r=rutaImg(u);if(r)sb.storage.from('imagenes').remove([r])}
 async function guardarProd(e){e.preventDefault();
  const o={codigo:$('fcod').value.trim()||null,nombre:$('fdes').value.trim().replace(/\s+/g,' '),costo:num($('fcos').value)??0,ganancia:num($('fgan').value)??0,stock:num($('fsto').value)??0,activo:$('fact').checked};if(S.ok)o.sector_id=+$('fsec').value||null;
+ if(MIN_OK){const m=num($('fmin').value);o.minimo=m>1?m:null}
  if(!o.nombre)return alert('La descripción es obligatoria.');
  const b=$('fsave');b.disabled=true;
  try{const vieja=ed.imagen;
@@ -593,11 +612,20 @@ function pintaWeb(){$('web').innerHTML=W.map((s,i)=>{const tel=s.telefono?`<a hr
  return `<div class="c wp ${s.estado}"><div class="cab"><b>${esc(s.cliente)}</b>${tel}<span class="m">Nº ${s.id} · ${fechaHora(s.fecha)}</span>
   <span class="tag">${ESTW[s.estado]||esc(s.estado)}${s.presupuesto_id?' · Presupuesto Nº '+s.presupuesto_id:''}</span></div>
   ${s.nota?`<div class="nota">${esc(s.nota)}</div>`:''}
-  <div class="w"><table><tbody>${(s.lineas||[]).map(l=>{const r=+l.reservado||0;return `<tr><td class="n" style="width:1%"><b>${fmt(l.cantidad)}</b><td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span> `:''}${esc(l.nombre)}${s.estado=='nuevo'&&l.reservado!=null&&r<l.cantidad?`<div class="falta">${r>0?`Solo se reservaron ${fmt(r)} (no había más stock)`:'Sin stock: no se reservó nada'}</div>`:''}<td class="n">${money(l.cantidad*l.precio)}</tr>`}).join('')}</tbody></table></div>
+  <div class="w"><table><tbody>${(s.lineas||[]).map(l=>{const r=+l.reservado||0,ed=s.estado=='nuevo';return `<tr><td class="n" style="width:1%">${ed?`<div class="stw"><button class="s" title="Restar uno" onclick="cantWeb(${i},${l.id},${+l.cantidad-1})">−</button><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" title="Cantidad (se guarda al salir de la casilla)" onfocus="this.select()" onchange="cantWeb(${i},${l.id},this.value)"><button class="s" title="Sumar uno" onclick="cantWeb(${i},${l.id},${+l.cantidad+1})">+</button></div>`:`<b>${fmt(l.cantidad)}</b>`}<td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span> `:''}${esc(l.nombre)}${s.estado=='nuevo'&&l.reservado!=null&&r<l.cantidad?`<div class="falta">${r>0?`Solo se reservaron ${fmt(r)} (no había más stock)`:'Sin stock: no se reservó nada'}</div>`:''}<td class="n">${money(l.cantidad*l.precio)}${ed?`<td class="n" style="width:1%"><button class="s" title="Quitar del pedido" onclick="cantWeb(${i},${l.id},0)">✕</button>`:''}</tr>`}).join('')}</tbody></table></div>
   <div class="r" style="justify-content:space-between"><span>Total estimado: <b>${money(s.total)}</b></span><div class="acc">
   ${s.estado=='nuevo'?`<button class="danger" onclick="estadoWeb(${i},'descartado')">Descartar</button><button onclick="pasarWeb(${i})">Pasar a presupuesto</button>`
    :s.estado=='descartado'?`<button class="s" onclick="estadoWeb(${i},'nuevo')">Recuperar</button>`:''}</div></div></div>`}).join('')
  ||'<div class="c m">No hay pedidos web '+($('wf').value=='nuevo'?'nuevos.':'para mostrar.')+'</div>'}
+// Cambiar la cantidad de un producto de un pedido web nuevo (0 = quitarlo). La base ajusta el stock reservado.
+async function cantWeb(i,pid,v){const s=W[i],l=(s.lineas||[]).find(x=>x.id==pid),n=num(v);if(!l)return;
+ if(n==null||n<0){pintaWeb();return alert('Cantidad no válida.')}if(n==+l.cantidad)return;
+ if(n==0&&!confirm(`¿Quitar "${l.nombre}" del pedido de ${s.cliente}?\n\nLo reservado vuelve al stock.`))return pintaWeb();
+ const{data,error}=await sb.rpc('cantidad_solicitud',{p_id:s.id,p_producto:pid,p_cantidad:n});
+ if(error){pintaWeb();return alert(error.code=='PGRST202'?'Falta actualizar la base: ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run).':msg(error))}
+ s.lineas=data.lineas;s.total=data.total;const p=P.find(x=>x.id==pid);if(p&&data.stock!=null)p.stock=+data.stock;
+ pintaWeb();const nl=s.lineas.find(x=>x.id==pid);
+ toast(!nl?'Producto quitado del pedido':+nl.reservado<n?`Cantidad ${fmt(n)} · solo hay ${fmt(+nl.reservado)} en stock para reservar`:`Cantidad cambiada a ${fmt(n)}`)}
 async function estadoWeb(i,e){const s=W[i];if(e=='descartado'&&!confirm(`¿Descartar el pedido Nº ${s.id} de ${s.cliente}?`))return;
  // descartar devuelve al stock lo reservado; recuperar lo vuelve a reservar (según el stock de ahora)
  const{error}=await sb.rpc('estado_solicitud',{p_id:s.id,p_estado:e});

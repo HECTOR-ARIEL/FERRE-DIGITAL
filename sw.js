@@ -1,6 +1,6 @@
 // Primero intenta la red (así siempre ves lo último) y guarda una copia
 // de las páginas para poder abrir la app sin conexión.
-const CACHE = 'v3';
+const CACHE = 'v4';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(
   caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => clients.claim())));

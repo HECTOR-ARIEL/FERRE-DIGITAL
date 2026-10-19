@@ -12,6 +12,7 @@
 /* carrito: botón en la cabecera, controles en cada tarjeta y ventana con el pedido */
 #car{position:relative}#car .nb{min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--a);color:#fff;font-size:12px;font-weight:700;display:inline-grid;place-items:center}
 @media(max-width:520px){#car .tx{display:none}}
+.mn{align-self:flex-start;font-size:12px;font-weight:700;color:var(--a);border:1px solid currentColor;border-radius:99px;padding:1px 8px}
 .add{margin-top:6px}.add .agr{width:100%;padding:8px}
 .step{display:flex;align-items:center;gap:4px}.step button{width:36px;height:36px;padding:0;flex:none;font-size:20px;line-height:1}
 .step input{flex:1;min-width:0;width:0;text-align:center;padding:7px 2px;font-weight:600}
@@ -58,6 +59,9 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 const sb=supabase.createClient(CFG.URL,CFG.KEY),$=id=>document.getElementById(id);let P=[],lim=48;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>(CFG.MONEDA||'')+' '+Number(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
+// Nombre para el cliente: sin la leyenda del proveedor "(MINIMO 12 UNIDADES)", "MIN 10"… La compra mínima,
+// si la hay, la decides tú en administración y se muestra aparte.
+const nom=p=>String(p.nombre||'').replace(/\s*[(\[]?\s*\bMIN(?:IM[O0])?\.?\s*(?:DE\s*)?\d+(?:\s*(?:UNIDADES|UNIDAD|UNID|UNI|UN|U)\b\.?)?\s*[)\]]?/gi,' ').replace(/\s{2,}/g,' ').replace(/[\s\-,]+$/,'').trim()||p.nombre;
 const norm=s=>String(s??'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
 if(CFG.NOMBRE)document.title=CFG.NOMBRE+' · Catálogo';
 // Solo se muestran productos con código propio, visibles y fuera de la papelera.
@@ -65,7 +69,7 @@ if(CFG.NOMBRE)document.title=CFG.NOMBRE+' · Catálogo';
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 const pide=c=>()=>sb.from('productos').select(c).eq('activo',true).eq('borrado',false).not('codigo','is',null).neq('codigo','').order('nombre');
 async function load(){
- try{P=await todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id')).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock')))}
+ try{P=await todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo')).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock')))}
  catch(e){$('u').textContent='No se pudo cargar el catálogo.';return}
  const{data}=await sb.from('sectores').select('id,nombre').order('nombre');SEC=data||[];pintaChips();
  r();$('u').textContent=P.length+' productos';pintaCar()}
@@ -73,8 +77,8 @@ function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
  const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return(!sec||p.sector_id==sec)&&w.every(x=>s.includes(x))});
  FL=F;pintaAbc($('abc'),F);if(P.length)$('u').textContent=$('q').value.trim()||sec?`${F.length} de ${P.length}`:P.length+' productos';
  $('g').innerHTML=F.slice(0,lim).map(p=>`<article id="a${p.id}" class="card${p.stock>0?'':' agotado'}">
-  <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(p.nombre)}">`:'Sin imagen'}</div>
-  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(p.nombre)}</h2><span class="pr">${money(p.precio)}</span>${p.stock>0?`<div class="add" id="k${p.id}">${ctrl(p.id)}</div>`:'<span class="sin">Sin stock</span>'}</div></article>`).join('')
+  <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(nom(p))}">`:'Sin imagen'}</div>
+  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(nom(p))}</h2><span class="pr">${money(p.precio)}</span>${p.minimo>0?`<span class="mn">Compra mínima: ${fmt(p.minimo)}</span>`:''}${p.stock>0?`<div class="add" id="k${p.id}">${ctrl(p.id)}</div>`:'<span class="sin">Sin stock</span>'}</div></article>`).join('')
   ||`<p class="m" style="grid-column:1/-1">${P.length?'No hay productos que coincidan con la búsqueda.':'Todavía no hay productos en el catálogo.'}</p>`;
  $('mas').hidden=F.length<=lim;masObs.unobserve($('mas'));masObs.observe($('mas'))}
 // Índice A-Z: la barra (el) salta al primer producto de la letra; ir(letra) hace el salto
@@ -107,13 +111,17 @@ let C={};try{C=JSON.parse(leeLS('carrito')||'{}')||{}}catch{}
 // Controles de cada tarjeta: "Agregar" o, si ya está en el carrito, − cantidad +
 const ctrl=id=>C[id]?`<div class="step"><button type="button" class="s" title="Quitar uno" onclick="suma(${id},-1)">−</button><input type="number" min="0" step="any" inputmode="decimal" value="${C[id]}" aria-label="Cantidad" onfocus="this.select()" onchange="ponCant(${id},this.value)"><button type="button" title="Agregar uno" onclick="suma(${id},1)">+</button></div>`:`<button type="button" class="agr" onclick="suma(${id},1)">+ Agregar</button>`;
 const lineasCar=()=>Object.keys(C).map(id=>({p:P.find(x=>x.id==id),c:C[id]})).filter(l=>l.p);
-function suma(id,d){ponCant(id,(+C[id]||0)+d)}
-function ponCant(id,v){const n=parseFloat(String(v).replace(',','.'));if(n>0)C[id]=Math.round(n*100)/100;else delete C[id];
+// Compra mínima: "Agregar" pone el mínimo y "−" desde el mínimo lo quita del carrito
+const minDe=id=>Math.max(1,+P.find(x=>x.id==id)?.minimo||0);
+function suma(id,d){const c=+C[id]||0,m=minDe(id);ponCant(id,!c&&d>0?m:c+d<m?0:c+d)}
+function ponCant(id,v){let n=parseFloat(String(v).replace(',','.'));const m=minDe(id);
+ if(n>0&&n<m){n=m;alert(`Este producto tiene compra mínima de ${fmt(m)} unidades.`)}
+ if(n>0)C[id]=Math.round(n*100)/100;else delete C[id];
  guardaLS('carrito',JSON.stringify(C));const k=$('k'+id);if(k)k.innerHTML=ctrl(id);pintaCar()}
 // Número del botón y, si está abierta, la lista del carrito. Se quitan los productos que ya no están en el catálogo.
 function pintaCar(){if(P.length){let cambio=false;for(const id in C)if(!P.some(x=>x.id==id)){delete C[id];cambio=true}if(cambio)guardaLS('carrito',JSON.stringify(C))}
  const L=lineasCar(),n=P.length?L.length:Object.keys(C).length;$('nb').textContent=n;$('nb').hidden=!n;if(!$('dcar').open||!$('cok').hidden)return;
- $('cl').innerHTML=L.map(({p,c})=>`<div><span class="nm">${esc(p.nombre)}<small>${p.codigo?esc(p.codigo)+' · ':''}${money(p.precio)} c/u</small></span>
+ $('cl').innerHTML=L.map(({p,c})=>`<div><span class="nm">${esc(nom(p))}<small>${p.codigo?esc(p.codigo)+' · ':''}${money(p.precio)} c/u${p.minimo>0?` · mínimo ${fmt(p.minimo)}`:''}</small></span>
   <span class="sb">${money(c*p.precio)}</span><div class="st">${ctrl(p.id)}</div>
   <button type="button" class="s" style="justify-self:end" title="Quitar del carrito" onclick="ponCant(${p.id},0)">✕</button>
   ${c>p.stock?`<span class="q">${p.stock>0?'Hay menos stock que lo pedido: te confirmamos la cantidad.':'Ahora sin stock: te confirmamos si llega.'}</span>`:''}</div>`).join('')
@@ -122,13 +130,13 @@ function pintaCar(){if(P.length){let cambio=false;for(const id in C)if(!P.some(x
 function abrirCarrito(){$('cform').hidden=false;$('cok').hidden=true;$('cn').value=leeLS('car_nombre')||'';$('ct').value=leeLS('car_tel')||'';$('dcar').showModal();pintaCar()}
 function vaciar(){if(confirm('¿Vaciar el carrito?')){C={};guardaLS('carrito','{}');r();pintaCar()}}
 async function enviar(e){e.preventDefault();const L=lineasCar();if(!L.length)return;
- const nom=$('cn').value.trim(),tel=$('ct').value.trim(),nota=$('cc').value.trim();if(!nom||!tel)return;
- guardaLS('car_nombre',nom);guardaLS('car_tel',tel);const b=$('benv');b.disabled=true;b.textContent='Enviando…';
- const{data,error}=await sb.rpc('enviar_solicitud',{p_cliente:nom,p_telefono:tel,p_nota:nota,p_lineas:L.map(l=>({id:l.p.id,cantidad:l.c}))});
+ const cli=$('cn').value.trim(),tel=$('ct').value.trim(),nota=$('cc').value.trim();if(!cli||!tel)return;
+ guardaLS('car_nombre',cli);guardaLS('car_tel',tel);const b=$('benv');b.disabled=true;b.textContent='Enviando…';
+ const{data,error}=await sb.rpc('enviar_solicitud',{p_cliente:cli,p_telefono:tel,p_nota:nota,p_lineas:L.map(l=>({id:l.p.id,cantidad:l.c}))});
  b.disabled=false;b.textContent='Enviar pedido de presupuesto';
  if(error)return alert(error.code=='PGRST202'?'El carrito todavía no está activado. Avisanos por WhatsApp, por favor.':'No se pudo enviar el pedido: '+error.message);
  // Mensaje para avisar por WhatsApp (opcional: el pedido ya quedó guardado)
- const txt=`Hola, soy ${nom}. Envié el pedido de presupuesto Nº ${data.id} desde el catálogo:\n`+L.map(l=>`• ${fmt(l.c)} × ${l.p.nombre}`).join('\n')+(nota?`\nComentario: ${nota}`:'');
+ const txt=`Hola, soy ${cli}. Envié el pedido de presupuesto Nº ${data.id} desde el catálogo:\n`+L.map(l=>`• ${fmt(l.c)} × ${nom(l.p)}`).join('\n')+(nota?`\nComentario: ${nota}`:'');
  $('okWa').href='https://wa.me/'+(CFG.WHATSAPP||'')+'?text='+encodeURIComponent(txt);$('okWa').hidden=!CFG.WHATSAPP;
  $('okT').textContent=`¡Pedido Nº ${data.id} enviado!`;$('okTel').textContent=tel;
  $('okFalta').hidden=!data.falta;

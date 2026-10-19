@@ -61,5 +61,22 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Al enviarlo, el pedido queda guardado en Supabase y el stock queda **reservado**: se descuenta en ese momento y el catálogo lo muestra. El cliente puede además avisarte por WhatsApp con el detalle (número en `config.js` > `WHATSAPP`).
 - En el panel, pestaña **Pedidos web**: el número rojo indica los pedidos nuevos (se revisa cada 30 s y avisa cuando llega uno).
   - **Pasar a presupuesto**: carga los productos en "Nuevo presupuesto" con el precio actual. Genera el PDF como siempre: se confirma la venta sin descontar dos veces (si cambias cantidades, se ajusta solo) y el pedido queda "Presupuestado".
+  - **Editar cantidades**: en los pedidos nuevos, cada producto tiene − cantidad + y ✕ para quitarlo. Se guarda al instante y ajusta el stock reservado (si bajas, vuelve al stock; si subes, reserva lo que haya).
   - **Descartar**: devuelve al stock lo reservado y lo saca de la lista. Si lo recuperas desde "Descartados", vuelve a reservar lo que haya en stock.
   - El teléfono del cliente abre su WhatsApp para mandarle el presupuesto.
+
+## Recuperar la contraseña del panel
+- Configuración (una sola vez): en Supabase > Authentication > URL Configuration
+  - **Site URL**: la dirección de tu panel, por ejemplo `https://hector-ariel.github.io/TU-REPO/admin.html`
+  - **Redirect URLs** > Add URL: `https://hector-ariel.github.io/**`
+- Si te olvidas la contraseña: en el inicio de sesión escribe tu email y toca **¿Olvidaste tu contraseña?**. Te llega un link por email (revisa Spam); al tocarlo, el panel te pide la contraseña nueva.
+- El link vence en 1 hora y sirve una sola vez. Supabase gratis permite pocos emails por hora: si dice "espera unos minutos", espera.
+- Plan B: en supabase.com > Authentication > Users, en tu usuario puedes enviarte el link ("Send password recovery") o cambiar la contraseña.
+
+## Compra mínima (catálogo)
+- En el catálogo ya no se ve la leyenda del proveedor "(MINIMO 12 UNIDADES)", "MIN 10"…: el cliente ve el nombre limpio. En el panel y en el pedido al proveedor la descripción sigue completa.
+- Cada producto tiene **Compra mínima** en su ficha: vacío = se vende por unidad; con número, el catálogo muestra "Compra mínima: X" y el carrito no deja pedir menos (al tocar "Agregar" pone directamente ese mínimo).
+  - El botón **Usar el de la descripción (X)** copia el número que dice "MINIMO" en la descripción.
+- Para muchos a la vez: marca los productos y en la barra de abajo elige **Compra mínima… > Según la descripción** o **Por unidad**.
+- Filtro (junto a sectores): **Con compra mínima**, **Por unidad** o **Dicen MINIMO pero van por unidad** (para revisarlos).
+- La primera vez hay que ejecutar otra vez `supabase.sql` en Supabase (crea la columna `minimo`). Hasta entonces, todos se venden por unidad.
