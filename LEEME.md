@@ -74,9 +74,9 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Plan B: en supabase.com > Authentication > Users, en tu usuario puedes enviarte el link ("Send password recovery") o cambiar la contraseña.
 
 ## Compra mínima (catálogo)
-- En el catálogo ya no se ve la leyenda del proveedor "(MINIMO 12 UNIDADES)", "MIN 10"…: el cliente ve el nombre limpio. En el panel y en el pedido al proveedor la descripción sigue completa.
+- En el catálogo ya no se ve la leyenda del proveedor "(MINIMO 12 UNIDADES)", "MIN 10", "(CAJA CERRADA 50 UNID)"…: el cliente ve el nombre limpio. En el panel y en el pedido al proveedor la descripción sigue completa.
 - Cada producto tiene **Compra mínima** en su ficha: vacío = se vende por unidad; con número, el catálogo muestra "Compra mínima: X" y el carrito no deja pedir menos (al tocar "Agregar" pone directamente ese mínimo).
-  - El botón **Usar el de la descripción (X)** copia el número que dice "MINIMO" en la descripción.
+  - El botón **Usar el de la descripción (X)** copia el número que dice "MINIMO" o "CAJA CERRADA" en la descripción.
 - Para muchos a la vez: marca los productos y en la barra de abajo elige **Compra mínima… > Según la descripción** o **Por unidad**.
 - Filtro (junto a sectores): **Con compra mínima**, **Por unidad** o **Dicen MINIMO pero van por unidad** (para revisarlos).
 - La primera vez hay que ejecutar otra vez `supabase.sql` en Supabase (crea la columna `minimo`). Hasta entonces, todos se venden por unidad.

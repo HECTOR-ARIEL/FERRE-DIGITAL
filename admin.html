@@ -73,7 +73,7 @@ dialog{overflow:auto}
   <button id="qx" type="button" hidden title="Borrar búsqueda" onclick="$('q').value='';lim=100;renderP();$('q').focus()">✕</button></div><span class="m" id="u"></span></div>
  <div class="c r" id="tbar">
   <select id="fs" onchange="lim=100;renderP()" title="Filtrar por sector"></select>
-  <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option><option value="m">Con compra mínima</option><option value="u">Por unidad</option><option value="x">Dicen MINIMO pero van por unidad</option></select>
+  <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option><option value="m">Con compra mínima</option><option value="u">Por unidad</option><option value="x">Dicen MINIMO o CAJA CERRADA pero van por unidad</option></select>
   <button onclick="editar()">+ Nuevo producto</button>
   <button class="s" onclick="$('f').click()">Importar Excel</button>
   <input id="f" type="file" accept=".xlsx,.xls,.csv" hidden onchange="imp(this.files[0])">
@@ -94,7 +94,7 @@ dialog{overflow:auto}
  <div id="selbar" hidden><span><b id="nsel">0</b> seleccionado(s)</span>
   <button class="s" onclick="sel.clear();renderP()">Cancelar</button>
   <select id="ssec" onchange="asignarSector(this.value);this.value=''"></select>
-  <select id="smin" onchange="asignarMinimo(this.value);this.value=''"><option value="">Compra mínima…</option><option value="d">Según la descripción (MINIMO…)</option><option value="0">Por unidad</option></select>
+  <select id="smin" onchange="asignarMinimo(this.value);this.value=''"><option value="">Compra mínima…</option><option value="d">Según la descripción (MINIMO… o CAJA CERRADA…)</option><option value="0">Por unidad</option></select>
   <button id="bdef" class="danger" hidden onclick="borrarDefinitivo()">Eliminar definitivamente</button>
   <button id="bsel" onclick="accionSel()">Eliminar</button></div>
  <p class="m">Excel: puedes subir la nota de pedido tal cual llega. Se usan solo las columnas <b>Producto</b> (o Descripción) y <b>Precio</b> (y <b>Stock</b> si existe); el código y el resto de columnas se ignoran. Cada producto se reconoce por su descripción original del Excel: aunque le cambies aquí la descripción o el código, se seguirá actualizando bien.</p>
@@ -228,7 +228,7 @@ function toast(t){const d=document.createElement('div');d.className='toast';d.te
 function msg(e){if(e.code=='23505')return 'Ya existe otro producto con ese código.';return e.message||String(e)}
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 // lo que se ve en la tabla de productos: búsqueda + filtro de código (+ papelera)
-const lista=()=>{const c=$('fc').value,f=$('fs').value;return filtra($('q').value,enPap).filter(p=>(!c||(c=='m'?p.minimo>0:c=='u'?!(p.minimo>0):c=='x'?!(p.minimo>0)&&bultoDe(p.clave||p.nombre)>0:(c=='c')==!!p.codigo))&&(!f||(f=='-'?!p.sector_id:p.sector_id==f)))};
+const lista=()=>{const c=$('fc').value,f=$('fs').value;return filtra($('q').value,enPap).filter(p=>(!c||(c=='m'?p.minimo>0:c=='u'?!(p.minimo>0):c=='x'?!(p.minimo>0)&&minDesc(p.clave||p.nombre)>0:(c=='c')==!!p.codigo))&&(!f||(f=='-'?!p.sector_id:p.sector_id==f)))};
 // busca dentro de los productos normales, o de la papelera si enPap=true
 const filtra=(q,enPap=false)=>{const w=norm(q).split(/\s+/).filter(Boolean);return P.filter(p=>!!p.borrado==enPap&&w.every(x=>norm((p.codigo||'')+' '+p.nombre).includes(x)))};
 
@@ -337,9 +337,9 @@ async function asignarSector(v){if(v==='')return;const ids=[...sel],n=ids.length
 // Compra mínima de los seleccionados: "d" = el número que dice la descripción del proveedor (MINIMO 12…), "0" = por unidad
 let MIN_OK=false;
 async function asignarMinimo(v){if(v==='')return;const L2=P.filter(p=>sel.has(p.id));if(!L2.length)return;const g=new Map();let sin=0;
- for(const p of L2){const m=v=='d'?bultoDe(p.clave||p.nombre):0;if(v=='d'&&!m){sin++;continue}const k=m>1?m:null;g.set(k,[...(g.get(k)||[]),p.id])}
- const n=L2.length-sin;if(!n)return alert('Ninguno de los productos seleccionados dice "MINIMO" en la descripción. Pon la compra mínima a mano en la ficha de cada producto.');
- if(!confirm(v=='d'?`¿Poner compra mínima según la descripción a ${n} producto(s)?`+(sin?`\n\n${sin} no dicen "MINIMO" en la descripción y se dejan como están.`:''):`¿Vender por unidad ${n} producto(s)? (sin compra mínima)`))return;
+ for(const p of L2){const m=v=='d'?minDesc(p.clave||p.nombre):0;if(v=='d'&&!m){sin++;continue}const k=m>1?m:null;g.set(k,[...(g.get(k)||[]),p.id])}
+ const n=L2.length-sin;if(!n)return alert('Ninguno de los productos seleccionados dice "MINIMO" ni "CAJA CERRADA" en la descripción. Pon la compra mínima a mano en la ficha de cada producto.');
+ if(!confirm(v=='d'?`¿Poner compra mínima según la descripción a ${n} producto(s)?`+(sin?`\n\n${sin} no dicen "MINIMO" ni "CAJA CERRADA" y se dejan como están.`:''):`¿Vender por unidad ${n} producto(s)? (sin compra mínima)`))return;
  for(const[k,ids]of g)for(let i=0;i<ids.length;i+=200){const{error}=await sb.from('productos').update({minimo:k}).in('id',ids.slice(i,i+200));if(error)return alert(msg(error))}
  sel.clear();toast(v=='d'?`Compra mínima puesta a ${n} producto(s)`:`${n} producto(s) por unidad`);load()}
 async function aplicarGanancia(){const g=num($('gb').value);if(g===null)return alert('Escribe el porcentaje de ganancia.');
@@ -351,7 +351,7 @@ async function aplicarGanancia(){const g=num($('gb').value);if(g===null)return a
 function editar(id){ed=id?P.find(p=>p.id==id):{codigo:'',nombre:'',costo:0,ganancia:num($('gn').value)??0,stock:0,activo:true,imagen:null};
  nuevaImg=null;quitarImg=false;$('dt').textContent=id?'Editar producto':'Nuevo producto';
  $('fcod').value=ed.codigo||'';$('fdes').value=ed.nombre;$('fcos').value=fmtIn(ed.costo);$('fgan').value=fmtIn(ed.ganancia);$('fsto').value=fmtIn(ed.stock);$('fact').checked=ed.activo;$('fsec').value=ed.sector_id??(id?'':$('fs').value.replace('-',''));$('lsec').hidden=!S.ok;
- const bd=bultoDe(ed.clave||ed.nombre);$('fmin').value=ed.minimo>0?fmtIn(ed.minimo):'';$('lmin').hidden=!MIN_OK;
+ const bd=minDesc(ed.clave||ed.nombre);$('fmin').value=ed.minimo>0?fmtIn(ed.minimo):'';$('lmin').hidden=!MIN_OK;
  $('fminb').hidden=!bd;$('fminb').dataset.n=bd;$('fminb').textContent=`Usar el de la descripción (${bd})`;
  deCosto();verImg(ed.imagen);$('fdel').hidden=!id;
  $('fclave').textContent=ed.clave?'Vinculado al Excel como: "'+ed.clave+'"':'';$('dlg').showModal()}
@@ -649,6 +649,8 @@ setInterval(()=>{if(!document.hidden)cuentaWeb()},30000);document.addEventListen
 /* ---------- pedido al proveedor ---------- */
 // Bulto según la descripción del proveedor: "(MINIMO 12)", "MINIMO 6 UNID", "MIN 10", "MINIM0 12"… ("X 100 UNID" no es bulto)
 const bultoDe=s=>{const m=String(s||'').match(/\bMIN(?:IM[O0])?\.?\s*(?:DE\s*)?(\d+)/i);return m?+m[1]:0};
+// Compra mínima sugerida para el catálogo: "MINIMO 12" o "CAJA CERRADA 50" en la descripción (el pedido al proveedor sigue usando bultoDe)
+const minDesc=s=>bultoDe(s)||+(String(s||'').match(/\bCAJA\s+CERRADA\s*(?:DE\s*|X\s*)?(\d+)/i)?.[1]||0);
 // Un producto por bulto se pide solo si el stock quedó por debajo de 5 (de la mitad del bulto en los de 20 o más)
 const limiteDe=b=>b>=20?b/2:5;
 let PED={lineas:[],hasta:0,n:0};

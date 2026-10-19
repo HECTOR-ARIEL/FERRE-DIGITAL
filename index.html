@@ -59,9 +59,9 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 const sb=supabase.createClient(CFG.URL,CFG.KEY),$=id=>document.getElementById(id);let P=[],lim=48;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>(CFG.MONEDA||'')+' '+Number(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
-// Nombre para el cliente: sin la leyenda del proveedor "(MINIMO 12 UNIDADES)", "MIN 10"… La compra mínima,
-// si la hay, la decides tú en administración y se muestra aparte.
-const nom=p=>String(p.nombre||'').replace(/\s*[(\[]?\s*\bMIN(?:IM[O0])?\.?\s*(?:DE\s*)?\d+(?:\s*(?:UNIDADES|UNIDAD|UNID|UNI|UN|U)\b\.?)?\s*[)\]]?/gi,' ').replace(/\s{2,}/g,' ').replace(/[\s\-,]+$/,'').trim()||p.nombre;
+// Nombre para el cliente: sin la leyenda del proveedor "(MINIMO 12 UNIDADES)", "MIN 10", "(CAJA CERRADA 50 UNID)"…
+// La compra mínima, si la hay, la decides tú en administración y se muestra aparte.
+const nom=p=>String(p.nombre||'').replace(/\s*[(\[]?\s*\b(?:MIN(?:IM[O0])?\.?|CAJA\s+CERRADA)\s*(?:DE\s*|X\s*)?\d+(?:\s*(?:UNIDADES|UNIDAD|UNID|UNI|UN|U)\b\.?)?\s*[)\]]?/gi,' ').replace(/\s{2,}/g,' ').replace(/[\s\-,]+$/,'').trim()||p.nombre;
 const norm=s=>String(s??'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
 if(CFG.NOMBRE)document.title=CFG.NOMBRE+' · Catálogo';
 // Solo se muestran productos con código propio, visibles y fuera de la papelera.
