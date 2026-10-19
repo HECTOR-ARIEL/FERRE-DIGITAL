@@ -57,6 +57,7 @@ dialog{overflow:auto}
  <label>Email<input id="em" type="email" required autocomplete="username"></label>
  <label>Contraseña<input id="pw" type="password" required autocomplete="current-password"></label>
  <button>Entrar</button>
+ <button type="button" class="s" onclick="olvide()">¿Olvidaste tu contraseña?</button>
 </form>
 
 <div id="app" hidden>
@@ -142,6 +143,14 @@ dialog{overflow:auto}
 </div>
 </main>
 
+<dialog id="dpw"><form onsubmit="nuevaClave(event)">
+ <h2>Nueva contraseña</h2>
+ <p class="m" style="margin:0;font-size:14px">Escribe la contraseña nueva para entrar al panel (mínimo 6 caracteres).</p>
+ <label>Contraseña nueva<input id="pw1" type="password" minlength="6" required autocomplete="new-password"></label>
+ <label>Repetir contraseña<input id="pw2" type="password" minlength="6" required autocomplete="new-password"></label>
+ <div class="acc"><button>Guardar contraseña</button></div>
+</form></dialog>
+
 <dialog id="dsec"><form method="dialog" onsubmit="return false">
  <h2>Sectores</h2>
  <p class="m" style="margin:0;font-size:14px">Escribe en un sector para cambiarle el nombre. Si borras un sector, sus productos quedan "sin sector" (no se borran).</p>
@@ -176,6 +185,8 @@ dialog{overflow:auto}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="config.js"></script>
 <script>
+// El link del email de recuperación vuelve con "type=recovery" en la dirección (se mira antes de que Supabase la limpie)
+const RECUP=/type=recovery|error_code=otp_expired/.test(location.hash+location.search);
 const sb=supabase.createClient(CFG.URL,CFG.KEY),$=id=>document.getElementById(id);
 const leeLS=k=>{try{return localStorage.getItem(k)}catch{return null}},guardaLS=(k,v)=>{try{localStorage.setItem(k,v)}catch{}};
 // Índice A-Z: la barra (el) salta al primer producto de la letra; ir(letra) hace el salto
@@ -219,12 +230,27 @@ const filtra=(q,enPap=false)=>{const w=norm(q).split(/\s+/).filter(Boolean);retu
 const ANCHOS=[['Normal','1100px'],['Ancho','1500px'],['Completo','none']];
 function ancho(paso){const i=((+leeLS('ancho')||0)+(paso||0))%ANCHOS.length;guardaLS('ancho',i);
  document.querySelector('main').style.maxWidth=ANCHOS[i][1];$('anch').textContent='↔ '+ANCHOS[i][0]}
-async function init(){ancho();$('gn').value=leeLS('gn')??'30';$('cl').value=leeLS('cliente')||'';pintaSol();const{data}=await sb.auth.getSession();show(!!data.session)}
+async function init(){ancho();$('gn').value=leeLS('gn')??'30';$('cl').value=leeLS('cliente')||'';pintaSol();const{data}=await sb.auth.getSession();show(!!data.session);
+ // link de recuperación: ya entró con el link, falta poner la contraseña nueva; si el link venció, se avisa
+ if(RECUP){if(data.session)pideClave();else alert('El link para cambiar la contraseña venció o ya se usó. Pide otro con "¿Olvidaste tu contraseña?".')}}
 function show(ok){$('login').hidden=ok;$('app').hidden=!ok;$('out').hidden=!ok;if(ok){load();cuentaWeb()}else $('em').focus()}
 async function login(e){e.preventDefault();const b=e.submitter;b.disabled=true;
  const{error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});b.disabled=false;
  if(error)return alert(error.message=='Invalid login credentials'?'Email o contraseña incorrectos.':error.message);$('pw').value='';show(true)}
 async function salir(){await sb.auth.signOut();show(false)}
+// Recuperar contraseña: Supabase manda al email un link que vuelve a esta página para poner una nueva
+async function olvide(){const em=$('em').value.trim();
+ if(!em){alert('Escribe tu email en la casilla de arriba y vuelve a tocar "¿Olvidaste tu contraseña?".');return $('em').focus()}
+ if(!confirm(`¿Enviar a ${em} un link para cambiar la contraseña?`))return;
+ const{error}=await sb.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname});
+ if(error)return alert(/rate|seconds|security/i.test(error.message)?'Ya se envió un email hace poco. Espera unos minutos y vuelve a intentar.':error.message);
+ alert(`Listo. Si ${em} es el email del administrador, en unos minutos te llega un link (revisa también Spam o Promociones).\n\nTócalo y la página te pedirá la contraseña nueva.`)}
+function pideClave(){if(!$('dpw').open){$('dpw').showModal();$('pw1').focus()}}
+sb.auth.onAuthStateChange(e=>{if(e=='PASSWORD_RECOVERY')pideClave()});
+async function nuevaClave(e){e.preventDefault();const a=$('pw1').value;if(a!==$('pw2').value)return alert('Las dos contraseñas no coinciden.');
+ const b=e.submitter;b.disabled=true;const{error}=await sb.auth.updateUser({password:a});b.disabled=false;
+ if(error)return alert(/different|same/i.test(error.message)?'La contraseña nueva tiene que ser distinta de la anterior.':/session|expired|invalid/i.test(error.message)?'El link venció. Pide otro con "¿Olvidaste tu contraseña?".':error.message);
+ $('dpw').close();$('pw1').value=$('pw2').value='';history.replaceState(null,'',location.pathname);toast('Contraseña cambiada. Ya estás dentro del panel.')}
 function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';$('t-ped').hidden=t!='ped';$('t-web').hidden=t!='web';if(t=='web')cargaWeb();if(t=='hist')cargaHist();if(t=='ped')cargaPedido()}
 
 /* ---------- productos ---------- */
