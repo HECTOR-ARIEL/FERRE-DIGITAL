@@ -519,7 +519,7 @@ async function save(){const cl=$('cl').value.trim();
  // Si viene de un pedido web, la base devuelve lo reservado y descuenta lo del presupuesto (sin descontar dos veces)
  const arg={p_cliente:cl,p_lineas:L.map(l=>({id:l.id,nombre:l.nombre,cantidad:l.cantidad}))},sol=SOL;if(sol)arg.p_solicitud=sol;
  const{data,error}=await sb.rpc('crear_presupuesto',arg);b.disabled=false;
- if(error&&sol&&/p_solicitud|function/.test(error.message))return alert('Para pasar pedidos web a presupuesto, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).');
+ if(error&&sol&&error.code=='PGRST202')return alert('Para pasar pedidos web a presupuesto, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).');
  if(error)return alert(/Cantidad no válida/.test(error.message)?'Para poder usar cantidad 0, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
  if(typeof data!='object')return alert('Falta actualizar la base de datos: ejecuta de nuevo supabase.sql en Supabase.');
  // El presupuesto ya está guardado y el stock descontado. La pantalla se actualiza con el stock que
@@ -575,7 +575,7 @@ function pintaWeb(){$('web').innerHTML=W.map((s,i)=>{const tel=s.telefono?`<a hr
 async function estadoWeb(i,e){const s=W[i];if(e=='descartado'&&!confirm(`¿Descartar el pedido Nº ${s.id} de ${s.cliente}?`))return;
  // descartar devuelve al stock lo reservado; recuperar lo vuelve a reservar (según el stock de ahora)
  const{error}=await sb.rpc('estado_solicitud',{p_id:s.id,p_estado:e});
- if(error)return alert(/estado_solicitud/.test(error.message)?'Falta actualizar la base: ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run).':msg(error));
+ if(error)return alert(error.code=='PGRST202'?'Falta actualizar la base: ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run).':'No se pudo cambiar el pedido: '+msg(error));
  load();
  if(SOL==s.id){SOL=null;guardaLS('sol','');pintaSol()}toast(e=='nuevo'?'Pedido recuperado':'Pedido descartado');cargaWeb()}
 // Carga el pedido en "Nuevo presupuesto" con los precios de hoy; los productos eliminados se avisan y se saltean

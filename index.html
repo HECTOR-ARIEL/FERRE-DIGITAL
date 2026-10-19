@@ -126,7 +126,7 @@ async function enviar(e){e.preventDefault();const L=lineasCar();if(!L.length)ret
  guardaLS('car_nombre',nom);guardaLS('car_tel',tel);const b=$('benv');b.disabled=true;b.textContent='Enviando…';
  const{data,error}=await sb.rpc('enviar_solicitud',{p_cliente:nom,p_telefono:tel,p_nota:nota,p_lineas:L.map(l=>({id:l.p.id,cantidad:l.c}))});
  b.disabled=false;b.textContent='Enviar pedido de presupuesto';
- if(error)return alert(/Could not find|does not exist/.test(error.message)?'El carrito todavía no está activado. Avisanos por WhatsApp, por favor.':'No se pudo enviar el pedido: '+error.message);
+ if(error)return alert(error.code=='PGRST202'?'El carrito todavía no está activado. Avisanos por WhatsApp, por favor.':'No se pudo enviar el pedido: '+error.message);
  // Mensaje para avisar por WhatsApp (opcional: el pedido ya quedó guardado)
  const txt=`Hola, soy ${nom}. Envié el pedido de presupuesto Nº ${data.id} desde el catálogo:\n`+L.map(l=>`• ${fmt(l.c)} × ${l.p.nombre}`).join('\n')+(nota?`\nComentario: ${nota}`:'');
  $('okWa').href='https://wa.me/'+(CFG.WHATSAPP||'')+'?text='+encodeURIComponent(txt);$('okWa').hidden=!CFG.WHATSAPP;
