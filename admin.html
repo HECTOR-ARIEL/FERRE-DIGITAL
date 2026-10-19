@@ -31,6 +31,9 @@ dialog{overflow:auto}
 #selbar,.selbar{position:sticky;bottom:12px;z-index:4;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--t);color:var(--bg);border-radius:10px;padding:10px 12px;margin-top:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 #selbar span,.selbar span{flex:1;min-width:120px}#selbar .s,.selbar .s{background:transparent;color:inherit;border-color:currentColor}
 .aviso{background:var(--bg);border:1px dashed var(--b)}
+.tag.nw{background:var(--a);color:#fff;border-color:var(--a);font-weight:700}
+.wp{display:grid;gap:8px}.wp.nuevo{border-left:4px solid var(--a)}.wp .cab{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}.wp .cab b{font-size:16px}
+.wp .nota{background:var(--bg);border-radius:8px;padding:8px 10px;font-size:14px;white-space:pre-wrap}.wp table td{padding:5px 6px;font-size:14px}
 @media(max-width:520px){.sub{display:block}#t-prod .top{margin:-14px -34px 12px -10px;padding:10px 34px 10px 10px}#t-prod .top .m{font-size:12px}.bus{min-width:0}
  #pt tr{display:grid;grid-template-columns:30px 1fr auto auto;align-items:center;column-gap:10px;padding:8px 6px;border-bottom:1px solid var(--b)}
  #pt td,#pt th{border:0;padding:3px 0}#pt td.hide-sm,#pt th.hide-sm{display:none}#pt td.cc{grid-row:1/3}
@@ -57,7 +60,7 @@ dialog{overflow:auto}
 </form>
 
 <div id="app" hidden>
-<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Nuevo presupuesto <span id="nl" class="tag" hidden></span></button><button data-t="hist" onclick="tab('hist')">Historial</button><button data-t="ped" onclick="tab('ped')">Pedido</button></div>
+<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Nuevo presupuesto <span id="nl" class="tag" hidden></span></button><button data-t="web" onclick="tab('web')">Pedidos web <span id="nw" class="tag nw" hidden></span></button><button data-t="hist" onclick="tab('hist')">Historial</button><button data-t="ped" onclick="tab('ped')">Pedido</button></div>
 
 <section id="t-prod" class="con-abc"><nav class="abc" id="abc" aria-label="Índice alfabético"></nav>
  <div class="top"><div class="bus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
@@ -95,16 +98,24 @@ dialog{overflow:auto}
  <div class="c res" id="res" hidden><b id="resT"></b>
   <p class="m" style="margin:6px 0 10px">El PDF ya se descargó y el presupuesto quedó guardado en el <b>Historial</b>. Puedes enviarlo al cliente o volver a descargarlo.</p>
   <div class="r"><button class="s" onclick="descargar()">Descargar PDF</button><button id="bcomp" onclick="compartir()">Compartir (WhatsApp, correo…)</button><button class="s" onclick="$('res').hidden=true">Cerrar</button></div></div>
+ <div class="c aviso r" id="solav" hidden></div>
  <div class="c"><label>Cliente<input id="cl" placeholder="Nombre del cliente" oninput="guardaBorrador()"></label></div>
  <div class="c"><b>1. Agrega productos</b><input id="qb" type="search" placeholder="Buscar por descripción o código" oninput="renderB()" style="margin-top:8px">
   <div class="w"><table><tbody id="bt"></tbody></table></div></div>
  <div class="c" id="paso2"><b>2. Revisa las cantidades</b><div class="w"><table><tbody id="lt"></tbody></table></div>
   <div class="tot" id="tt"></div>
-  <div class="acc"><button class="s" onclick="if(confirm('¿Vaciar el presupuesto?')){L=[];$('cl').value='';rl();renderB()}">Vaciar</button><button id="bs" onclick="save()">Generar presupuesto (PDF)</button></div></div>
+  <div class="acc"><button class="s" onclick="if(confirm('¿Vaciar el presupuesto?')){L=[];$('cl').value='';SOL=null;guardaLS('sol','');pintaSol();rl();renderB()}">Vaciar</button><button id="bs" onclick="save()">Generar presupuesto (PDF)</button></div></div>
  <div id="pbar" class="selbar" hidden><span><b id="pn">0</b> producto(s) · <b id="ptot"></b></span>
   <button class="s" onclick="$('qb').scrollIntoView({block:'center',behavior:'smooth'});$('qb').focus({preventScroll:true})">Buscar</button>
   <button class="s" onclick="$('paso2').scrollIntoView({block:'start',behavior:'smooth'})">Ver lista</button>
   <button onclick="save()">Generar PDF</button></div>
+</section>
+
+<section id="t-web" hidden>
+ <div class="c r"><select id="wf" onchange="cargaWeb()" style="width:auto" title="Qué pedidos mostrar"><option value="nuevo">Nuevos (por preparar)</option><option value="presupuestado">Ya presupuestados</option><option value="descartado">Descartados</option><option value="">Todos</option></select>
+  <span class="m" id="winfo" style="flex:1"></span><button class="s" onclick="cargaWeb()">↻ Actualizar</button></div>
+ <div id="web"></div>
+ <p class="m">Son los pedidos que los clientes arman con el <b>Carrito</b> del catálogo. Al enviarlos, el stock queda <b>reservado</b> (se descuenta en ese momento y el catálogo lo muestra). Pulsa <b>Pasar a presupuesto</b>: los productos se cargan en "Nuevo presupuesto" con el precio actual. Revisa las cantidades y genera el PDF como siempre: se confirma la venta sin descontar dos veces (si cambias cantidades, se ajusta solo) y el pedido pasa a "Ya presupuestados". <b>Descartar</b> devuelve al stock lo reservado.</p>
 </section>
 
 <section id="t-hist" hidden>
@@ -117,6 +128,7 @@ dialog{overflow:auto}
 </section>
 
 <section id="t-ped" hidden>
+ <div class="c aviso r" id="pedweb" hidden></div>
  <div class="c"><b>Ventas desde el último pedido</b><p class="m" id="pedinfo" style="margin:6px 0 0"></p></div>
  <div class="c w" style="padding:0"><table><thead><tr><th>Producto</th><th class="n hide-sm">Vendido</th><th class="n hide-sm">Faltó</th><th class="n hide-sm">Stock</th><th class="n">Pedir</th></tr></thead><tbody id="pedt"></tbody></table></div>
  <div class="c aviso" id="pedres" hidden></div>
@@ -207,13 +219,13 @@ const filtra=(q,enPap=false)=>{const w=norm(q).split(/\s+/).filter(Boolean);retu
 const ANCHOS=[['Normal','1100px'],['Ancho','1500px'],['Completo','none']];
 function ancho(paso){const i=((+leeLS('ancho')||0)+(paso||0))%ANCHOS.length;guardaLS('ancho',i);
  document.querySelector('main').style.maxWidth=ANCHOS[i][1];$('anch').textContent='↔ '+ANCHOS[i][0]}
-async function init(){ancho();$('gn').value=leeLS('gn')??'30';$('cl').value=leeLS('cliente')||'';const{data}=await sb.auth.getSession();show(!!data.session)}
-function show(ok){$('login').hidden=ok;$('app').hidden=!ok;$('out').hidden=!ok;if(ok)load();else $('em').focus()}
+async function init(){ancho();$('gn').value=leeLS('gn')??'30';$('cl').value=leeLS('cliente')||'';pintaSol();const{data}=await sb.auth.getSession();show(!!data.session)}
+function show(ok){$('login').hidden=ok;$('app').hidden=!ok;$('out').hidden=!ok;if(ok){load();cuentaWeb()}else $('em').focus()}
 async function login(e){e.preventDefault();const b=e.submitter;b.disabled=true;
  const{error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});b.disabled=false;
  if(error)return alert(error.message=='Invalid login credentials'?'Email o contraseña incorrectos.':error.message);$('pw').value='';show(true)}
 async function salir(){await sb.auth.signOut();show(false)}
-function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';$('t-ped').hidden=t!='ped';if(t=='hist')cargaHist();if(t=='ped')cargaPedido()}
+function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';$('t-ped').hidden=t!='ped';$('t-web').hidden=t!='web';if(t=='web')cargaWeb();if(t=='hist')cargaHist();if(t=='ped')cargaPedido()}
 
 /* ---------- productos ---------- */
 async function load(silencio){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){if(silencio)throw e;return alert(msg(e))}
@@ -405,7 +417,9 @@ async function imp(f){$('f').value='';if(!f)return;
 /* ---------- presupuesto ---------- */
 // stock actual de un producto y cuánto se puede entregar de una línea
 const stockDe=id=>Math.max(0,+(P.find(p=>p.id==id)?.stock??0));
-const disp=l=>Math.min(l.cantidad,stockDe(l.id));
+// En un pedido web, lo que el cliente ya reservó (l.res) cuenta como disponible para su presupuesto
+const stockL=l=>stockDe(l.id)+(SOL&&+l.res||0);
+const disp=l=>Math.min(l.cantidad,stockL(l));
 let ult=null,H=[];
 // Resultados de la búsqueda: si el producto ya está en el presupuesto, su cantidad se cambia ahí mismo
 function renderB(){const q=$('qb').value.trim(),F=q?filtra(q).slice(0,30):[];
@@ -421,7 +435,7 @@ function add(id){const p=P.find(x=>x.id==id);let l=L.find(x=>x.id==id);
  // con mouse queda lista la casilla para escribir la cantidad; en el teléfono no se abre el teclado
  if(q&&matchMedia('(pointer:fine)').matches){q.focus({preventScroll:true});q.select()}}
 function guardaBorrador(){guardaLS('borrador',JSON.stringify(L));guardaLS('cliente',$('cl').value)}
-function rl(){$('lt').innerHTML=L.map((l,i)=>{const s=stockDe(l.id),nota=s<=0?'Sin stock: saldrá en rojo en el PDF y no se cobra':s<l.cantidad?`Solo hay ${fmt(s)} en stock: se presupuestan ${fmt(s)}`:'';
+function rl(){$('lt').innerHTML=L.map((l,i)=>{const s=stockL(l),nota=s<=0?'Sin stock: saldrá en rojo en el PDF y no se cobra':s<l.cantidad?`Solo hay ${fmt(s)} en stock: se presupuestan ${fmt(s)}`:'';
   return `<tr><td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span><br>`:''}${esc(l.nombre)}${nota?`<div class="falta">${nota}</div>`:`<div class="m" style="font-size:12px">Stock ${fmt(s)}</div>`}
   <td><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" onfocus="this.select()" onchange="setCant(${l.id},this.value)">
   <td class="n hide-sm">${money(l.precio)}<td class="n">${s<=0?'<span class="falta">-</span>':money(disp(l)*l.precio)}
@@ -502,13 +516,19 @@ async function save(){const cl=$('cl').value.trim();
  const sinS=L.filter(l=>disp(l)<=0||disp(l)<l.cantidad).length;
  if(!confirm(`¿Generar el presupuesto${cl?' para '+cl:''}?\n\nSe descontará del stock la cantidad disponible de cada producto.`+(sinS?`\n${sinS} producto(s) sin stock suficiente saldrán en rojo en el PDF.`:'')))return;
  const b=$('bs');b.disabled=true;
- const{data,error}=await sb.rpc('crear_presupuesto',{p_cliente:cl,p_lineas:L.map(l=>({id:l.id,nombre:l.nombre,cantidad:l.cantidad}))});b.disabled=false;
+ // Si viene de un pedido web, la base devuelve lo reservado y descuenta lo del presupuesto (sin descontar dos veces)
+ const arg={p_cliente:cl,p_lineas:L.map(l=>({id:l.id,nombre:l.nombre,cantidad:l.cantidad}))},sol=SOL;if(sol)arg.p_solicitud=sol;
+ const{data,error}=await sb.rpc('crear_presupuesto',arg);b.disabled=false;
+ if(error&&sol&&/p_solicitud|function/.test(error.message))return alert('Para pasar pedidos web a presupuesto, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).');
  if(error)return alert(/Cantidad no válida/.test(error.message)?'Para poder usar cantidad 0, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
  if(typeof data!='object')return alert('Falta actualizar la base de datos: ejecuta de nuevo supabase.sql en Supabase.');
  // El presupuesto ya está guardado y el stock descontado. La pantalla se actualiza con el stock que
  // devolvió la base (sin otra consulta): en el iPhone, la descarga del PDF puede cortar las consultas en curso.
- for(const l of data.lineas||[]){const p=P.find(x=>x.id==l.id);if(p)p.stock=+p.stock-(+l.disponible||0)}
+ const res=sol?Object.fromEntries(L.map(l=>[l.id,+l.res||0])):{};
+ for(const l of data.lineas||[]){const p=P.find(x=>x.id==l.id);if(p)p.stock=+p.stock+(res[l.id]||0)-(+l.disponible||0)}
  ult={...data,cliente:cl,fecha:new Date().toISOString()};
+ // Si venía de un pedido web, la base ya lo marcó como presupuestado con este número
+ if(sol){SOL=null;guardaLS('sol','');pintaSol();cuentaWeb()}
  L=[];$('cl').value='';$('qb').value='';guardaBorrador();renderB();rl();renderP();
  $('resT').textContent=`Presupuesto Nº ${data.id}${cl?' · '+cl:''} · Total ${money(data.total)}`;$('res').hidden=false;window.scrollTo(0,0);
  descargar();setTimeout(refrescar,2000)}
@@ -532,6 +552,46 @@ async function borrarHist(){const ids=[...selH],n=ids.length;if(!n)return;
   selH.clear();toast(`${n} presupuesto(s) eliminado(s)`);await cargaHist()}
  catch(e){alert(msg(e))}finally{b.disabled=false}}
 
+/* ---------- pedidos web (carrito del catálogo) ---------- */
+// SOL: el pedido web que se está pasando a presupuesto. Al generar el PDF queda marcado como presupuestado.
+let W=[],SOL=+leeLS('sol')||null,nWeb=null;
+const fechaHora=f=>{f=new Date(f);return f.toLocaleDateString('es')+' '+f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})};
+// Teléfono para wa.me: "351 123 4567" → 5493511234567
+const waNum=t=>{let d=String(t||'').replace(/\D/g,'').replace(/^0+/,'');if(d.length==10)d='549'+d;else if(/^54[^9]/.test(d)&&d.length==12)d='549'+d.slice(2);return d};
+const ESTW={nuevo:'Nuevo',presupuestado:'Presupuestado',descartado:'Descartado'};
+async function cargaWeb(){$('winfo').textContent='Cargando…';let q=sb.from('solicitudes').select('*').order('id',{ascending:false}).limit(100);
+ if($('wf').value)q=q.eq('estado',$('wf').value);
+ const{data,error}=await q;if(error){$('web').innerHTML='';return $('winfo').textContent=/solicitudes/.test(error.message)?'Falta activar el carrito: ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run).':msg(error)}
+ W=data;$('winfo').textContent=W.length?`${W.length} pedido(s)`:'';pintaWeb();cuentaWeb()}
+function pintaWeb(){$('web').innerHTML=W.map((s,i)=>{const tel=s.telefono?`<a href="https://wa.me/${waNum(s.telefono)}" target="_blank" rel="noopener">${esc(s.telefono)}</a>`:'';
+ return `<div class="c wp ${s.estado}"><div class="cab"><b>${esc(s.cliente)}</b>${tel}<span class="m">Nº ${s.id} · ${fechaHora(s.fecha)}</span>
+  <span class="tag">${ESTW[s.estado]||esc(s.estado)}${s.presupuesto_id?' · Presupuesto Nº '+s.presupuesto_id:''}</span></div>
+  ${s.nota?`<div class="nota">${esc(s.nota)}</div>`:''}
+  <div class="w"><table><tbody>${(s.lineas||[]).map(l=>{const r=+l.reservado||0;return `<tr><td class="n" style="width:1%"><b>${fmt(l.cantidad)}</b><td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span> `:''}${esc(l.nombre)}${s.estado=='nuevo'&&l.reservado!=null&&r<l.cantidad?`<div class="falta">${r>0?`Solo se reservaron ${fmt(r)} (no había más stock)`:'Sin stock: no se reservó nada'}</div>`:''}<td class="n">${money(l.cantidad*l.precio)}</tr>`}).join('')}</tbody></table></div>
+  <div class="r" style="justify-content:space-between"><span>Total estimado: <b>${money(s.total)}</b></span><div class="acc">
+  ${s.estado=='nuevo'?`<button class="danger" onclick="estadoWeb(${i},'descartado')">Descartar</button><button onclick="pasarWeb(${i})">Pasar a presupuesto</button>`
+   :s.estado=='descartado'?`<button class="s" onclick="estadoWeb(${i},'nuevo')">Recuperar</button>`:''}</div></div></div>`}).join('')
+ ||'<div class="c m">No hay pedidos web '+($('wf').value=='nuevo'?'nuevos.':'para mostrar.')+'</div>'}
+async function estadoWeb(i,e){const s=W[i];if(e=='descartado'&&!confirm(`¿Descartar el pedido Nº ${s.id} de ${s.cliente}?`))return;
+ // descartar devuelve al stock lo reservado; recuperar lo vuelve a reservar (según el stock de ahora)
+ const{error}=await sb.rpc('estado_solicitud',{p_id:s.id,p_estado:e});
+ if(error)return alert(/estado_solicitud/.test(error.message)?'Falta actualizar la base: ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run).':msg(error));
+ load();
+ if(SOL==s.id){SOL=null;guardaLS('sol','');pintaSol()}toast(e=='nuevo'?'Pedido recuperado':'Pedido descartado');cargaWeb()}
+// Carga el pedido en "Nuevo presupuesto" con los precios de hoy; los productos eliminados se avisan y se saltean
+function pasarWeb(i){const s=W[i];if(L.length&&!confirm(`Ya hay un presupuesto a medio armar.\n¿Reemplazarlo por el pedido de ${s.cliente}?`))return;
+ const no=[];L=[];for(const l of s.lineas||[]){const p=P.find(x=>x.id==l.id);if(!p||p.borrado){no.push(l.nombre);continue}
+  L.push({id:p.id,codigo:p.codigo,nombre:p.nombre,precio:+p.precio,cantidad:+l.cantidad,res:+l.reservado||0})}
+ $('cl').value=s.cliente;SOL=s.id;guardaLS('sol',SOL);$('qb').value='';rl();renderB();pintaSol();tab('pres');window.scrollTo(0,0);
+ if(no.length)alert('Estos productos ya no existen y no se cargaron:\n\n• '+no.join('\n• '))}
+function pintaSol(){const s=W.find(x=>x.id==SOL);$('solav').hidden=!SOL;
+ $('solav').innerHTML=SOL?`<span style="flex:1;min-width:200px">Armando el <b>pedido web Nº ${SOL}</b>${s?.telefono?` · ${esc(s.cliente)} · <a href="https://wa.me/${waNum(s.telefono)}" target="_blank" rel="noopener">${esc(s.telefono)}</a>`:''}. Su stock ya está reservado: al generar el PDF se confirma (no se descuenta dos veces) y queda como presupuestado.</span><button class="s" onclick="if(confirm('¿Desvincular? El pedido web seguirá pendiente con su stock reservado, y este presupuesto descontará stock aparte.')){SOL=null;guardaLS('sol','');pintaSol();rl()}">Desvincular</button>`:''}
+// Número de pedidos nuevos en la pestaña. Se revisa cada 30 s y avisa cuando llega uno.
+async function cuentaWeb(){if($('app').hidden)return;const{count,error}=await sb.from('solicitudes').select('id',{count:'exact',head:true}).eq('estado','nuevo');
+ if(error)return;if(nWeb!==null&&count>nWeb){toast(count-nWeb>1?`Llegaron ${count-nWeb} pedidos web nuevos`:'Llegó un pedido web nuevo');if(!$('t-web').hidden)cargaWeb()}
+ nWeb=count;$('nw').textContent=count;$('nw').hidden=!count;document.title=(count?`(${count}) `:'')+'Administración'}
+setInterval(()=>{if(!document.hidden)cuentaWeb()},30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)cuentaWeb()});
+
 /* ---------- pedido al proveedor ---------- */
 // Bulto según la descripción del proveedor: "(MINIMO 12)", "MINIMO 6 UNID", "MIN 10", "MINIM0 12"… ("X 100 UNID" no es bulto)
 const bultoDe=s=>{const m=String(s||'').match(/\bMIN(?:IM[O0])?\.?\s*(?:DE\s*)?(\d+)/i);return m?+m[1]:0};
@@ -551,7 +611,10 @@ async function cargaPedido(){$('pedinfo').textContent='Cargando…';$('pedt').in
    b=bultoDe(p?.clave||p?.nombre||x.nombre),total=x.vendido+x.falto;let pedir=total,nota='';
    if(b){if(st!=null&&st>=limiteDe(b)){pedir=0;nota=`Bulto x${b} · quedan ${fmt(st)}, no se pide`}else{pedir=Math.max(1,Math.ceil(total/b))*b;nota=`Bulto x${b}`}}
    return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',stock:st,bulto:b,pedir,nota}}).sort((a,b)=>b.vendido+b.falto-a.vendido-a.falto||a.nombre.localeCompare(b.nombre))};
- pintaPedido()}
+ pintaPedido();avisoWebPedido()}
+// Los pedidos web pendientes todavía no son ventas: no entran en este pedido (entran en el siguiente al pasarlos a presupuesto)
+async function avisoWebPedido(){const{count}=await sb.from('solicitudes').select('id',{count:'exact',head:true}).eq('estado','nuevo');PED.web=count||0;
+ $('pedweb').hidden=!count;$('pedweb').innerHTML=count?`<span style="flex:1;min-width:200px"><b>Hay ${count} pedido(s) web sin pasar a presupuesto.</b> Su stock está reservado, pero todavía no cuentan como venta, así que no están en este pedido. Pásalos a presupuesto (o descártalos) antes de completar la nota si quieres incluirlos.</span><button class="s" onclick="tab('web')">Ver pedidos web</button>`:''}
 function pintaPedido(cargando){const n=PED.lineas.filter(l=>l.pedir>0).length;
  if(!cargando)$('pedinfo').textContent=PED.n?`${PED.n} presupuesto(s) desde el último pedido (hasta el Nº ${PED.hasta}) · ${n} producto(s) para pedir.`:'No hay presupuestos nuevos desde el último pedido.';
  $('pedt').innerHTML=PED.lineas.map((l,i)=>`<tr${l.pedir>0?'':' class="off"'}><td><div class="nom">${esc(l.nombre)}</div>${l.clave&&norm(l.clave)!=norm(l.nombre)?`<div class="m" style="font-size:12px">Proveedor: ${esc(l.clave.toUpperCase())}</div>`:''}  <div class="tags">${l.nota?`<span class="tag">${esc(l.nota)}</span>`:''}<span class="tag sub">Vendido ${fmt(l.vendido)}</span>${l.falto?`<span class="tag sub" style="color:var(--no)">Faltó ${fmt(l.falto)}</span>`:''}<span class="tag sub">Stock ${l.stock==null?'-':fmt(l.stock)}</span></div>
@@ -602,7 +665,7 @@ async function escribirCantidades(buf,poner){const z=await JSZip.loadAsync(buf),
  cp.setAttribute('fullCalcOnLoad','1');z.file('xl/workbook.xml',S.serializeToString(wbx),{createFolders:false});
  return z.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
 async function marcarEnviado(){if(!PED.n)return;
- if(!confirm(`¿Marcar el pedido como enviado?\n\nLas ventas de estos ${PED.n} presupuesto(s) ya no se contarán en el próximo pedido.`))return;
+ if(!confirm(`¿Marcar el pedido como enviado?\n\nLas ventas de estos ${PED.n} presupuesto(s) ya no se contarán en el próximo pedido.`+(PED.web?`\n\nOjo: hay ${PED.web} pedido(s) web sin pasar a presupuesto. No están en este pedido; se contarán en el próximo cuando los pases.`:'')))return;
  const b=$('benv');b.disabled=true;
  const{error}=await sb.from('pedidos').insert({hasta_presupuesto:PED.hasta,lineas:PED.lineas.filter(l=>l.pedir>0).map(l=>({id:l.id,nombre:l.clave||l.nombre,cantidad:l.pedir}))});
  b.disabled=false;if(error)return alert(msg(error));toast('Pedido marcado como enviado');cargaPedido()}

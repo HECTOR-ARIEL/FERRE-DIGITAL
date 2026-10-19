@@ -3,5 +3,6 @@ window.CFG = {
   URL: "https://bybtizgxcjjtetnwsfho.supabase.co",
   KEY: "sb_publishable_AZgdOFTrOfKgJqRt1q6YxQ_P_WsPKE2",
   NOMBRE: "Distribuidor DEC", // nombre que aparece en el catálogo y en los PDF
-  MONEDA: "$"              // símbolo delante de los precios
+  MONEDA: "$",             // símbolo delante de los precios
+  WHATSAPP: "5493516522035" // tu WhatsApp para que el cliente te avise del pedido (54 9 + característica + número, sin 15)
 };

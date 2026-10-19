@@ -70,7 +70,27 @@ create table if not exists pedidos(
   lineas jsonb                              -- [{id, nombre, cantidad}] lo que se pidió
 );
 
+-- ===================== PEDIDOS WEB (CARRITO DEL CATÁLOGO) =====================
+-- Lo que los clientes arman en el carrito y envían. No descuenta stock:
+-- desde el panel (pestaña "Pedidos web") se pasa a presupuesto y ahí se descuenta.
+create table if not exists solicitudes(
+  id bigint generated always as identity primary key,
+  fecha timestamptz default now(),
+  cliente text not null,
+  telefono text,
+  nota text,
+  total numeric(12,2),                      -- total estimado con los precios del momento
+  lineas jsonb not null,                    -- [{id, codigo, nombre, precio, cantidad, reservado}]
+  estado text not null default 'nuevo',     -- nuevo · presupuestado · descartado
+  presupuesto_id bigint
+);
+create index if not exists solicitudes_estado_idx on solicitudes(estado, id);
+
 -- ===================== PERMISOS =====================
+alter table solicitudes enable row level security;
+drop policy if exists "admin solicitudes" on solicitudes;
+-- Solo tú (con sesión) ves y cambias los pedidos web. Los clientes los envían con enviar_solicitud().
+create policy "admin solicitudes" on solicitudes for all to authenticated using (true) with check (true);
 alter table productos enable row level security;
 alter table presupuestos enable row level security;
 alter table pedidos enable row level security;
@@ -151,11 +171,23 @@ end $$;
 -- Los precios se toman de la base de datos (no del navegador).
 -- De cada producto se descuenta y se cobra solo lo que hay en stock ("disponible").
 -- Lo que falta queda registrado para mostrarlo en rojo en el PDF.
+-- Si viene de un pedido web (p_solicitud), primero se devuelve lo que ese pedido tenía reservado
+-- y después se descuenta lo del presupuesto: así no se descuenta dos veces aunque cambies cantidades.
 drop function if exists crear_presupuesto(text, jsonb);
-create function crear_presupuesto(p_cliente text, p_lineas jsonb)
+drop function if exists crear_presupuesto(text, jsonb, bigint);
+create function crear_presupuesto(p_cliente text, p_lineas jsonb, p_solicitud bigint default null)
 returns jsonb language plpgsql as $$
-declare l jsonb; n bigint; t numeric := 0; c numeric; d numeric; pr record; lineas jsonb := '[]';
+declare l jsonb; n bigint; t numeric := 0; c numeric; d numeric; pr record; lineas jsonb := '[]'; s record;
 begin
+  if p_solicitud is not null then
+    select * into s from solicitudes where id = p_solicitud for update;
+    if not found then raise exception 'No existe el pedido web Nº %', p_solicitud; end if;
+    if s.estado <> 'nuevo' then raise exception 'El pedido web Nº % ya no está pendiente (%)', p_solicitud, s.estado; end if;
+    for l in select * from jsonb_array_elements(s.lineas) loop
+      update productos set stock = stock + coalesce((l->>'reservado')::numeric, 0)
+        where id = (l->>'id')::bigint and coalesce((l->>'reservado')::numeric, 0) > 0;
+    end loop;
+  end if;
   for l in select * from jsonb_array_elements(p_lineas) loop
     c := (l->>'cantidad')::numeric;
     if c is null or c < 0 then raise exception 'Cantidad no válida: %', l->>'nombre'; end if;
@@ -168,6 +200,9 @@ begin
     t := t + d * pr.precio;
   end loop;
   insert into presupuestos(cliente, total, lineas) values (p_cliente, t, lineas) returning id into n;
+  if p_solicitud is not null then
+    update solicitudes set estado = 'presupuestado', presupuesto_id = n where id = p_solicitud;
+  end if;
   return jsonb_build_object('id', n, 'total', t, 'lineas', lineas);
 end $$;
 
@@ -185,9 +220,78 @@ begin
   return n;
 end $$;
 
+-- Carrito del catálogo: el cliente envía su pedido. Los precios y nombres se toman de la base
+-- (no del navegador) y se ignoran los productos ocultos o en la papelera.
+-- El stock se RESERVA en el momento (se descuenta lo que haya; queda como "reservado" en cada línea),
+-- así el catálogo muestra enseguida lo que queda. Al pasarlo a presupuesto no se descuenta otra vez;
+-- si se descarta, el stock vuelve.
+-- Límites para evitar abusos: textos cortos, hasta 300 productos y 30 pedidos cada 10 minutos.
+create or replace function enviar_solicitud(p_cliente text, p_telefono text, p_nota text, p_lineas jsonb)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare l jsonb; c numeric; d numeric; pr record; lineas jsonb := '[]'; t numeric := 0; n bigint; falta boolean := false;
+begin
+  p_cliente := left(trim(coalesce(p_cliente, '')), 100);
+  p_telefono := left(trim(coalesce(p_telefono, '')), 40);
+  p_nota := left(trim(coalesce(p_nota, '')), 1000);
+  if p_cliente = '' then raise exception 'Falta el nombre'; end if;
+  if jsonb_typeof(p_lineas) is distinct from 'array' or jsonb_array_length(p_lineas) = 0 then
+    raise exception 'El carrito está vacío'; end if;
+  if jsonb_array_length(p_lineas) > 300 then raise exception 'Demasiados productos en el carrito'; end if;
+  if (select count(*) from solicitudes where fecha > now() - interval '10 minutes') >= 30 then
+    raise exception 'Hay muchos pedidos seguidos. Probá de nuevo en unos minutos'; end if;
+  for l in select * from jsonb_array_elements(p_lineas) loop
+    c := (l->>'cantidad')::numeric;
+    if c is null or c <= 0 or c > 100000 then raise exception 'Cantidad no válida'; end if;
+    select id, codigo, nombre, precio, stock into pr from productos
+      where id = (l->>'id')::bigint and activo and not borrado for update;
+    continue when not found;
+    d := least(c, greatest(pr.stock, 0));
+    if d > 0 then update productos set stock = stock - d where id = pr.id; end if;
+    if d < c then falta := true; end if;
+    lineas := lineas || jsonb_build_object('id', pr.id, 'codigo', pr.codigo, 'nombre', pr.nombre,
+                                           'precio', pr.precio, 'cantidad', c, 'reservado', d);
+    t := t + c * pr.precio;
+  end loop;
+  if jsonb_array_length(lineas) = 0 then raise exception 'Los productos del carrito ya no están disponibles'; end if;
+  insert into solicitudes(cliente, telefono, nota, total, lineas)
+    values (p_cliente, nullif(p_telefono, ''), nullif(p_nota, ''), t, lineas) returning id into n;
+  return jsonb_build_object('id', n, 'total', t, 'falta', falta);
+end $$;
+revoke execute on function enviar_solicitud(text, text, text, jsonb) from public;
+grant execute on function enviar_solicitud(text, text, text, jsonb) to anon, authenticated;
+
+-- Pedidos web: descartar devuelve al stock lo reservado; recuperar un descartado lo vuelve a reservar.
+create or replace function estado_solicitud(p_id bigint, p_estado text)
+returns void language plpgsql as $$
+declare s record; l jsonb; c numeric; d numeric; st numeric; lineas jsonb := '[]';
+begin
+  select * into s from solicitudes where id = p_id for update;
+  if not found then raise exception 'No existe el pedido web Nº %', p_id; end if;
+  if s.estado = 'nuevo' and p_estado = 'descartado' then
+    for l in select * from jsonb_array_elements(s.lineas) loop
+      update productos set stock = stock + coalesce((l->>'reservado')::numeric, 0)
+        where id = (l->>'id')::bigint and coalesce((l->>'reservado')::numeric, 0) > 0;
+      lineas := lineas || jsonb_set(l, '{reservado}', '0');
+    end loop;
+  elsif s.estado = 'descartado' and p_estado = 'nuevo' then
+    for l in select * from jsonb_array_elements(s.lineas) loop
+      c := (l->>'cantidad')::numeric;
+      select stock into st from productos where id = (l->>'id')::bigint for update;
+      d := case when found then least(c, greatest(st, 0)) else 0 end;
+      if d > 0 then update productos set stock = stock - d where id = (l->>'id')::bigint; end if;
+      lineas := lineas || jsonb_set(l, '{reservado}', to_jsonb(d));
+    end loop;
+  else
+    raise exception 'No se puede pasar el pedido de "%" a "%"', s.estado, p_estado;
+  end if;
+  update solicitudes set estado = p_estado, lineas = estado_solicitud.lineas where id = p_id;
+end $$;
+revoke execute on function estado_solicitud(bigint, text) from public, anon;
+grant execute on function estado_solicitud(bigint, text) to authenticated;
+
 revoke execute on function importar_productos(jsonb, numeric) from public, anon;
 revoke execute on function sumar_stock(jsonb) from public, anon;
 grant execute on function sumar_stock(jsonb) to authenticated;
-revoke execute on function crear_presupuesto(text, jsonb) from public, anon;
+revoke execute on function crear_presupuesto(text, jsonb, bigint) from public, anon;
 grant execute on function importar_productos(jsonb, numeric) to authenticated;
-grant execute on function crear_presupuesto(text, jsonb) to authenticated;
+grant execute on function crear_presupuesto(text, jsonb, bigint) to authenticated;

@@ -9,9 +9,24 @@
 .chips button{flex:none;padding:6px 14px;border-radius:99px;font-size:14px;background:var(--c);color:var(--t);border:1px solid var(--b)}
 .chips button.on{background:var(--a);color:#fff;border-color:var(--a)}
 @media(max-width:520px){.top{margin:-12px -34px 0 -12px;padding:10px 34px 10px 12px}.top .m{font-size:12px}.bus{min-width:0}}
+/* carrito: botón en la cabecera, controles en cada tarjeta y ventana con el pedido */
+#car{position:relative}#car .nb{min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--a);color:#fff;font-size:12px;font-weight:700;display:inline-grid;place-items:center}
+@media(max-width:520px){#car .tx{display:none}}
+.add{margin-top:6px}.add .agr{width:100%;padding:8px}
+.step{display:flex;align-items:center;gap:4px}.step button{width:36px;height:36px;padding:0;flex:none;font-size:20px;line-height:1}
+.step input{flex:1;min-width:0;width:0;text-align:center;padding:7px 2px;font-weight:600}
+dialog{border:0;border-radius:12px;padding:0;width:min(560px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;background:var(--c);color:var(--t)}
+dialog::backdrop{background:rgba(0,0,0,.45)}dialog form,#cok{display:grid;gap:12px;padding:18px}dialog h2{margin:0;font-size:18px}
+.dh{display:flex;align-items:center;justify-content:space-between;gap:8px}.dh button{width:38px;height:38px;padding:0}
+label{display:grid;gap:4px;font-size:13px;color:var(--m)}
+.cl{display:grid;gap:0}.cl>div{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--b)}
+.cl .nm{font-size:14px;overflow-wrap:anywhere}.cl .nm small{display:block;color:var(--m);font-size:12px}.cl .st{grid-column:1;max-width:150px}
+.cl .sb{font-weight:700;text-align:right;white-space:nowrap}.cl .q{color:var(--no);font-size:12px;font-weight:600;grid-column:1/-1}
+.tot{font-size:20px;text-align:right}.acc{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}.acc .s:first-child{margin-right:auto}
+#cok{text-align:center;justify-items:center}#cok .ok{font-size:40px;width:64px;height:64px;border-radius:99px;display:grid;place-items:center;background:var(--a);color:#fff}
 </style></head><body>
 <header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><h1 id="tit">Catálogo</h1></div><div class="datos"><b>Héctor Ariel De Cia</b><span>Alias: <b class="sel">distri.dec</b></span><a href="tel:+543516522035">Tel: 351-6522-035</a></div>
-<div class="r"><button id="tema" class="s" onclick="cambiarTema()">◐</button><a class="btn s" href="admin.html">Administrar</a></div></header>
+<div class="r"><button id="tema" class="s" onclick="cambiarTema()">◐</button><button id="car" class="s" onclick="abrirCarrito()" title="Ver el carrito y pedir presupuesto">🛒<span class="tx"> Carrito</span><span class="nb" id="nb" hidden>0</span></button><a class="btn s" href="admin.html">Administrar</a></div></header>
 <main class="con-abc"><nav class="abc" id="abc" aria-label="Índice alfabético"></nav>
 <div class="top"><div class="bus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
  <input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Nombre o código" aria-label="Buscar productos" oninput="busca()" onkeydown="if(event.key=='Enter')this.blur()">
@@ -19,6 +34,24 @@
 <div class="grid" id="g"></div>
 <p id="mas" class="m" hidden style="text-align:center">Cargando más productos…</p>
 </main>
+<dialog id="dcar"><form id="cform" onsubmit="enviar(event)">
+ <div class="dh"><h2>Tu carrito</h2><button type="button" class="s" title="Cerrar" onclick="$('dcar').close()">✕</button></div>
+ <div class="cl" id="cl"></div>
+ <div id="cdat" style="display:grid;gap:12px">
+  <div class="tot" id="ctot"></div>
+  <label>Nombre y apellido (o comercio)<input id="cn" required maxlength="100" autocomplete="name"></label>
+  <label>Teléfono / WhatsApp<input id="ct" type="tel" required maxlength="40" autocomplete="tel" inputmode="tel" placeholder="351 123 4567"></label>
+  <label>Comentarios (opcional)<textarea id="cc" rows="2" maxlength="1000" placeholder="Ej.: lo retiro el sábado, envío a…"></textarea></label>
+  <p class="m" style="margin:0;font-size:13px">Los precios son orientativos. Preparamos tu presupuesto según el stock y te lo confirmamos por WhatsApp.</p>
+  <div class="acc"><button type="button" class="s" onclick="vaciar()">Vaciar</button><button id="benv">Enviar pedido de presupuesto</button></div>
+ </div>
+</form>
+<div id="cok" hidden><div class="ok">✓</div><h2 id="okT"></h2>
+ <p class="m" style="margin:0">Ya nos llegó tu pedido y los productos quedaron reservados. Te contactamos al <b id="okTel"></b> con el presupuesto.</p>
+ <p id="okFalta" hidden style="margin:0;color:var(--no);font-size:14px;font-weight:600">De algunos productos no había stock suficiente: te confirmamos esas cantidades.</p>
+ <a class="btn" id="okWa" target="_blank" rel="noopener">Avisar por WhatsApp</a>
+ <button class="s" onclick="$('dcar').close()">Seguir mirando</button></div>
+</dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script>
@@ -35,13 +68,13 @@ async function load(){
  try{P=await todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id')).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock')))}
  catch(e){$('u').textContent='No se pudo cargar el catálogo.';return}
  const{data}=await sb.from('sectores').select('id,nombre').order('nombre');SEC=data||[];pintaChips();
- r();$('u').textContent=P.length+' productos'}
+ r();$('u').textContent=P.length+' productos';pintaCar()}
 function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
  const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return(!sec||p.sector_id==sec)&&w.every(x=>s.includes(x))});
  FL=F;pintaAbc($('abc'),F);if(P.length)$('u').textContent=$('q').value.trim()||sec?`${F.length} de ${P.length}`:P.length+' productos';
  $('g').innerHTML=F.slice(0,lim).map(p=>`<article id="a${p.id}" class="card${p.stock>0?'':' agotado'}">
   <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(p.nombre)}">`:'Sin imagen'}</div>
-  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(p.nombre)}</h2><span class="pr">${money(p.precio)}</span>${p.stock>0?'':'<span class="sin">Sin stock</span>'}</div></article>`).join('')
+  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(p.nombre)}</h2><span class="pr">${money(p.precio)}</span>${p.stock>0?`<div class="add" id="k${p.id}">${ctrl(p.id)}</div>`:'<span class="sin">Sin stock</span>'}</div></article>`).join('')
   ||`<p class="m" style="grid-column:1/-1">${P.length?'No hay productos que coincidan con la búsqueda.':'Todavía no hay productos en el catálogo.'}</p>`;
  $('mas').hidden=F.length<=lim;masObs.unobserve($('mas'));masObs.observe($('mas'))}
 // Índice A-Z: la barra (el) salta al primer producto de la letra; ir(letra) hace el salto
@@ -66,6 +99,41 @@ function irLetra(l){const i=FL.findIndex(p=>letra(p.nombre)==l);if(i<0)return;if
 gestoAbc($('abc'),irLetra);
 // Al acercarse al final se cargan más productos solos, sin botón
 const masObs=new IntersectionObserver(e=>{if(e[0].isIntersecting&&!$('mas').hidden){lim+=48;r()}},{rootMargin:'800px'});
+/* ---------- carrito ---------- */
+// {id: cantidad}. Queda guardado en el teléfono o la computadora del cliente hasta que lo envía.
+const leeLS=k=>{try{return localStorage.getItem(k)}catch{return null}},guardaLS=(k,v)=>{try{localStorage.setItem(k,v)}catch{}};
+const fmt=n=>Number(n).toLocaleString('de-DE',{maximumFractionDigits:2});
+let C={};try{C=JSON.parse(leeLS('carrito')||'{}')||{}}catch{}
+// Controles de cada tarjeta: "Agregar" o, si ya está en el carrito, − cantidad +
+const ctrl=id=>C[id]?`<div class="step"><button type="button" class="s" title="Quitar uno" onclick="suma(${id},-1)">−</button><input type="number" min="0" step="any" inputmode="decimal" value="${C[id]}" aria-label="Cantidad" onfocus="this.select()" onchange="ponCant(${id},this.value)"><button type="button" title="Agregar uno" onclick="suma(${id},1)">+</button></div>`:`<button type="button" class="agr" onclick="suma(${id},1)">+ Agregar</button>`;
+const lineasCar=()=>Object.keys(C).map(id=>({p:P.find(x=>x.id==id),c:C[id]})).filter(l=>l.p);
+function suma(id,d){ponCant(id,(+C[id]||0)+d)}
+function ponCant(id,v){const n=parseFloat(String(v).replace(',','.'));if(n>0)C[id]=Math.round(n*100)/100;else delete C[id];
+ guardaLS('carrito',JSON.stringify(C));const k=$('k'+id);if(k)k.innerHTML=ctrl(id);pintaCar()}
+// Número del botón y, si está abierta, la lista del carrito. Se quitan los productos que ya no están en el catálogo.
+function pintaCar(){if(P.length){let cambio=false;for(const id in C)if(!P.some(x=>x.id==id)){delete C[id];cambio=true}if(cambio)guardaLS('carrito',JSON.stringify(C))}
+ const L=lineasCar(),n=P.length?L.length:Object.keys(C).length;$('nb').textContent=n;$('nb').hidden=!n;if(!$('dcar').open||!$('cok').hidden)return;
+ $('cl').innerHTML=L.map(({p,c})=>`<div><span class="nm">${esc(p.nombre)}<small>${p.codigo?esc(p.codigo)+' · ':''}${money(p.precio)} c/u</small></span>
+  <span class="sb">${money(c*p.precio)}</span><div class="st">${ctrl(p.id)}</div>
+  <button type="button" class="s" style="justify-self:end" title="Quitar del carrito" onclick="ponCant(${p.id},0)">✕</button>
+  ${c>p.stock?`<span class="q">${p.stock>0?'Hay menos stock que lo pedido: te confirmamos la cantidad.':'Ahora sin stock: te confirmamos si llega.'}</span>`:''}</div>`).join('')
+  ||'<p class="m">Tu carrito está vacío. Tocá <b>+ Agregar</b> en los productos que quieras presupuestar.</p>';
+ $('ctot').textContent='Total estimado: '+money(L.reduce((s,l)=>s+l.c*l.p.precio,0));$('cdat').hidden=!n}
+function abrirCarrito(){$('cform').hidden=false;$('cok').hidden=true;$('cn').value=leeLS('car_nombre')||'';$('ct').value=leeLS('car_tel')||'';$('dcar').showModal();pintaCar()}
+function vaciar(){if(confirm('¿Vaciar el carrito?')){C={};guardaLS('carrito','{}');r();pintaCar()}}
+async function enviar(e){e.preventDefault();const L=lineasCar();if(!L.length)return;
+ const nom=$('cn').value.trim(),tel=$('ct').value.trim(),nota=$('cc').value.trim();if(!nom||!tel)return;
+ guardaLS('car_nombre',nom);guardaLS('car_tel',tel);const b=$('benv');b.disabled=true;b.textContent='Enviando…';
+ const{data,error}=await sb.rpc('enviar_solicitud',{p_cliente:nom,p_telefono:tel,p_nota:nota,p_lineas:L.map(l=>({id:l.p.id,cantidad:l.c}))});
+ b.disabled=false;b.textContent='Enviar pedido de presupuesto';
+ if(error)return alert(/Could not find|does not exist/.test(error.message)?'El carrito todavía no está activado. Avisanos por WhatsApp, por favor.':'No se pudo enviar el pedido: '+error.message);
+ // Mensaje para avisar por WhatsApp (opcional: el pedido ya quedó guardado)
+ const txt=`Hola, soy ${nom}. Envié el pedido de presupuesto Nº ${data.id} desde el catálogo:\n`+L.map(l=>`• ${fmt(l.c)} × ${l.p.nombre}`).join('\n')+(nota?`\nComentario: ${nota}`:'');
+ $('okWa').href='https://wa.me/'+(CFG.WHATSAPP||'')+'?text='+encodeURIComponent(txt);$('okWa').hidden=!CFG.WHATSAPP;
+ $('okT').textContent=`¡Pedido Nº ${data.id} enviado!`;$('okTel').textContent=tel;
+ $('okFalta').hidden=!data.falta;
+ C={};guardaLS('carrito','{}');$('cc').value='';$('cform').hidden=true;$('cok').hidden=false;r();pintaCar();revisa()}
+pintaCar();
 // Cada 10 s pregunta si hubo cambios en administración; solo entonces recarga los productos
 let ver;
 async function revisa(){const{data}=await sb.from('cambios').select('ts').eq('id',1).maybeSingle();const v=data?.ts;if(!v||v!==ver){ver=v;load()}}

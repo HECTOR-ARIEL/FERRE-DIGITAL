@@ -54,3 +54,12 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - **Marcar pedido como enviado**: después de mandar la nota. El siguiente pedido cuenta desde ahí. Hazlo antes de borrar presupuestos del Historial.
 - Cuando llega la mercadería: sube la misma nota completa en "Importar cantidades" para sumar el stock.
 - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la tabla de pedidos).
+
+## Carrito del catálogo (pedidos web)
+- La primera vez hay que ejecutar otra vez `supabase.sql` en Supabase (SQL Editor > Run). Crea la tabla `solicitudes` y la función `enviar_solicitud`.
+- En el catálogo, cada producto con stock tiene **+ Agregar**. El botón **🛒 Carrito** (al lado del tema) muestra el pedido, el total estimado y pide nombre, teléfono y un comentario.
+- Al enviarlo, el pedido queda guardado en Supabase y el stock queda **reservado**: se descuenta en ese momento y el catálogo lo muestra. El cliente puede además avisarte por WhatsApp con el detalle (número en `config.js` > `WHATSAPP`).
+- En el panel, pestaña **Pedidos web**: el número rojo indica los pedidos nuevos (se revisa cada 30 s y avisa cuando llega uno).
+  - **Pasar a presupuesto**: carga los productos en "Nuevo presupuesto" con el precio actual. Genera el PDF como siempre: se confirma la venta sin descontar dos veces (si cambias cantidades, se ajusta solo) y el pedido queda "Presupuestado".
+  - **Descartar**: devuelve al stock lo reservado y lo saca de la lista. Si lo recuperas desde "Descartados", vuelve a reservar lo que haya en stock.
+  - El teléfono del cliente abre su WhatsApp para mandarle el presupuesto.
