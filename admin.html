@@ -139,10 +139,10 @@ dialog{overflow:auto}
  <div class="c w" style="padding:0"><table><thead><tr><th>Producto</th><th class="n hide-sm">Vendido</th><th class="n hide-sm">Faltó</th><th class="n hide-sm">Stock</th><th class="n hide-sm">Costo</th><th class="n">Pedir</th><th class="n hide-sm">Subtotal</th></tr></thead><tbody id="pedt"></tbody></table></div>
  <div class="c r" id="pedtot" hidden style="justify-content:space-between"><span class="m" id="pedtotn"></span><span style="font-size:18px">Total a pedir (a costo): <b id="pedtotv"></b></span></div>
  <div class="c aviso" id="pedres" hidden></div>
- <div class="c acc"><button class="s" id="benv" onclick="marcarEnviado()">Marcar pedido como enviado</button><button id="bnota" onclick="$('fp').click()">Completar nota de pedido (Excel)</button>
+ <div class="c acc"><span class="m" id="notainfo" style="margin-right:auto;align-self:center"></span><button class="s" id="benv" onclick="marcarEnviado()">Marcar pedido como enviado</button><button class="s" id="botra" onclick="$('fp').click()">Usar otro archivo…</button><button id="bnota" onclick="notaGuardada()">Completar nota de pedido (Excel)</button>
   <input id="fp" type="file" accept=".xlsx" hidden onchange="completarNota(this.files[0])"></div>
  <p class="m"><b>Cómo se calcula:</b> se pide lo vendido más lo que faltó (lo que pidieron y no había stock). Los productos que en la nota del proveedor dicen "MINIMO 6", "MIN 10"… se piden por bulto completo, y solo si el stock quedó por debajo de 5 (o de la mitad del bulto en los de 20 o más). Puedes cambiar cualquier cantidad antes de completar la nota.<br>
- <b>Completar nota de pedido:</b> elige la nota de pedido del proveedor (.xlsx). Se escriben las cantidades en su columna "Cantidad" y se descarga una copia completa, con el mismo formato. Tu archivo original no se toca.<br>
+ <b>Completar nota de pedido:</b> se usa automáticamente la última nota que importaste en Productos &gt; "Importar Excel" (la misma de los precios actuales). Se escriben las cantidades en su columna "Cantidad" y se descarga una copia completa, con el mismo formato. Con "Usar otro archivo…" puedes elegir otra a mano.<br>
  <b>Marcar pedido como enviado:</b> hazlo después de mandar la nota. El próximo pedido empieza a contar desde ahí.<br>
  <b>Cuando llega la mercadería:</b> sube esa misma nota completa en Productos &gt; "Importar cantidades" para sumar el stock (corrige antes lo que no haya llegado).</p>
 </section>
@@ -438,6 +438,8 @@ async function imp(f){$('f').value='';if(!f)return;
   cp=H.findIndex(x=>x.startsWith('precio')||x=='costo');
   if(cd>=0&&cp>=0){h=i;cs=H.indexOf('stock')}}
  if(h<0)return alert('No encontré la fila de títulos con las columnas "Producto" (o "Descripción") y "Precio".');
+ // Si trae columna "Cantidad" es la nota de pedido del proveedor: se guarda para completar el pedido con ella
+ const esNota=/\.xlsx$/i.test(f.name)&&filas[h].map(t).some(x=>x.startsWith('cantidad')||x=='cant');
  const out=[];let sinPrecio=0;
  for(const r of filas.slice(h+1)){const d=String(r[cd]??'').trim().replace(/\s+/g,' '),c=num(r[cp]);
   if(!d)continue;if(c===null||c<=0){sinPrecio++;continue}
@@ -453,12 +455,23 @@ async function imp(f){$('f').value='';if(!f)return;
   (pa?`· ${pa} están en la papelera → se ignoran.\n`:'')+(sinPrecio?`· ${sinPrecio} filas sin precio → se ignoran.\n`:'')+
   `\nEl código del Excel no se usa.\n\n¿Continuar?`))return;
  const b=document.querySelector('[onclick="$(\'f\').click()"]');b.disabled=true;
- let n=0,a=0,o=0;
+ let n=0,a=0,o=0,ok=true,nota='';
  try{for(let i=0;i<out.length;i+=500){b.textContent=`Importando… ${Math.round(i/out.length*100)} %`;
    const{data,error}=await sb.rpc('importar_productos',{p_filas:out.slice(i,i+500),p_ganancia:g});
-   if(error){alert(msg(error));break}n+=data.nuevos;a+=data.actualizados;o+=data.omitidos||0}}
+   if(error){alert(msg(error));ok=false;break}n+=data.nuevos;a+=data.actualizados;o+=data.omitidos||0}
+  if(ok&&esNota){b.textContent='Guardando la nota…';nota=await guardaNota(f)?`\n\nEsta nota quedó guardada: el pedido se completará con "${f.name}".`:'\n\nOjo: no se pudo guardar la nota para el pedido. Ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run) y vuelve a importarla.'}}
  finally{b.disabled=false;b.textContent='Importar Excel'}
- alert(`Importación terminada: ${n} nuevos, ${a} actualizados${o?`, ${o} ignorados (están en la papelera)`:''}.`);load()}
+ alert(`Importación terminada: ${n} nuevos, ${a} actualizados${o?`, ${o} ignorados (están en la papelera)`:''}.`+nota);load()}
+// La última nota de pedido importada se guarda en Supabase (carpeta privada "notas"). Solo se conserva la última.
+// El nombre lleva delante la hora de importación, así nunca se descarga una copia vieja guardada en caché.
+async function guardaNota(f){const ruta=Date.now()+'-'+f.name.replace(/[^\w.-]+/g,'_');
+ const{error}=await sb.storage.from('notas').upload(ruta,f,{contentType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',cacheControl:'0'});
+ if(error)return false;
+ const{data}=await sb.storage.from('notas').list('',{limit:100});const viejas=(data||[]).map(x=>x.name).filter(x=>x!=ruta);
+ if(viejas.length)await sb.storage.from('notas').remove(viejas);NOTA=null;return true}
+async function ultimaNota(){const{data,error}=await sb.storage.from('notas').list('',{limit:100});if(error)return null;
+ const r=(data||[]).map(x=>x.name).filter(x=>/^\d+-.+\.xlsx$/i.test(x)).sort().pop();
+ return r?{ruta:r,nombre:r.replace(/^\d+-/,'').replace(/_/g,' '),fecha:new Date(+r.split('-')[0])}:null}
 
 /* ---------- presupuesto ---------- */
 // stock actual de un producto y cuánto se puede entregar de una línea
@@ -668,7 +681,22 @@ async function cargaPedido(){$('pedinfo').textContent='Cargando…';$('pedt').in
    b=bultoDe(p?.clave||p?.nombre||x.nombre),total=x.vendido+x.falto;let pedir=total,nota='';
    if(b){if(st!=null&&st>=limiteDe(b)){pedir=0;nota=`Bulto x${b} · quedan ${fmt(st)}, no se pide`}else{pedir=Math.max(1,Math.ceil(total/b))*b;nota=`Bulto x${b}`}}
    return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',stock:st,costo:p?+p.costo||0:null,bulto:b,pedir,nota}}).sort((a,b)=>b.vendido+b.falto-a.vendido-a.falto||a.nombre.localeCompare(b.nombre))};
- pintaPedido();avisoWebPedido()}
+ pintaPedido();avisoWebPedido();pintaNota()}
+// Qué nota se va a usar: la última importada con los precios
+let NOTA=null;
+async function pintaNota(){NOTA=await ultimaNota();
+ $('notainfo').innerHTML=NOTA?`Se usará: <b>${esc(NOTA.nombre)}</b> (importada el ${NOTA.fecha.toLocaleDateString('es')})`:'Todavía no hay nota guardada: importa la nota del proveedor en Productos &gt; "Importar Excel".'}
+async function notaGuardada(){const b=$('bnota');b.disabled=true;b.textContent='Buscando la nota…';let buf;
+ try{NOTA=await ultimaNota();
+  if(NOTA){const{data,error}=await sb.storage.from('notas').download(NOTA.ruta);if(error)throw error;buf=await data.arrayBuffer()}}
+ catch(e){alert('No se pudo descargar la nota guardada: '+msg(e)+'\n\nPuedes elegirla a mano con "Usar otro archivo…".')}
+ finally{b.disabled=false;b.textContent='Completar nota de pedido (Excel)'}
+ if(!NOTA)return alert('Todavía no hay ninguna nota guardada.\n\nImporta la nota del proveedor en Productos > "Importar Excel" (queda guardada para el pedido), o elige el archivo con "Usar otro archivo…".\n\nSi ya la importaste, ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run) y vuelve a importarla.');
+ if(buf)usarNota(buf,NOTA.nombre)}
+// Elegida a mano: si no es la última importada, puede tener precios viejos
+async function completarNota(f){$('fp').value='';if(!f)return;
+ if(NOTA&&norm(f.name).replace(/_/g,' ')!=norm(NOTA.nombre)&&!confirm(`La última nota que importaste con los precios es "${NOTA.nombre}".\n\n"${f.name}" es otro archivo y puede tener precios o descripciones viejas.\n\n¿Usarlo igual?`))return;
+ usarNota(await f.arrayBuffer(),f.name)}
 // Los pedidos web pendientes todavía no son ventas: no entran en este pedido (entran en el siguiente al pasarlos a presupuesto)
 async function avisoWebPedido(){const{count}=await sb.from('solicitudes').select('id',{count:'exact',head:true}).eq('estado','nuevo');PED.web=count||0;
  $('pedweb').hidden=!count;$('pedweb').innerHTML=count?`<span style="flex:1;min-width:200px"><b>Hay ${count} pedido(s) web sin pasar a presupuesto.</b> Su stock está reservado, pero todavía no cuentan como venta, así que no están en este pedido. Pásalos a presupuesto (o descártalos) antes de completar la nota si quieres incluirlos.</span><button class="s" onclick="tab('web')">Ver pedidos web</button>`:''}
@@ -684,10 +712,10 @@ function pintaPedido(cargando){const n=PED.lineas.filter(l=>l.pedir>0).length;
  const Q=PED.lineas.filter(l=>l.pedir>0),sinC=Q.filter(l=>!l.costo).length;$('pedtot').hidden=cargando||!Q.length;
  $('pedtotv').textContent=money(Q.reduce((s,l)=>s+(l.costo||0)*l.pedir,0));
  $('pedtotn').textContent=`${Q.length} producto(s) · ${fmt(Q.reduce((s,l)=>s+l.pedir,0))} unidades`+(sinC?` · ${sinC} sin costo cargado (no suman)`:'');
- $('bnota').disabled=!n;$('benv').disabled=!PED.n}
+ $('bnota').disabled=$('botra').disabled=!n;$('benv').disabled=!PED.n}
 // Escribe las cantidades en la nota de pedido del proveedor y descarga una copia (el original no se toca)
-async function completarNota(f){$('fp').value='';if(!f)return;
- let buf,ws,filas;try{buf=await f.arrayBuffer();const wb=XLSX.read(buf);ws=wb.Sheets[wb.SheetNames[0]];filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',blankrows:true})}catch{return alert('No se pudo leer el archivo. Tiene que ser la nota de pedido en formato .xlsx.')}
+async function usarNota(buf,nombre){
+ let ws,filas;try{const wb=XLSX.read(buf);ws=wb.Sheets[wb.SheetNames[0]];filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',blankrows:true})}catch{return alert('No se pudo leer el archivo. Tiene que ser la nota de pedido en formato .xlsx.')}
  const R=XLSX.utils.decode_range(ws['!ref']),t=c=>norm(c).replace(/[.:]/g,'').replace(/\s+/g,' ');let h=-1,cd,cq;
  for(let i=0;i<Math.min(filas.length,60)&&h<0;i++){const H=filas[i].map(t);
   cd=H.findIndex(x=>['producto','productos','descripcion','nombre','detalle','articulo'].includes(x));cq=H.findIndex(x=>x.startsWith('cantidad')||x=='cant');if(cd>=0&&cq>=0)h=i}
@@ -698,13 +726,13 @@ async function completarNota(f){$('fp').value='';if(!f)return;
   const l=porClave.get(d);if(num(filas[i][cq])&&!l)previas++;
   if(l&&!hay.has(l.clave)){hay.add(l.clave);poner.set(XLSX.utils.encode_cell({r:R.s.r+i,c:R.s.c+cq}),l.pedir)}}
  const noEnc=Q.filter(l=>!hay.has(l.clave));
- if(!poner.size)return alert(`Ninguno de los productos a pedir aparece en "${f.name}".`);
- if(!confirm(`Se van a escribir ${poner.size} cantidades en la columna "Cantidad" de "${f.name}" y se descargará una copia completa.\n`+
+ if(!poner.size)return alert(`Ninguno de los productos a pedir aparece en "${nombre}".`);
+ if(!confirm(`Se van a escribir ${poner.size} cantidades en la columna "Cantidad" de "${nombre}" y se descargará una copia completa.\n`+
   (previas?`\nOjo: el archivo ya tenía ${previas} cantidades de otros productos; se dejan como están.\n`:'')+
   '\n¿Continuar?'))return;
  const b=$('bnota');b.disabled=true;b.textContent='Completando…';
  try{const blob=await escribirCantidades(buf,poner),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=f.name.replace(/\.xlsx$/i,'')+' - completa.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000)}
+  a.href=URL.createObjectURL(blob);a.download=nombre.replace(/\.xlsx$/i,'')+' - completa.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000)}
  catch(e){return alert('No se pudo completar la nota: '+e.message)}finally{b.disabled=false;b.textContent='Completar nota de pedido (Excel)'}
  $('pedres').innerHTML=`<b>Listo:</b> se descargó la nota con ${poner.size} producto(s) cargados. Revísala, mándasela al proveedor y luego pulsa "Marcar pedido como enviado".`+
   (noEnc.length?` Los otros ${noEnc.length} producto(s) vendidos no están en esta nota (son de otro proveedor) y se dejaron afuera.`:'');$('pedres').hidden=false}

@@ -50,7 +50,10 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Suma todo lo vendido en los presupuestos **desde el último pedido enviado**: lo vendido + lo que faltó por falta de stock.
 - Productos por bulto (la descripción del proveedor dice "MINIMO 6", "MIN 10", "MINIMO 12 UNID"…): se piden bultos completos, y solo si el stock quedó por debajo de 5 (o de la mitad del bulto en los de 20 o más).
 - Puedes cambiar cualquier cantidad antes de completar la nota.
-- **Completar nota de pedido**: eliges la nota del proveedor (.xlsx) y se descarga una copia con las cantidades escritas en la columna "Cantidad", con el mismo formato. El original no se toca.
+- **Completar nota de pedido**: usa sola la **última nota que importaste** en "Importar Excel" (la de los precios actuales) y descarga una copia con las cantidades escritas en la columna "Cantidad", con el mismo formato. Al lado del botón dice qué nota se va a usar.
+  - Cada vez que importas una nota nueva, reemplaza a la anterior. Así nunca se completa el pedido con una nota vieja.
+  - **Usar otro archivo…** permite elegir otra a mano (avisa si no es la última importada).
+  - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la carpeta privada `notas`) y volver a importar la nota actual.
 - **Marcar pedido como enviado**: después de mandar la nota. El siguiente pedido cuenta desde ahí. Hazlo antes de borrar presupuestos del Historial.
 - Cuando llega la mercadería: sube la misma nota completa en "Importar cantidades" para sumar el stock.
 - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la tabla de pedidos).
