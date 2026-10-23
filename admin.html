@@ -14,7 +14,7 @@ th{font-size:12px;font-weight:600;color:var(--m);text-transform:uppercase;letter
 .n{text-align:right;white-space:nowrap}#pt tr{cursor:pointer}#pt tr:hover{background:var(--bg)}tr.off td{opacity:.55}
 .th{width:44px;height:44px;border-radius:6px;object-fit:contain;background:var(--img);border:1px solid var(--b);display:block}
 .sub{display:none}.de{min-width:220px}.nom{overflow-wrap:anywhere}.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}.tags:empty{display:none}.tag{white-space:nowrap;font-size:11px;padding:1px 6px;border-radius:99px;background:var(--bg);border:1px solid var(--b);color:var(--m)}
-#fc,#fs{width:auto;flex:none}.tag.sec{color:var(--t);border-color:var(--a)}#ssec,#smin{width:auto;padding:7px 10px;background:transparent;color:inherit;border-color:currentColor}#ssec option,#smin option{color:var(--t);background:var(--c)}.tag.mn{color:var(--a);border-color:var(--a);font-weight:600}
+#fc,#fs{width:auto;flex:none;min-width:0;max-width:100%;text-overflow:ellipsis}.tag.sec{color:var(--t);border-color:var(--a)}#ssec,#smin{width:auto;padding:7px 10px;background:transparent;color:inherit;border-color:currentColor}#ssec option,#smin option{color:var(--t);background:var(--c)}.tag.mn{color:var(--a);border-color:var(--a);font-weight:600}
 .secl{display:grid;gap:8px}.secl .r{flex-wrap:nowrap}.secl .r>input{min-width:0;width:0;flex:1 1 0}#dsec form{grid-template-columns:minmax(0,1fr)}.secl .m{font-size:13px;white-space:nowrap}.mini{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mini input{width:90px}
 dialog{border:0;border-radius:12px;padding:0;width:min(580px,calc(100% - 24px));max-height:calc(100% - 24px);background:var(--c);color:var(--t)}
 dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;padding:18px}dialog h2{margin:0;font-size:18px}
@@ -51,7 +51,7 @@ dialog{overflow:auto}
  #lt td{border:0;padding:2px 0}#lt td:first-child{grid-column:1/4}#lt td.hide-sm{display:none}
  table:has(#pt) thead tr{display:grid;grid-template-columns:30px 1fr auto auto;align-items:center;column-gap:10px;padding:0 6px;border-bottom:1px solid var(--b)}
  table:has(#pt) thead th{border:0;padding:8px 0}table:has(#pt) thead th.hide-sm{display:none}.g3{grid-template-columns:1fr 1fr}.hide-sm{display:none}main{padding:10px}.c{padding:12px}
- td,th{padding:7px 5px}main .r>button,#fc,#fs{flex:1}.r>input{flex-basis:100%}.mini{font-size:14px}
+ td,th{padding:7px 5px}main .r>button,#fc,#fs{flex:1}#fc,#fs{flex-basis:100%}.r>input{flex-basis:100%}.mini{font-size:14px}
  header{padding:8px 10px}header .brand b{display:none}.tabs{overflow-x:auto}.tabs button{padding:10px 10px}header .r{flex-wrap:nowrap}header .btn,header button{padding:7px 10px;font-size:14px}header b{font-size:16px}.foto .th{width:90px;height:90px}#pt .th{width:36px;height:36px}.qty{width:58px;padding:8px 6px}.gi{width:60px;padding:6px}dialog form{padding:14px}}
 </style></head><body>
 <header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><b>Administración</b></div><div class="datos"><b>Héctor Ariel De Cia</b><span>Alias: <b class="sel">distri.dec</b></span><a href="tel:+543516522035">Tel: 351-6522-035</a></div>
