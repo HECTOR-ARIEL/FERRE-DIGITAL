@@ -31,6 +31,7 @@ dialog{overflow:auto}
 #selbar,.selbar{position:sticky;bottom:12px;z-index:4;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--t);color:var(--bg);border-radius:10px;padding:10px 12px;margin-top:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 #selbar span,.selbar span{flex:1;min-width:120px}#selbar .s,.selbar .s{background:transparent;color:inherit;border-color:currentColor}
 .aviso{background:var(--bg);border:1px dashed var(--b)}
+.ren{align-items:flex-start;font-size:14px;padding:8px 0;border-bottom:1px solid var(--b)}.ren input{margin-top:3px;flex:none}.ren i{font-style:normal;font-size:12px}#dimpl{max-height:45vh;overflow:auto}
 .tag.nw{background:var(--a);color:#fff;border-color:var(--a);font-weight:700}
 .wp{display:grid;gap:8px}.wp.nuevo{border-left:4px solid var(--a)}.wp .cab{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}.wp .cab b{font-size:16px}
 .stw{display:flex;align-items:center;gap:4px}.stw button{width:34px;height:34px;padding:0;font-size:18px;flex:none}.stw .qty{width:64px;text-align:center;padding:6px 4px}
@@ -97,7 +98,7 @@ dialog{overflow:auto}
   <select id="smin" onchange="asignarMinimo(this.value);this.value=''"><option value="">Compra mínima…</option><option value="d">Según la descripción (MINIMO… o CAJA CERRADA…)</option><option value="0">Por unidad</option></select>
   <button id="bdef" class="danger" hidden onclick="borrarDefinitivo()">Eliminar definitivamente</button>
   <button id="bsel" onclick="accionSel()">Eliminar</button></div>
- <p class="m">Excel: puedes subir la nota de pedido tal cual llega. Se usan solo las columnas <b>Producto</b> (o Descripción) y <b>Precio</b> (y <b>Stock</b> si existe); el código y el resto de columnas se ignoran. Cada producto se reconoce por su descripción original del Excel: aunque le cambies aquí la descripción o el código, se seguirá actualizando bien.</p>
+ <p class="m">Excel: puedes subir la nota de pedido tal cual llega. Se usan solo las columnas <b>Producto</b> (o Descripción) y <b>Precio</b> (y <b>Stock</b> si existe); el código del proveedor se guarda aparte (no cambia tu código) y el resto de columnas se ignoran. Cada producto se reconoce por su descripción original del Excel: aunque le cambies aquí la descripción o el código, se seguirá actualizando bien. Si el proveedor cambia una descripción, al importar te muestra los parecidos para que elijas reemplazarlos en vez de crear otro producto.</p>
 </section>
 
 <section id="t-pres" hidden>
@@ -155,6 +156,15 @@ dialog{overflow:auto}
  <label>Contraseña nueva<input id="pw1" type="password" minlength="6" required autocomplete="new-password"></label>
  <label>Repetir contraseña<input id="pw2" type="password" minlength="6" required autocomplete="new-password"></label>
  <div class="acc"><button>Guardar contraseña</button></div>
+</form></dialog>
+
+<dialog id="dimp"><form method="dialog" onsubmit="return false">
+ <h2>Importar Excel</h2>
+ <p class="m" id="dimpt" style="margin:0;font-size:14px;white-space:pre-line"></p>
+ <div id="dimpr" class="secl"><b>¿Son el mismo producto con otro nombre?</b>
+  <p class="m" style="margin:0;font-size:13px">El proveedor cambió estas descripciones. Marca las que sean el mismo producto: se reemplaza la descripción y conserva tu código, ganancia, foto, sector y stock. Las que no marques se crean como productos nuevos.</p>
+  <div id="dimpl" class="secl"></div></div>
+ <div class="acc"><button type="button" class="s" id="dimpc">Cancelar</button><button type="button" id="dimpo">Importar</button></div>
 </form></dialog>
 
 <dialog id="dsec"><form method="dialog" onsubmit="return false">
@@ -264,6 +274,7 @@ function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList
 /* ---------- productos ---------- */
 async function load(silencio){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){if(silencio)throw e;return alert(msg(e))}
  MIN_OK=!P.length||'minimo'in P[0];  // false si todavía no se ejecutó el SQL de compra mínima
+ COD_OK=!P.length||'cod_prov'in P[0];  // false si todavía no se ejecutó el SQL de renombrados
  await cargaSectores();
  // los precios del presupuesto en curso se actualizan con los de la base
  L=L.filter(l=>P.some(p=>p.id==l.id&&!p.borrado)).map(l=>{const p=P.find(x=>x.id==l.id);return{...l,codigo:p.codigo,nombre:p.nombre,precio:+p.precio}});
@@ -336,7 +347,7 @@ async function asignarSector(v){if(v==='')return;const ids=[...sel],n=ids.length
  for(let i=0;i<n;i+=200){const{error}=await sb.from('productos').update({sector_id:id}).in('id',ids.slice(i,i+200));if(error)return alert(msg(error))}
  sel.clear();toast(id?`${n} producto(s) movidos a ${S.nom[id]}`:'Sector quitado');load()}
 // Compra mínima de los seleccionados: "d" = el número que dice la descripción del proveedor (MINIMO 12…), "0" = por unidad
-let MIN_OK=false;
+let MIN_OK=false,COD_OK=false;
 async function asignarMinimo(v){if(v==='')return;const L2=P.filter(p=>sel.has(p.id));if(!L2.length)return;const g=new Map();let sin=0;
  for(const p of L2){const m=v=='d'?minDesc(p.clave||p.nombre):0;if(v=='d'&&!m){sin++;continue}const k=m>1?m:null;g.set(k,[...(g.get(k)||[]),p.id])}
  const n=L2.length-sin;if(!n)return alert('Ninguno de los productos seleccionados dice "MINIMO" ni "CAJA CERRADA" en la descripción. Pon la compra mínima a mano en la ficha de cada producto.');
@@ -431,37 +442,62 @@ async function imp(f){$('f').value='';if(!f)return;
  let filas;try{const wb=XLSX.read(await f.arrayBuffer());filas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''})}catch{return alert('No se pudo leer el archivo.')}
  // La fila de títulos puede no ser la primera (la nota de pedido la tiene en la fila 12):
  // buscamos la que tenga una columna de producto/descripción y otra de precio.
- // La columna de código del Excel NO se usa nunca.
- const t=c=>norm(c).replace(/\s+/g,' ');let h=-1,cd,cp,cs;
+ // El código del Excel es el del proveedor: se guarda aparte (cod_prov) y nunca reemplaza tu código.
+ const t=c=>norm(c).replace(/\s+/g,' ');let h=-1,cd,cp,cs,cc;
  for(let i=0;i<Math.min(filas.length,60)&&h<0;i++){const H=filas[i].map(t);
   cd=H.findIndex(x=>['producto','productos','descripcion','nombre','detalle','articulo'].includes(x));
   cp=H.findIndex(x=>x.startsWith('precio')||x=='costo');
-  if(cd>=0&&cp>=0){h=i;cs=H.indexOf('stock')}}
+  if(cd>=0&&cp>=0){h=i;cs=H.indexOf('stock');cc=H.findIndex(x=>['cod','codigo','cod.'].includes(x))}}
  if(h<0)return alert('No encontré la fila de títulos con las columnas "Producto" (o "Descripción") y "Precio".');
  // Si trae columna "Cantidad" es la nota de pedido del proveedor: se guarda para completar el pedido con ella
  const esNota=/\.xlsx$/i.test(f.name)&&filas[h].map(t).some(x=>x.startsWith('cantidad')||x=='cant');
  const out=[];let sinPrecio=0;
  for(const r of filas.slice(h+1)){const d=String(r[cd]??'').trim().replace(/\s+/g,' '),c=num(r[cp]);
   if(!d)continue;if(c===null||c<=0){sinPrecio++;continue}
-  const o={descripcion:d,costo:red(c,2)};if(cs>=0)o.stock=num(r[cs])??0;out.push(o)}
+  const o={descripcion:d,costo:red(c,2)};if(cs>=0)o.stock=num(r[cs])??0;if(cc>=0)o.cod=String(r[cc]??'').trim();out.push(o)}
  if(!out.length)return alert('El Excel no tiene productos con precio.');
  // Vista previa: cuántos existen, cuántos son nuevos y cuántos están en la papelera
- const M=new Map(P.filter(p=>p.clave).map(p=>[p.clave,p])),vistos=new Set();let ex=0,nu=0,pa=0;
- for(const o of out){const k=o.descripcion.toLowerCase(),p=M.get(k);if(p)p.borrado?pa++:ex++;else if(!vistos.has(k))nu++;vistos.add(k)}
+ const M=new Map(P.filter(p=>p.clave).map(p=>[p.clave,p])),vistos=new Set(),nuevas=[];let ex=0,pa=0;
+ for(const o of out){const k=o.descripcion.toLowerCase(),p=M.get(k);if(p)p.borrado?pa++:ex++;else if(!vistos.has(k))nuevas.push(o);vistos.add(k)}
+ const sug=COD_OK?renombrados(nuevas,vistos):[];
  const g=num($('gn').value)??0;
- if(!confirm(`Leí ${out.length} productos de "${f.name}" (títulos en la fila ${h+1}).\n\n`+
+ const elegidos=await revisarImport(`Leí ${out.length} productos de "${f.name}" (títulos en la fila ${h+1}).\n\n`+
   `· ${ex} ya existen → se actualiza su costo${cs>=0?' y stock':''}. Tu ganancia, código, descripción e imagen no cambian.\n`+
-  `· ${nu} son nuevos → se crean con ${fmt(g)} % de ganancia${cs>=0?'':' y stock 0'}.\n`+
-  (pa?`· ${pa} están en la papelera → se ignoran.\n`:'')+(sinPrecio?`· ${sinPrecio} filas sin precio → se ignoran.\n`:'')+
-  `\nEl código del Excel no se usa.\n\n¿Continuar?`))return;
+  `· ${nuevas.length} descripciones nuevas → se crean con ${fmt(g)} % de ganancia${cs>=0?'':' y stock 0'}`+(sug.length?`, salvo las que marques abajo como renombradas.\n`:'.\n')+
+  (pa?`· ${pa} están en la papelera → se ignoran.\n`:'')+(sinPrecio?`· ${sinPrecio} filas sin precio → se ignoran.\n`:''),sug);
+ if(!elegidos)return;
+ for(const s of elegidos)s.nueva.reemplaza=s.p.id;
  const b=document.querySelector('[onclick="$(\'f\').click()"]');b.disabled=true;
- let n=0,a=0,o=0,ok=true,nota='';
+ let n=0,a=0,o=0,rz=0,ok=true,nota='';
  try{for(let i=0;i<out.length;i+=500){b.textContent=`Importando… ${Math.round(i/out.length*100)} %`;
    const{data,error}=await sb.rpc('importar_productos',{p_filas:out.slice(i,i+500),p_ganancia:g});
-   if(error){alert(msg(error));ok=false;break}n+=data.nuevos;a+=data.actualizados;o+=data.omitidos||0}
+   if(error){alert(msg(error));ok=false;break}n+=data.nuevos;a+=data.actualizados;o+=data.omitidos||0;rz+=data.reemplazados||0}
   if(ok&&esNota){b.textContent='Guardando la nota…';nota=await guardaNota(f)?`\n\nEsta nota quedó guardada: el pedido se completará con "${f.name}".`:'\n\nOjo: no se pudo guardar la nota para el pedido. Ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run) y vuelve a importarla.'}}
  finally{b.disabled=false;b.textContent='Importar Excel'}
- alert(`Importación terminada: ${n} nuevos, ${a} actualizados${o?`, ${o} ignorados (están en la papelera)`:''}.`+nota);load()}
+ alert(`Importación terminada: ${n} nuevos, ${a} actualizados${rz?`, ${rz} renombrados (se reemplazó la descripción)`:''}${o?`, ${o} ignorados (están en la papelera)`:''}.`+nota);load()}
+// Productos que el proveedor renombró: descripciones nuevas del Excel que se parecen a un producto
+// cuya descripción ya no viene en el Excel. Si ese producto tiene guardado el código del proveedor,
+// tiene que ser el mismo código (si es otro, no se sugiere). Vienen marcados los casi iguales
+// con los mismos números (así "PLOMADA 400GR" → "PLOMADA 500GR" queda sin marcar para que lo decidas).
+const nums=s=>[...String(s).matchAll(/\d+(?:[.,]\d+)?/g)].map(m=>m[0]).sort().join(' ');
+function parecido(a,b){const bi=s=>{s=norm(s).replace(/[^a-z0-9]+/g,' ').trim();const m=new Map();for(let i=0;i<s.length-1;i++){const x=s.slice(i,i+2);m.set(x,(m.get(x)||0)+1)}return[m,Math.max(1,s.length-1)]};
+ const[A,na]=bi(a),[B,nb]=bi(b);let c=0;for(const[x,v]of A)c+=Math.min(v,B.get(x)||0);return 2*c/(na+nb)}
+function renombrados(nuevas,enExcel){const viejos=P.filter(p=>p.clave&&!p.borrado&&!enExcel.has(p.clave)),C=[];
+ for(const o of nuevas)for(const p of viejos){const mismo=!!(o.cod&&p.cod_prov&&norm(o.cod)==norm(p.cod_prov));
+  if(o.cod&&p.cod_prov&&!mismo)continue;const s=parecido(o.descripcion,p.clave);
+  // al comparar números se ignora el código del proveedor cuando viene escrito en la descripción: "MANIJA 30CM (1031-01)"
+  const sinCod=(d,c)=>c?norm(d).split(norm(c)).join(' '):d;
+  if(s>=(mismo?.45:.7))C.push({nueva:o,p,s,mismo,marca:s>=.75&&nums(sinCod(o.descripcion,o.cod))==nums(sinCod(p.clave,p.cod_prov||o.cod))})}
+ // cada producto viejo y cada descripción nueva se usan una sola vez: primero los más parecidos
+ C.sort((x,y)=>y.mismo-x.mismo||y.s-x.s);const un=new Set(),up=new Set();
+ return C.filter(c=>!un.has(c.nueva)&&!up.has(c.p.id)&&(un.add(c.nueva),up.add(c.p.id))).sort((x,y)=>x.nueva.descripcion.localeCompare(y.nueva.descripcion))}
+// Ventana de confirmación de la importación con la lista de renombrados. Devuelve los elegidos, o null si se cancela.
+function revisarImport(texto,sug){return new Promise(ok=>{$('dimpt').textContent=texto+(sug.length?'':'\n¿Continuar?');
+ $('dimpr').hidden=!sug.length;
+ $('dimpl').innerHTML=sug.map((s,i)=>`<label class="chk ren"><input type="checkbox" data-i="${i}"${s.marca?' checked':''}><span><span class="m">${esc(s.p.nombre)}${norm(s.p.nombre)!=norm(s.p.clave)?` <i>(proveedor: ${esc(s.p.clave.toUpperCase())})</i>`:''}</span><br>→ <b>${esc(s.nueva.descripcion)}</b> <span class="tag">${s.mismo?'mismo código · ':''}${Math.round(s.s*100)} % parecido</span></span></label>`).join('');
+ const fin=v=>{$('dimp').onclose=null;$('dimp').close();ok(v)};
+ $('dimpo').onclick=()=>fin(sug.filter((s,i)=>$('dimpl').querySelector(`[data-i="${i}"]`).checked));
+ $('dimpc').onclick=()=>fin(null);$('dimp').onclose=()=>ok(null);$('dimp').showModal()})}
 // La última nota de pedido importada se guarda en Supabase (carpeta privada "notas"). Solo se conserva la última.
 // El nombre lleva delante la hora de importación, así nunca se descarga una copia vieja guardada en caché.
 async function guardaNota(f){const ruta=Date.now()+'-'+f.name.replace(/[^\w.-]+/g,'_');

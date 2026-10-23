@@ -33,7 +33,13 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Si la descripción ya existe, se actualiza el costo (y el stock si viene). Tu código, descripción editada, ganancia e imagen se mantienen.
 - Si no existe, se crea con el % de ganancia indicado en "Ganancia para productos nuevos".
 - Si cambias la descripción en el panel, el producto sigue vinculado a su fila del Excel.
-- Si en el Excel del proveedor cambia la descripción, se creará como producto nuevo.
+- Si en el Excel del proveedor cambia la descripción, al importar aparece la lista **"¿Son el mismo producto con otro nombre?"**:
+  - Muestra cada descripción nueva junto al producto anterior que se le parece (y que ya no viene en el Excel).
+  - Vienen marcados los casi iguales; los dudosos (por ejemplo "PLOMADA 400GR" → "PLOMADA 500GR") vienen sin marcar.
+  - Los marcados **reemplazan** al producto anterior: cambia la descripción del proveedor y el costo, y se conservan tu código, ganancia, foto, sector, stock e historial. Si no habías editado la descripción, también se actualiza la que se ve.
+  - Los no marcados se crean como productos nuevos, como antes.
+- El código del Excel se guarda como **código del proveedor** (no reemplaza tu código). Si un producto tiene guardado otro código del proveedor, no se sugiere: así no se confunde cuando el proveedor reutiliza un código para otro producto.
+- La primera vez hay que ejecutar otra vez `supabase.sql` (crea la columna `cod_prov`). Hasta entonces no aparece la lista.
 
 ## Sectores
 - Botón **Sectores** (pestaña Productos): crear, renombrar o borrar sectores. Al borrar uno, sus productos quedan "sin sector".
