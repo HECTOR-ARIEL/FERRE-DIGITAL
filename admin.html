@@ -74,7 +74,7 @@ dialog{overflow:auto}
   <button id="qx" type="button" hidden title="Borrar búsqueda" onclick="$('q').value='';lim=100;renderP();$('q').focus()">✕</button></div><span class="m" id="u"></span></div>
  <div class="c r" id="tbar">
   <select id="fs" onchange="lim=100;renderP()" title="Filtrar por sector"></select>
-  <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option><option value="m">Con compra mínima</option><option value="u">Por unidad</option><option value="x">Dicen MINIMO o CAJA CERRADA pero van por unidad</option></select>
+  <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option><option value="k">Sin stock (con código)</option><option value="m">Con compra mínima</option><option value="u">Por unidad</option><option value="x">Dicen MINIMO o CAJA CERRADA pero van por unidad</option></select>
   <button onclick="editar()">+ Nuevo producto</button>
   <button class="s" onclick="$('f').click()">Importar Excel</button>
   <input id="f" type="file" accept=".xlsx,.xls,.csv" hidden onchange="imp(this.files[0])">
@@ -239,7 +239,7 @@ function toast(t){const d=document.createElement('div');d.className='toast';d.te
 function msg(e){if(e.code=='23505')return 'Ya existe otro producto con ese código.';return e.message||String(e)}
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 // lo que se ve en la tabla de productos: búsqueda + filtro de código (+ papelera)
-const lista=()=>{const c=$('fc').value,f=$('fs').value;return filtra($('q').value,enPap).filter(p=>(!c||(c=='m'?p.minimo>0:c=='u'?!(p.minimo>0):c=='x'?!(p.minimo>0)&&minDesc(p.clave||p.nombre)>0:(c=='c')==!!p.codigo))&&(!f||(f=='-'?!p.sector_id:p.sector_id==f)))};
+const lista=()=>{const c=$('fc').value,f=$('fs').value;return filtra($('q').value,enPap).filter(p=>(!c||(c=='m'?p.minimo>0:c=='u'?!(p.minimo>0):c=='x'?!(p.minimo>0)&&minDesc(p.clave||p.nombre)>0:c=='k'?!!p.codigo&&!(+p.stock>0):(c=='c')==!!p.codigo))&&(!f||(f=='-'?!p.sector_id:p.sector_id==f)))};
 // busca dentro de los productos normales, o de la papelera si enPap=true
 const filtra=(q,enPap=false)=>{const w=norm(q).split(/\s+/).filter(Boolean);return P.filter(p=>!!p.borrado==enPap&&w.every(x=>norm((p.codigo||'')+' '+p.nombre).includes(x)))};
 
