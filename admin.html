@@ -7,7 +7,7 @@ header b{font-size:18px}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--b);margin-bottom:14px}
 .tabs button{background:none;border:0;border-bottom:3px solid transparent;border-radius:0;color:var(--m);padding:10px 14px}
 .tabs button.on{color:var(--t);border-bottom-color:var(--a);font-weight:600}.tabs button:hover{background:none;color:var(--t)}
-section>.c{margin-bottom:12px}#pt tr{scroll-margin-top:calc(var(--hh,75px) + 76px)}
+section>.c{margin-bottom:12px}#pedw{overflow:visible}#pedw thead th{position:sticky;top:var(--hh,75px);z-index:3;background:var(--c);box-shadow:0 1px 0 var(--b)}#pt tr{scroll-margin-top:calc(var(--hh,75px) + 76px)}
 #t-prod .top{margin:-14px -34px 14px -16px;padding:12px 34px 12px 16px}.tel{display:none}@media(pointer:coarse){.tel{display:inline-flex}}
 .w{overflow:auto}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid var(--b);text-align:left;vertical-align:middle}
 th{font-size:12px;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
@@ -137,7 +137,7 @@ dialog{overflow:auto}
 <section id="t-ped" hidden>
  <div class="c aviso r" id="pedweb" hidden></div>
  <div class="c"><b>Ventas desde el último pedido</b><p class="m" id="pedinfo" style="margin:6px 0 0"></p></div>
- <div class="c w" style="padding:0"><table><thead><tr><th>Producto</th><th class="n hide-sm">Vendido</th><th class="n hide-sm">Faltó</th><th class="n hide-sm">Stock</th><th class="n hide-sm">Costo</th><th class="n">Pedir</th><th class="n hide-sm">Subtotal</th></tr></thead><tbody id="pedt"></tbody></table></div>
+ <div class="c w" id="pedw" style="padding:0"><table><thead><tr><th>Producto</th><th class="n hide-sm">Vendido</th><th class="n hide-sm">Faltó</th><th class="n hide-sm">Stock</th><th class="n hide-sm">Costo</th><th class="n">Pedir</th><th class="n hide-sm">Subtotal</th></tr></thead><tbody id="pedt"></tbody></table></div>
  <div class="c r" id="pedtot" hidden style="justify-content:space-between"><span class="m" id="pedtotn"></span><span style="font-size:18px">Total a pedir (a costo): <b id="pedtotv"></b></span></div>
  <div class="c aviso" id="pedres" hidden></div>
  <div class="c acc"><span class="m" id="notainfo" style="margin-right:auto;align-self:center"></span><button class="s" id="benv" onclick="marcarEnviado()">Marcar pedido como enviado</button><button class="s" id="botra" onclick="$('fp').click()">Usar otro archivo…</button><button id="bnota" onclick="notaGuardada()">Completar nota de pedido (Excel)</button>
