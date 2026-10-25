@@ -120,8 +120,10 @@ dialog{overflow:auto}
 
 <section id="t-web" hidden>
  <div class="c r"><select id="wf" onchange="cargaWeb()" style="width:auto" title="Qué pedidos mostrar"><option value="nuevo">Nuevos (por preparar)</option><option value="presupuestado">Ya presupuestados</option><option value="descartado">Descartados</option><option value="">Todos</option></select>
-  <span class="m" id="winfo" style="flex:1"></span><button class="s" onclick="cargaWeb()">↻ Actualizar</button></div>
+  <span class="m" id="winfo" style="flex:1"></span><button class="s" onclick="cargaWeb()">↻ Actualizar</button><button class="s" onclick="limpiarWeb()" title="Borra todos los pedidos web ya presupuestados y los descartados. Los nuevos no se tocan.">Eliminar todos los terminados</button></div>
  <div id="web"></div>
+ <div id="wbar" class="selbar" hidden><span><b id="wsel">0</b> seleccionado(s)</span>
+  <button class="s" onclick="selW.clear();pintaWeb()">Cancelar</button><button class="s" onclick="W.forEach(s=>s.estado!='nuevo'&&selW.add(s.id));pintaWeb()">Marcar todos los mostrados</button><button class="danger" onclick="borrarWeb()">Eliminar</button></div>
  <p class="m">Son los pedidos que los clientes arman con el <b>Carrito</b> del catálogo. Al enviarlos, el stock queda <b>reservado</b> (se descuenta en ese momento y el catálogo lo muestra). Pulsa <b>Pasar a presupuesto</b>: los productos se cargan en "Nuevo presupuesto" con el precio actual. Revisa las cantidades y genera el PDF como siempre: se confirma la venta sin descontar dos veces (si cambias cantidades, se ajusta solo) y el pedido pasa a "Ya presupuestados". <b>Descartar</b> devuelve al stock lo reservado.</p>
 </section>
 
@@ -652,7 +654,7 @@ async function borrarHist(){const ids=[...selH],n=ids.length;if(!n)return;
 
 /* ---------- pedidos web (carrito del catálogo) ---------- */
 // SOL: el pedido web que se está pasando a presupuesto. Al generar el PDF queda marcado como presupuestado.
-let W=[],SOL=+leeLS('sol')||null,nWeb=null;
+let W=[],selW=new Set(),SOL=+leeLS('sol')||null,nWeb=null;
 const fechaHora=f=>{f=new Date(f);return f.toLocaleDateString('es')+' '+f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})};
 // Teléfono para wa.me: "351 123 4567" → 5493511234567
 const waNum=t=>{let d=String(t||'').replace(/\D/g,'').replace(/^0+/,'');if(d.length==10)d='549'+d;else if(/^54[^9]/.test(d)&&d.length==12)d='549'+d.slice(2);return d};
@@ -660,16 +662,17 @@ const ESTW={nuevo:'Nuevo',presupuestado:'Presupuestado',descartado:'Descartado'}
 async function cargaWeb(){$('winfo').textContent='Cargando…';let q=sb.from('solicitudes').select('*').order('id',{ascending:false}).limit(100);
  if($('wf').value)q=q.eq('estado',$('wf').value);
  const{data,error}=await q;if(error){$('web').innerHTML='';return $('winfo').textContent=/solicitudes/.test(error.message)?'Falta activar el carrito: ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run).':msg(error)}
- W=data;$('winfo').textContent=W.length?`${W.length} pedido(s)`:'';pintaWeb();cuentaWeb()}
+ W=data;const vis=new Set(W.filter(s=>s.estado!='nuevo').map(s=>s.id));selW.forEach(id=>vis.has(id)||selW.delete(id));$('winfo').textContent=W.length?`${W.length} pedido(s)`:'';pintaWeb();cuentaWeb()}
 function pintaWeb(){$('web').innerHTML=W.map((s,i)=>{const tel=s.telefono?`<a href="https://wa.me/${waNum(s.telefono)}" target="_blank" rel="noopener">${esc(s.telefono)}</a>`:'';
- return `<div class="c wp ${s.estado}"><div class="cab"><b>${esc(s.cliente)}</b>${tel}<span class="m">Nº ${s.id} · ${fechaHora(s.fecha)}</span>
+ return `<div class="c wp ${s.estado}"><div class="cab">${s.estado!='nuevo'?`<input type="checkbox" class="ck" title="Seleccionar para eliminar" ${selW.has(s.id)?'checked':''} onchange="this.checked?selW.add(${s.id}):selW.delete(${s.id});pintaWeb()">`:''}<b>${esc(s.cliente)}</b>${tel}<span class="m">Nº ${s.id} · ${fechaHora(s.fecha)}</span>
   <span class="tag">${ESTW[s.estado]||esc(s.estado)}${s.presupuesto_id?' · Presupuesto Nº '+s.presupuesto_id:''}</span></div>
   ${s.nota?`<div class="nota">${esc(s.nota)}</div>`:''}
   <div class="w"><table><tbody>${(s.lineas||[]).map(l=>{const r=+l.reservado||0,ed=s.estado=='nuevo';return `<tr><td class="n" style="width:1%">${ed?`<div class="stw"><button class="s" title="Restar uno" onclick="cantWeb(${i},${l.id},${+l.cantidad-1})">−</button><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" title="Cantidad (se guarda al salir de la casilla)" onfocus="this.select()" onchange="cantWeb(${i},${l.id},this.value)"><button class="s" title="Sumar uno" onclick="cantWeb(${i},${l.id},${+l.cantidad+1})">+</button></div>`:`<b>${fmt(l.cantidad)}</b>`}<td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span> `:''}${esc(l.nombre)}${s.estado=='nuevo'&&l.reservado!=null&&r<l.cantidad?`<div class="falta">${r>0?`Solo se reservaron ${fmt(r)} (no había más stock)`:'Sin stock: no se reservó nada'}</div>`:''}<td class="n">${money(l.cantidad*l.precio)}${ed?`<td class="n" style="width:1%"><button class="s" title="Quitar del pedido" onclick="cantWeb(${i},${l.id},0)">✕</button>`:''}</tr>`}).join('')}</tbody></table></div>
   <div class="r" style="justify-content:space-between"><span>Total estimado: <b>${money(s.total)}</b></span><div class="acc">
   ${s.estado=='nuevo'?`<button class="danger" onclick="estadoWeb(${i},'descartado')">Descartar</button><button onclick="pasarWeb(${i})">Pasar a presupuesto</button>`
    :s.estado=='descartado'?`<button class="s" onclick="estadoWeb(${i},'nuevo')">Recuperar</button>`:''}</div></div></div>`}).join('')
- ||'<div class="c m">No hay pedidos web '+($('wf').value=='nuevo'?'nuevos.':'para mostrar.')+'</div>'}
+ ||'<div class="c m">No hay pedidos web '+($('wf').value=='nuevo'?'nuevos.':'para mostrar.')+'</div>';
+ $('wbar').hidden=!selW.size;$('wsel').textContent=selW.size}
 // Cambiar la cantidad de un producto de un pedido web nuevo (0 = quitarlo). La base ajusta el stock reservado.
 async function cantWeb(i,pid,v){const s=W[i],l=(s.lineas||[]).find(x=>x.id==pid),n=num(v);if(!l)return;
  if(n==null||n<0){pintaWeb();return alert('Cantidad no válida.')}if(n==+l.cantidad)return;
@@ -679,6 +682,22 @@ async function cantWeb(i,pid,v){const s=W[i],l=(s.lineas||[]).find(x=>x.id==pid)
  s.lineas=data.lineas;s.total=data.total;const p=P.find(x=>x.id==pid);if(p&&data.stock!=null)p.stock=+data.stock;
  pintaWeb();const nl=s.lineas.find(x=>x.id==pid);
  toast(!nl?'Producto quitado del pedido':+nl.reservado<n?`Cantidad ${fmt(n)} · solo hay ${fmt(+nl.reservado)} en stock para reservar`:`Cantidad cambiada a ${fmt(n)}`)}
+// Borra los pedidos web ya presupuestados y los descartados (los nuevos tienen stock reservado: no se tocan).
+// Los presupuestos del Historial no se borran: guardan sus propios productos y cantidades.
+async function limpiarWeb(){const c=async e=>(await sb.from('solicitudes').select('id',{count:'exact',head:true}).eq('estado',e)).count||0;
+ const np=await c('presupuestado'),nd=await c('descartado');if(!np&&!nd)return alert('No hay pedidos web presupuestados ni descartados para eliminar.');
+ if(!confirm(`¿Eliminar ${np} pedido(s) web ya presupuestado(s) y ${nd} descartado(s)?
+
+No se puede deshacer. Los pedidos nuevos no se tocan, y los presupuestos del Historial y el stock quedan como están.`))return;
+ const{error}=await sb.from('solicitudes').delete().in('estado',['presupuestado','descartado']);
+ if(error)return alert(msg(error));alert(`Listo: se eliminaron ${np+nd} pedido(s) web.`);cargaWeb()}
+// Borra los pedidos web marcados (solo presupuestados o descartados)
+async function borrarWeb(){const ids=[...selW],n=ids.length;if(!n)return;
+ if(!confirm(`¿Eliminar ${n} pedido(s) web seleccionado(s)?
+
+No se puede deshacer. Los presupuestos del Historial y el stock quedan como están.`))return;
+ const{error}=await sb.from('solicitudes').delete().in('id',ids).neq('estado','nuevo');
+ if(error)return alert(msg(error));selW.clear();cargaWeb()}
 async function estadoWeb(i,e){const s=W[i];if(e=='descartado'&&!confirm(`¿Descartar el pedido Nº ${s.id} de ${s.cliente}?`))return;
  // descartar devuelve al stock lo reservado; recuperar lo vuelve a reservar (según el stock de ahora)
  const{error}=await sb.rpc('estado_solicitud',{p_id:s.id,p_estado:e});
