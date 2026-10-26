@@ -52,8 +52,19 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - La cantidad se **suma** al stock actual (stock 10 + Excel 5 = 15). Antes de sumar muestra cuántos reconoció y cuáles no.
 - Cada fila se reconoce por la descripción; si no coincide, por tu código.
 
+## Anular un presupuesto (pestaña Historial)
+- Si el cliente no se lleva algunos productos (o nada), pulsa **Anular** en ese presupuesto y marca cuáles (o **Todos**).
+- Lo que se había descontado **vuelve al stock** (lo que había, no lo pedido: si pidió 25 y había 20, vuelven 20).
+- Los anulados dejan de salir en el PDF, el total se recalcula y no se piden al proveedor. Si se anula todo, el PDF dice "PRESUPUESTO ANULADO".
+- El presupuesto queda en el Historial, con la etiqueta "Anulado" o "X anulado(s)". Un producto ya anulado no se puede anular dos veces.
+- Si ese presupuesto ya entró en un pedido enviado al proveedor, avisa: el stock se devuelve igual, pero lo ya pedido no cambia.
+- **Eliminar** un presupuesto no devuelve stock: si el cliente no compró, usa **Anular**.
+- La primera vez hay que ejecutar otra vez `supabase.sql` en Supabase (crea la función `anular_presupuesto`).
+
 ## Pedido al proveedor (pestaña Pedido)
-- Suma todo lo vendido en los presupuestos **desde el último pedido enviado**: lo vendido + lo que faltó por falta de stock.
+- Suma lo vendido en los presupuestos **desde el último pedido enviado**: solo lo que se descontó del stock.
+  Lo que faltó (pidieron más de lo que había) se ve en la columna "Faltó" pero **no se pide solo**: si lo quieres, escribe la cantidad a mano.
+  Los productos anulados en el Historial no se cuentan.
 - Productos por bulto (la descripción del proveedor dice "MINIMO 6", "MIN 10", "MINIMO 12 UNID"…): se piden bultos completos, y solo si el stock quedó por debajo de 5 (o de la mitad del bulto en los de 20 o más).
 - Puedes cambiar cualquier cantidad antes de completar la nota.
 - **Completar nota de pedido**: usa sola la **última nota que importaste** en "Importar Excel" (la de los precios actuales) y descarga una copia con las cantidades escritas en la columna "Cantidad", con el mismo formato. Al lado del botón dice qué nota se va a usar.
@@ -73,6 +84,27 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
   - **Editar cantidades**: en los pedidos nuevos, cada producto tiene − cantidad + y ✕ para quitarlo. Se guarda al instante y ajusta el stock reservado (si bajas, vuelve al stock; si subes, reserva lo que haya).
   - **Descartar**: devuelve al stock lo reservado y lo saca de la lista. Si lo recuperas desde "Descartados", vuelve a reservar lo que haya en stock.
   - El teléfono del cliente abre su WhatsApp para mandarle el presupuesto.
+
+## Aviso por Telegram (pedidos web)
+Cada pedido nuevo del carrito te llega como mensaje de Telegram, aunque tengas el panel cerrado: cliente, teléfono, productos (avisa los que no tenían stock), total y nota.
+Una sola vez:
+1. **Crear el bot**: en Telegram busca **@BotFather**, escríbele `/newbot`, elige un nombre (por ejemplo "Pedidos DEC") y un usuario que termine en `bot`. Te da una **clave** larga, del estilo `123456789:AAH...`. No se la pases a nadie.
+2. **Háblale a tu bot**: ábrelo (el link que te da BotFather) y mándale cualquier mensaje, por ejemplo "hola".
+3. **Tu número de chat**: abre en el navegador `https://api.telegram.org/botTU_CLAVE/getUpdates` (cambia `TU_CLAVE` por la clave, sin espacios). Busca `"chat":{"id":` y copia el número que sigue (por ejemplo `123456789`).
+   - Si sale `"result":[]`, mándale otro mensaje al bot y recarga la página.
+4. Ejecuta otra vez `supabase.sql` en Supabase (SQL Editor > Run).
+5. En el SQL Editor, pega esto con tus datos y pulsa Run:
+   ```sql
+   insert into telegram(token, chat_id) values ('TU_CLAVE', 'TU_NUMERO_DE_CHAT')
+   on conflict (id) do update set token = excluded.token, chat_id = excluded.chat_id;
+   select probar_telegram();
+   ```
+   Te tiene que llegar "✅ Aviso de pedidos web activado". Si no llega, revisa la clave y el número y vuelve a ejecutarlo.
+
+- La clave queda guardada solo en Supabase: **no la pongas en `config.js` ni en ningún archivo de GitHub**.
+- Si Telegram falla, el pedido se guarda igual (solo se pierde ese aviso) y lo ves en Pedidos web como siempre.
+- **Para que le llegue a varias personas**: crea un grupo de Telegram, agrega el bot, escribe algo en el grupo y repite el paso 3: el número del grupo empieza con `-`. Úsalo en el paso 5.
+- **Para apagar los avisos**: `delete from telegram;` en el SQL Editor.
 
 ## Recuperar la contraseña del panel
 - Configuración (una sola vez): en Supabase > Authentication > URL Configuration

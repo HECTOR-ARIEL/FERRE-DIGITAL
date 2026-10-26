@@ -133,7 +133,8 @@ dialog{overflow:auto}
  <p style="text-align:center"><button id="hmas" class="s" hidden onclick="lh+=30;cargaHist()">Ver más</button></p>
  <div id="hbar" class="selbar" hidden><span><b id="hsel">0</b> seleccionado(s)</span>
   <button class="s" onclick="selH.clear();pintaHist()">Cancelar</button><button id="bhdel" class="danger" onclick="borrarHist()">Eliminar</button></div>
- <p class="m">Los presupuestos se guardan en tu base de datos de Supabase (solo los datos: cliente, productos, cantidades y precios). El PDF se vuelve a crear cada vez que pulsas "PDF", así que casi no ocupan espacio. Eliminar un presupuesto no devuelve el stock que descontó. <b>Antes de eliminar presupuestos, marca el pedido como enviado</b> (pestaña Pedido): si no, sus ventas no se cuentan en el pedido.</p>
+ <p class="m"><b>Anular</b>: si el cliente no se lleva algunos productos (o nada), elige cuáles. Lo descontado vuelve al stock, dejan de salir en el PDF y no se piden al proveedor. El presupuesto queda en el Historial.</p>
+ <p class="m">Los presupuestos se guardan en tu base de datos de Supabase (solo los datos: cliente, productos, cantidades y precios). El PDF se vuelve a crear cada vez que pulsas "PDF", así que casi no ocupan espacio. Eliminar un presupuesto no devuelve el stock que descontó: si el cliente no compró, usa <b>Anular</b>. <b>Antes de eliminar presupuestos, marca el pedido como enviado</b> (pestaña Pedido): si no, sus ventas no se cuentan en el pedido.</p>
 </section>
 
 <section id="t-ped" hidden>
@@ -144,7 +145,7 @@ dialog{overflow:auto}
  <div class="c aviso" id="pedres" hidden></div>
  <div class="c acc"><span class="m" id="notainfo" style="margin-right:auto;align-self:center"></span><button class="s" id="benv" onclick="marcarEnviado()">Marcar pedido como enviado</button><button class="s" id="botra" onclick="$('fp').click()">Usar otro archivo…</button><button id="bnota" onclick="notaGuardada()">Completar nota de pedido (Excel)</button>
   <input id="fp" type="file" accept=".xlsx" hidden onchange="completarNota(this.files[0])"></div>
- <p class="m"><b>Cómo se calcula:</b> se pide lo vendido más lo que faltó (lo que pidieron y no había stock). Los productos que en la nota del proveedor dicen "MINIMO 6", "MIN 10"… se piden por bulto completo, y solo si el stock quedó por debajo de 5 (o de la mitad del bulto en los de 20 o más). Puedes cambiar cualquier cantidad antes de completar la nota.<br>
+ <p class="m"><b>Cómo se calcula:</b> se pide solo lo vendido (lo que se descontó del stock). Lo que faltó (lo que pidieron y no había) se muestra aparte y no se pide solo: si lo quieres, escribe la cantidad a mano. Los productos anulados en el Historial no se cuentan. Los productos que en la nota del proveedor dicen "MINIMO 6", "MIN 10"… se piden por bulto completo, y solo si el stock quedó por debajo de 5 (o de la mitad del bulto en los de 20 o más). Puedes cambiar cualquier cantidad antes de completar la nota.<br>
  <b>Completar nota de pedido:</b> se usa automáticamente la última nota que importaste en Productos &gt; "Importar Excel" (la misma de los precios actuales). Se escriben las cantidades en su columna "Cantidad" y se descarga una copia completa, con el mismo formato. Con "Usar otro archivo…" puedes elegir otra a mano.<br>
  <b>Marcar pedido como enviado:</b> hazlo después de mandar la nota. El próximo pedido empieza a contar desde ahí.<br>
  <b>Cuando llega la mercadería:</b> sube esa misma nota completa en Productos &gt; "Importar cantidades" para sumar el stock (corrige antes lo que no haya llegado).</p>
@@ -167,6 +168,15 @@ dialog{overflow:auto}
   <p class="m" style="margin:0;font-size:13px">El proveedor cambió estas descripciones. Marca las que sean el mismo producto: se reemplaza la descripción y conserva tu código, ganancia, foto, sector y stock. Las que no marques se crean como productos nuevos.</p>
   <div id="dimpl" class="secl"></div></div>
  <div class="acc"><button type="button" class="s" id="dimpc">Cancelar</button><button type="button" id="dimpo">Importar</button></div>
+</form></dialog>
+
+<dialog id="danu"><form method="dialog" onsubmit="return false">
+ <h2 id="anut">Anular</h2>
+ <p class="m" style="margin:0;font-size:14px">Marca los productos que el cliente no se lleva. Lo que se había descontado vuelve al stock, deja de salir en el PDF y no se pide al proveedor.</p>
+ <div id="anuav"></div>
+ <label class="chk" style="font-size:14px"><input type="checkbox" class="ck" id="anutodo" onchange="document.querySelectorAll('#anul .ck:not(:disabled)').forEach(c=>c.checked=this.checked);pintaAnu()"> Todos</label>
+ <div class="secl" id="anul" style="max-height:50vh;overflow:auto;gap:0"></div>
+ <div class="acc"><button type="button" class="s" onclick="$('danu').close()">Cancelar</button><button type="button" class="danger" id="banu" onclick="anular()">Anular</button></div>
 </form></dialog>
 
 <dialog id="dsec"><form method="dialog" onsubmit="return false">
@@ -544,7 +554,7 @@ function rl(){$('lt').innerHTML=L.map((l,i)=>{const s=stockL(l),nota=s<=0?'Sin s
  $('tt').textContent='Total: '+money(tot());$('nl').textContent=L.length;$('nl').hidden=!L.length;
  $('pbar').hidden=!L.length;$('pn').textContent=L.length;$('ptot').textContent=money(tot());guardaBorrador()}
 // una línea sale en rojo si no hay nada disponible o hay menos de lo pedido
-const falta=l=>{const d=+(l.disponible??l.cantidad);return d<=0||d<l.cantidad};
+const falta=l=>{const d=+(l.disponible??l.cantidad);return !l.anulado&&(d<=0||d<l.cantidad)};
 
 // Logo para el PDF (se carga una vez al abrir el panel)
 let LOGO=null;
@@ -584,7 +594,7 @@ function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=
   esp('CÓDIGO',C.cod,y,.5);esp('CANT.',C.cant-4.5,y,.5);esp('DESCRIPCIÓN',C.des,y,.5);esp('P. UNIT',C.pu,y,.5,true);esp('SUBTOTAL',C.sub,y,.5,true);
   y+=9;d.setFont('helvetica','normal');d.setFontSize(9)};
  cab();let i=0;
- for(const l of p.lineas){const dis=+(l.disponible??l.cantidad),sin=dis<=0,parcial=!sin&&dis<l.cantidad,t=d.splitTextToSize(String(l.nombre),66);
+ for(const l of p.lineas.filter(l=>!l.anulado)){const dis=+(l.disponible??l.cantidad),sin=dis<=0,parcial=!sin&&dis<l.cantidad,t=d.splitTextToSize(String(l.nombre),66);
   const nota=sin?'SIN STOCK - producto no disponible':parcial?`Solo ${fmt(dis)} disponible(s) de ${fmt(l.cantidad)} pedido(s)`:'';
   const alto=t.length*4.2+(nota?4:0)+3.6;
   if(y+alto>270){d.addPage();y=20;cab();i=0}
@@ -596,6 +606,7 @@ function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=
   y+=alto}
  d.setDrawColor(...CL);d.line(X,y-3,W,y-3);
  if(y>250){d.addPage();y=20}
+ if(p.lineas.every(l=>l.anulado)){y+=4;d.setFont('helvetica','bold');d.setFontSize(14);d.setTextColor(...ROJO);d.text('PRESUPUESTO ANULADO',X,y);d.setFont('helvetica','normal');y+=4}
  if(p.lineas.some(falta)){y+=3;d.setFontSize(8.5);d.setTextColor(...ROJO);
   d.text('Los productos marcados en rojo no tienen stock suficiente: solo se cobra la cantidad disponible.',X,y);y+=3}
  // pie
@@ -641,10 +652,28 @@ async function cargaHist(){const t=$('hq').value.trim().replace(/[,()%*]/g,' ').
  if(t)q=/^\d+$/.test(t)?q.or(`id.eq.${t},cliente.ilike.*${t}*`):q.ilike('cliente',`%${t}%`);
  const{data,error}=await q;if(error)return alert(msg(error));H=data.slice(0,lh);$('hmas').hidden=data.length<=lh;pintaHist()}
 function pintaHist(){const t=$('hq').value.trim();
- $('hist').innerHTML=H.map((p,i)=>{const f=new Date(p.fecha),sin=(p.lineas||[]).some(falta);
-  return `<tr><td class="cc"><input type="checkbox" class="ck" ${selH.has(p.id)?'checked':''} onchange="this.checked?selH.add(${p.id}):selH.delete(${p.id});pintaHist()"><td class="cod">${p.id}<td>${f.toLocaleDateString('es')} <span class="m hide-sm">${f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span><td>${esc(p.cliente||'-')}${sin?' <span class="tag" style="color:var(--no)">Faltó stock</span>':''}<td class="n hide-sm">${(p.lineas||[]).length}<td class="n"><b>${money(p.total)}</b><td class="n"><button class="s" onclick="descargar(H[${i}])">PDF</button></tr>`}).join('')
+ $('hist').innerHTML=H.map((p,i)=>{const f=new Date(p.fecha),ls=p.lineas||[],sin=ls.some(falta),na=ls.filter(l=>l.anulado).length;
+  return `<tr><td class="cc"><input type="checkbox" class="ck" ${selH.has(p.id)?'checked':''} onchange="this.checked?selH.add(${p.id}):selH.delete(${p.id});pintaHist()"><td class="cod">${p.id}<td>${f.toLocaleDateString('es')} <span class="m hide-sm">${f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span><td>${esc(p.cliente||'-')}${sin?' <span class="tag" style="color:var(--no)">Faltó stock</span>':''}${na&&na==ls.length?' <span class="tag" style="color:var(--no)">Anulado</span>':na?` <span class="tag">${na} anulado(s)</span>`:''}<td class="n hide-sm">${ls.length-na}<td class="n"><b>${money(p.total)}</b><td class="n"><div class="acc" style="justify-content:flex-end;flex-wrap:nowrap">${na<ls.length?`<button class="s" onclick="abrirAnular(${i})">Anular</button>`:''}<button class="s" onclick="descargar(H[${i}])">PDF</button></div></tr>`}).join('')
   ||`<tr><td colspan="7" class="m">${t?'No hay presupuestos que coincidan.':'Todavía no hay presupuestos.'}</tr>`;
  $('hall').checked=H.length>0&&H.every(p=>selH.has(p.id));$('hbar').hidden=!selH.size;$('hsel').textContent=selH.size}
+// Anular productos de un presupuesto: la base devuelve al stock lo descontado y los saca del PDF y del pedido
+let ANU=null;
+async function abrirAnular(i){const p=H[i];ANU=p;$('anut').textContent=`Anular del presupuesto Nº ${p.id}${p.cliente?' · '+p.cliente:''}`;
+ $('anul').innerHTML=(p.lineas||[]).map((l,j)=>{const d=+(l.disponible??l.cantidad)||0;
+  return `<label class="chk ren"><input type="checkbox" class="ck" data-j="${j}" ${l.anulado?'disabled':''} onchange="pintaAnu()"><span style="flex:1"><b>${fmt(l.cantidad)}</b> × ${esc(l.nombre)}<br><i class="m">${l.anulado?'Ya anulado':d>0?`Vuelven ${fmt(d)} al stock`:'No se había descontado stock'}</i></span></label>`}).join('');
+ $('anutodo').checked=false;$('anuav').innerHTML='';pintaAnu();$('danu').showModal();
+ // Si ya entró en un pedido enviado, se avisa: lo pedido al proveedor no se deshace
+ const u=await sb.from('pedidos').select('hasta_presupuesto').order('id',{ascending:false}).limit(1);
+ if(ANU===p&&!u.error&&p.id<=(u.data[0]?.hasta_presupuesto||0))$('anuav').innerHTML='<div class="c aviso" style="margin:8px 0;font-size:14px">Este presupuesto ya entró en un pedido al proveedor que marcaste como enviado. El stock se devuelve igual, pero lo que ya pediste no cambia.</div>'}
+function pintaAnu(){const n=document.querySelectorAll('#anul .ck:checked').length,t=document.querySelectorAll('#anul .ck:not(:disabled)').length;
+ $('anutodo').checked=t>0&&n==t;$('banu').disabled=!n;$('banu').textContent=n?`Anular ${n} producto(s)`:'Anular'}
+async function anular(){const p=ANU,js=[...document.querySelectorAll('#anul .ck:checked')].map(c=>+c.dataset.j);if(!p||!js.length)return;
+ const todo=js.length==(p.lineas||[]).filter(l=>!l.anulado).length;
+ if(!confirm((todo?`¿Anular todo el presupuesto Nº ${p.id}?`:`¿Anular ${js.length} producto(s) del presupuesto Nº ${p.id}?`)+'\n\nLo descontado vuelve al stock. No se puede deshacer.'))return;
+ const b=$('banu');b.disabled=true;const{data,error}=await sb.rpc('anular_presupuesto',{p_id:p.id,p_lineas:js});b.disabled=false;
+ if(error)return alert(error.code=='PGRST202'?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
+ p.lineas=data.lineas;p.total=data.total;for(const x of data.stock||[]){const q=P.find(y=>y.id==x.id);if(q)q.stock=+x.stock}
+ $('danu').close();pintaHist();renderP();toast(todo?`Presupuesto Nº ${p.id} anulado`:`${js.length} producto(s) anulado(s)`)}
 async function borrarHist(){const ids=[...selH],n=ids.length;if(!n)return;
  if(!confirm(`¿Eliminar ${n} presupuesto(s) del historial?\n\nNo se puede deshacer. El stock que descontaron no se devuelve.`))return;
  const b=$('bhdel');b.disabled=true;
@@ -733,12 +762,12 @@ async function cargaPedido(){$('pedinfo').textContent='Cargando…';$('pedt').in
  const desde=u.data[0]?.hasta_presupuesto||0;let pres;
  try{pres=await todos(()=>sb.from('presupuestos').select('id,lineas').gt('id',desde).order('id'))}catch(e){return $('pedinfo').textContent=msg(e)}
  const M=new Map();
- for(const pr of pres)for(const l of pr.lineas||[]){const d=+(l.disponible??l.cantidad)||0,c=+l.cantidad||0,x=M.get(l.id)||{id:l.id,nombre:l.nombre,vendido:0,falto:0};
+ for(const pr of pres)for(const l of pr.lineas||[]){if(l.anulado)continue;const d=+(l.disponible??l.cantidad)||0,c=+l.cantidad||0,x=M.get(l.id)||{id:l.id,nombre:l.nombre,vendido:0,falto:0};
   x.vendido+=d;x.falto+=Math.max(0,c-d);M.set(l.id,x)}
  PED={hasta:pres.length?pres[pres.length-1].id:desde,n:pres.length,lineas:[...M.values()].map(x=>{const p=P.find(q=>q.id==x.id),st=p?Math.max(0,+p.stock):null,
-   b=bultoDe(p?.clave||p?.nombre||x.nombre),total=x.vendido+x.falto;let pedir=total,nota='';
+   b=bultoDe(p?.clave||p?.nombre||x.nombre),total=x.vendido;let pedir=total,nota='';
    if(b){if(st!=null&&st>=limiteDe(b)){pedir=0;nota=`Bulto x${b} · quedan ${fmt(st)}, no se pide`}else{pedir=Math.max(1,Math.ceil(total/b))*b;nota=`Bulto x${b}`}}
-   return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',stock:st,costo:p?+p.costo||0:null,bulto:b,pedir,nota}}).sort((a,b)=>b.vendido+b.falto-a.vendido-a.falto||a.nombre.localeCompare(b.nombre))};
+   return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',stock:st,costo:p?+p.costo||0:null,bulto:b,pedir,nota}}).sort((a,b)=>b.vendido-a.vendido||b.falto-a.falto||a.nombre.localeCompare(b.nombre))};
  pintaPedido();avisoWebPedido();pintaNota()}
 // Qué nota se va a usar: la última importada con los precios
 let NOTA=null;

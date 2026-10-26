@@ -16,6 +16,7 @@ alter table productos add column if not exists imagen text;                     
 alter table productos add column if not exists clave text;  -- descripción original del Excel (no se edita)
 alter table productos add column if not exists borrado boolean not null default false;  -- en la papelera
 alter table productos add column if not exists minimo numeric(12,2);  -- compra mínima en el catálogo (vacío = por unidad)
+alter table productos add column if not exists cod_prov text;  -- código del proveedor en el Excel (no es tu código; sirve para reconocer productos renombrados)
 alter table productos alter column codigo drop not null;
 
 -- Versión anterior: "precio" era un número fijo. Ahora pasa a ser el costo,
@@ -138,34 +139,63 @@ drop policy if exists "admin imagenes" on storage.objects;
 create policy "admin imagenes" on storage.objects for all to authenticated
   using (bucket_id = 'imagenes') with check (bucket_id = 'imagenes');
 
+-- ===================== NOTA DE PEDIDO =====================
+-- La última nota del proveedor que importaste (con los precios actuales) se guarda aquí
+-- para completar el pedido con ella. Carpeta privada: tus costos no son públicos.
+insert into storage.buckets (id, name, public) values ('notas', 'notas', false)
+  on conflict (id) do update set public = false;
+drop policy if exists "admin notas" on storage.objects;
+create policy "admin notas" on storage.objects for all to authenticated
+  using (bucket_id = 'notas') with check (bucket_id = 'notas');
+
 -- ===================== FUNCIONES =====================
 -- Importa filas del Excel. Reconoce cada producto por su descripción ORIGINAL del Excel,
 -- así que puedes cambiar la descripción visible y el código sin perder el vínculo.
 -- Existentes: actualiza costo (y stock si viene). Nuevos: los crea con p_ganancia.
 -- Los que están en la papelera se ignoran (no se actualizan ni se vuelven a crear).
+-- Renombrados: si la fila trae "reemplaza" (id de un producto que confirmaste en el panel), ese producto
+-- pasa a usar la descripción nueva del proveedor en vez de crear otro. Conserva tu código, ganancia,
+-- foto, sector y stock; la descripción visible cambia solo si no la habías editado.
+-- "cod" es el código del proveedor: se guarda en cod_prov (tu código no se toca).
 create or replace function importar_productos(p_filas jsonb, p_ganancia numeric)
 returns json language plpgsql as $$
-declare f jsonb; k text; b boolean; nuevos int := 0; actualizados int := 0; omitidos int := 0;
+declare f jsonb; d text; k text; b boolean; r bigint; vieja text;
+        nuevos int := 0; actualizados int := 0; omitidos int := 0; reemplazados int := 0;
 begin
   for f in select * from jsonb_array_elements(p_filas) loop
-    k := lower(regexp_replace(trim(f->>'descripcion'), '\s+', ' ', 'g'));
+    d := regexp_replace(trim(f->>'descripcion'), '\s+', ' ', 'g');
+    k := lower(d);
     continue when k = '';
+    r := (f->>'reemplaza')::bigint;
+    if r is not null and not exists(select 1 from productos where clave = k) then
+      select clave into vieja from productos where id = r and not borrado;
+      if found then
+        update productos set clave = k,
+          nombre = case when lower(regexp_replace(trim(nombre), '\s+', ' ', 'g')) = vieja then d else nombre end,
+          costo = (f->>'costo')::numeric, stock = coalesce((f->>'stock')::numeric, stock),
+          cod_prov = coalesce(nullif(f->>'cod', ''), cod_prov)
+          where id = r;
+        reemplazados := reemplazados + 1;
+        continue;
+      end if;
+    end if;
     select borrado into b from productos where clave = k;
     if not found then
-      insert into productos(clave, nombre, costo, ganancia, stock)
-        values (k, regexp_replace(trim(f->>'descripcion'), '\s+', ' ', 'g'), (f->>'costo')::numeric,
-                coalesce(p_ganancia, 0), coalesce((f->>'stock')::numeric, 0));
+      insert into productos(clave, nombre, costo, ganancia, stock, cod_prov)
+        values (k, d, (f->>'costo')::numeric, coalesce(p_ganancia, 0), coalesce((f->>'stock')::numeric, 0),
+                nullif(f->>'cod', ''));
       nuevos := nuevos + 1;
     elsif b then
       omitidos := omitidos + 1;
     else
       update productos set costo = (f->>'costo')::numeric,
-                           stock = coalesce((f->>'stock')::numeric, stock)
+                           stock = coalesce((f->>'stock')::numeric, stock),
+                           cod_prov = coalesce(nullif(f->>'cod', ''), cod_prov)
         where clave = k;
       actualizados := actualizados + 1;
     end if;
   end loop;
-  return json_build_object('nuevos', nuevos, 'actualizados', actualizados, 'omitidos', omitidos);
+  return json_build_object('nuevos', nuevos, 'actualizados', actualizados, 'omitidos', omitidos, 'reemplazados', reemplazados);
 end $$;
 
 -- Crea el presupuesto y descuenta el stock en una sola operación.
@@ -206,6 +236,36 @@ begin
   end if;
   return jsonb_build_object('id', n, 'total', t, 'lineas', lineas);
 end $$;
+
+-- Anular productos de un presupuesto (o todos): devuelve al stock lo que se había descontado
+-- ("disponible", no lo pedido) y la línea queda marcada "anulado": no sale en el PDF ni se pide al proveedor.
+-- p_lineas son las posiciones de las líneas (0, 1, 2…). Una línea ya anulada no se devuelve dos veces.
+create or replace function anular_presupuesto(p_id bigint, p_lineas int[])
+returns jsonb language plpgsql as $$
+declare pr record; l jsonb; i int := 0; d numeric; nuevas jsonb := '[]'; t numeric := 0; st jsonb := '[]'; v numeric;
+begin
+  select * into pr from presupuestos where id = p_id for update;
+  if not found then raise exception 'No existe el presupuesto Nº %', p_id; end if;
+  for l in select * from jsonb_array_elements(pr.lineas) loop
+    if i = any(p_lineas) and not coalesce((l->>'anulado')::boolean, false) then
+      d := coalesce((l->>'disponible')::numeric, (l->>'cantidad')::numeric, 0);
+      if d > 0 then
+        update productos set stock = stock + d where id = (l->>'id')::bigint returning stock into v;
+        if found then st := st || jsonb_build_object('id', (l->>'id')::bigint, 'stock', v); end if;
+      end if;
+      l := l || '{"anulado": true}';
+    end if;
+    if not coalesce((l->>'anulado')::boolean, false) then
+      t := t + coalesce((l->>'disponible')::numeric, (l->>'cantidad')::numeric, 0) * coalesce((l->>'precio')::numeric, 0);
+    end if;
+    nuevas := nuevas || jsonb_build_array(l);
+    i := i + 1;
+  end loop;
+  update presupuestos set lineas = nuevas, total = t where id = p_id;
+  return jsonb_build_object('lineas', nuevas, 'total', t, 'stock', st);
+end $$;
+revoke execute on function anular_presupuesto(bigint, int[]) from public, anon;
+grant execute on function anular_presupuesto(bigint, int[]) to authenticated;
 
 -- Importar Excel de cantidades: SUMA la cantidad al stock que ya tiene cada producto.
 -- Recibe [{id, cantidad}] (el panel ya reconoció cada fila). Los productos en la papelera se ignoran.
@@ -333,3 +393,83 @@ grant execute on function sumar_stock(jsonb) to authenticated;
 revoke execute on function crear_presupuesto(text, jsonb, bigint) from public, anon;
 grant execute on function importar_productos(jsonb, numeric) to authenticated;
 grant execute on function crear_presupuesto(text, jsonb, bigint) to authenticated;
+
+-- ===================== AVISO POR TELEGRAM =====================
+-- Cada pedido web nuevo te llega como mensaje de Telegram (ver LEEME.md, "Aviso por Telegram").
+-- La clave del bot y tu número de chat se guardan en la tabla "telegram": no van en los archivos de GitHub
+-- y nadie la puede leer desde el catálogo ni desde el panel (solo el SQL Editor de Supabase).
+-- Si Telegram falla o no está configurado, el pedido se guarda igual: solo se pierde el aviso.
+create extension if not exists pg_net with schema extensions;
+create table if not exists telegram(
+  id int primary key default 1 check (id = 1),  -- una sola fila
+  token text not null,                          -- clave del bot (te la da @BotFather)
+  chat_id text not null                         -- tu número de chat (o el de un grupo)
+);
+alter table telegram enable row level security;  -- sin políticas: nadie la ve desde la web
+revoke all on telegram from anon, authenticated;
+
+-- Números como en el panel: 4.500,00 y cantidades sin ceros de más (1,5)
+create or replace function tg_num(x numeric, con_dec boolean default true) returns text
+language sql immutable as $$
+  select case when con_dec then translate(to_char(x, 'FM999,999,999,990.00'), ',.', '.,')
+              else replace(trim_scale(x)::text, '.', ',') end
+$$;
+
+-- Manda un mensaje al chat configurado. Devuelve false si falta configurar Telegram.
+create or replace function tg_enviar(p_texto text) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare cfg record;
+begin
+  select * into cfg from telegram where id = 1;
+  if not found then return false; end if;
+  perform net.http_post(
+    url := 'https://api.telegram.org/bot' || cfg.token || '/sendMessage',
+    body := jsonb_build_object('chat_id', cfg.chat_id, 'text', left(p_texto, 4000)),
+    headers := '{"Content-Type": "application/json"}',
+    timeout_milliseconds := 30000);  -- a veces Telegram tarda más de los 5 s que espera por defecto
+  return true;
+end $$;
+revoke execute on function tg_enviar(text) from public, anon, authenticated;
+
+-- Arma el mensaje de un pedido web nuevo (como mucho 40 productos, para que no sea eterno)
+create or replace function tg_pedido() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare l jsonb; i int := 0; r numeric; txt text; mon text := '$ ';
+begin
+  begin
+    txt := '🛒 Nuevo pedido web Nº ' || new.id || E'\n'
+        || 'Cliente: ' || new.cliente || coalesce(' · Tel: ' || new.telefono, '') || E'\n';
+    for l in select * from jsonb_array_elements(new.lineas) loop
+      i := i + 1;
+      if i <= 40 then
+        r := (l->>'reservado')::numeric;
+        txt := txt || E'\n• ' || tg_num((l->>'cantidad')::numeric, false) || ' × ' || (l->>'nombre')
+            || case when r is null or r >= (l->>'cantidad')::numeric then ''
+                    when r > 0 then ' (solo había ' || tg_num(r, false) || ')'
+                    else ' (sin stock)' end;
+      end if;
+    end loop;
+    if i > 40 then txt := txt || E'\n… y ' || (i - 40) || ' producto(s) más'; end if;
+    txt := txt || E'\n\nTotal estimado: ' || mon || tg_num(new.total)
+        || coalesce(E'\nNota: ' || new.nota, '')
+        || E'\n\nPanel > Pedidos web';
+    perform tg_enviar(txt);
+  exception when others then
+    raise warning 'No se pudo avisar por Telegram: %', sqlerrm;  -- el pedido se guarda igual
+  end;
+  return new;
+end $$;
+revoke execute on function tg_pedido() from public, anon, authenticated;
+drop trigger if exists aviso_telegram on solicitudes;
+create trigger aviso_telegram after insert on solicitudes for each row execute function tg_pedido();
+
+-- Para probar desde el SQL Editor: select probar_telegram();
+create or replace function probar_telegram() returns text
+language plpgsql security definer set search_path = public as $$
+begin
+  if not tg_enviar('✅ Aviso de pedidos web activado. Desde ahora te llega un mensaje con cada pedido del catálogo.') then
+    return 'Falta cargar la clave del bot y tu número de chat (ver LEEME.md).';
+  end if;
+  return 'Mensaje enviado. Si no te llega en unos segundos, revisa la clave y el número de chat.';
+end $$;
+revoke execute on function probar_telegram() from public, anon, authenticated;
