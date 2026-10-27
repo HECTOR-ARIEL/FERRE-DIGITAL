@@ -134,7 +134,7 @@ dialog{overflow:auto}
  <div id="hbar" class="selbar" hidden><span><b id="hsel">0</b> seleccionado(s)</span>
   <button class="s" onclick="selH.clear();pintaHist()">Cancelar</button><button id="bhdel" class="danger" onclick="borrarHist()">Eliminar</button></div>
  <p class="m"><b>Anular</b>: si el cliente no se lleva algunos productos (o nada), elige cuáles. Lo descontado vuelve al stock, dejan de salir en el PDF y no se piden al proveedor. El presupuesto queda en el Historial.</p>
- <p class="m">Los presupuestos se guardan en tu base de datos de Supabase (solo los datos: cliente, productos, cantidades y precios). El PDF se vuelve a crear cada vez que pulsas "PDF", así que casi no ocupan espacio. Eliminar un presupuesto no devuelve el stock que descontó: si el cliente no compró, usa <b>Anular</b>. <b>Antes de eliminar presupuestos, marca el pedido como enviado</b> (pestaña Pedido): si no, sus ventas no se cuentan en el pedido.</p>
+ <p class="m">Los presupuestos se guardan en tu base de datos de Supabase (solo los datos: cliente, productos, cantidades y precios). El PDF se vuelve a crear cada vez que pulsas "PDF", así que casi no ocupan espacio. Eliminar un presupuesto no devuelve el stock que descontó: si el cliente no compró, usa <b>Anular</b>. <b>Antes de eliminar presupuestos, marca el pedido como enviado</b> (pestaña Pedido): si no, sus ventas no se cuentan en el pedido. Por eso, si marcas presupuestos que todavía no se pidieron, el panel no los borra y te avisa cuáles son.</p>
 </section>
 
 <section id="t-ped" hidden>
@@ -674,11 +674,24 @@ async function anular(){const p=ANU,js=[...document.querySelectorAll('#anul .ck:
  if(error)return alert(error.code=='PGRST202'?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
  p.lineas=data.lineas;p.total=data.total;for(const x of data.stock||[]){const q=P.find(y=>y.id==x.id);if(q)q.stock=+x.stock}
  $('danu').close();pintaHist();renderP();toast(todo?`Presupuesto Nº ${p.id} anulado`:`${js.length} producto(s) anulado(s)`)}
-async function borrarHist(){const ids=[...selH],n=ids.length;if(!n)return;
- if(!confirm(`¿Eliminar ${n} presupuesto(s) del historial?\n\nNo se puede deshacer. El stock que descontaron no se devuelve.`))return;
+// Un presupuesto "sin pedir" es posterior al último pedido enviado y tiene algo vendido (no anulado):
+// si se borra, sus ventas desaparecen del cálculo de la pestaña Pedido.
+const sinPedir=l=>!l.anulado&&+(l.disponible??l.cantidad)>0;
+async function borrarHist(){let ids=[...selH];if(!ids.length)return;
  const b=$('bhdel');b.disabled=true;
- try{for(let i=0;i<n;i+=200){const{error}=await sb.from('presupuestos').delete().in('id',ids.slice(i,i+200));if(error)throw error}
-  selH.clear();toast(`${n} presupuesto(s) eliminado(s)`);await cargaHist()}
+ try{const u=await sb.from('pedidos').select('hasta_presupuesto').order('id',{ascending:false}).limit(1);
+  if(!u.error){const hasta=u.data[0]?.hasta_presupuesto||0,pend=[];
+   for(let i=0;i<ids.length;i+=200){const{data,error}=await sb.from('presupuestos').select('id,lineas').in('id',ids.slice(i,i+200)).gt('id',hasta);if(error)throw error;
+    for(const x of data)if((x.lineas||[]).some(sinPedir))pend.push(x.id)}
+   if(pend.length){pend.sort((a,c)=>a-c);const nums='Nº '+pend.slice(0,15).join(', ')+(pend.length>15?` y ${pend.length-15} más`:'');
+    const av=`${pend.length} de los seleccionados todavía NO se pidieron al proveedor (${nums}).\n\nSi los borras, sus ventas desaparecen de la pestaña Pedido y no se van a pedir.\n\nPrimero haz el pedido y pulsa "Marcar pedido como enviado". Si el cliente no compró, usa "Anular".`;
+    if(pend.length==ids.length)return alert('No se borró nada.\n\n'+av);
+    if(!confirm(av+`\n\n¿Borrar solo los otros ${ids.length-pend.length}, que ya se pidieron?`))return;
+    const no=new Set(pend);ids=ids.filter(id=>!no.has(id))}}
+  const n=ids.length;
+  if(!confirm(`¿Eliminar ${n} presupuesto(s) del historial?\n\nNo se puede deshacer. El stock que descontaron no se devuelve.`))return;
+for(let i=0;i<n;i+=200){const{error}=await sb.from('presupuestos').delete().in('id',ids.slice(i,i+200));if(error)throw error}
+  ids.forEach(id=>selH.delete(id));toast(`${n} presupuesto(s) eliminado(s)`);await cargaHist()}
  catch(e){alert(msg(e))}finally{b.disabled=false}}
 
 /* ---------- pedidos web (carrito del catálogo) ---------- */
@@ -764,7 +777,7 @@ async function cargaPedido(){$('pedinfo').textContent='Cargando…';$('pedt').in
  const M=new Map();
  for(const pr of pres)for(const l of pr.lineas||[]){if(l.anulado)continue;const d=+(l.disponible??l.cantidad)||0,c=+l.cantidad||0,x=M.get(l.id)||{id:l.id,nombre:l.nombre,vendido:0,falto:0};
   x.vendido+=d;x.falto+=Math.max(0,c-d);M.set(l.id,x)}
- PED={hasta:pres.length?pres[pres.length-1].id:desde,n:pres.length,lineas:[...M.values()].map(x=>{const p=P.find(q=>q.id==x.id),st=p?Math.max(0,+p.stock):null,
+ PED={hasta:pres.length?pres[pres.length-1].id:desde,n:pres.filter(x=>(x.lineas||[]).some(l=>!l.anulado)).length,lineas:[...M.values()].map(x=>{const p=P.find(q=>q.id==x.id),st=p?Math.max(0,+p.stock):null,
    b=bultoDe(p?.clave||p?.nombre||x.nombre),total=x.vendido;let pedir=total,nota='';
    if(b){if(st!=null&&st>=limiteDe(b)){pedir=0;nota=`Bulto x${b} · quedan ${fmt(st)}, no se pide`}else{pedir=Math.max(1,Math.ceil(total/b))*b;nota=`Bulto x${b}`}}
    return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',stock:st,costo:p?+p.costo||0:null,bulto:b,pedir,nota}}).sort((a,b)=>b.vendido-a.vendido||b.falto-a.falto||a.nombre.localeCompare(b.nombre))};

@@ -72,6 +72,7 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
   - **Usar otro archivo…** permite elegir otra a mano (avisa si no es la última importada).
   - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la carpeta privada `notas`) y volver a importar la nota actual.
 - **Marcar pedido como enviado**: después de mandar la nota. El siguiente pedido cuenta desde ahí. Hazlo antes de borrar presupuestos del Historial.
+  - Si en el Historial marcas para borrar presupuestos que todavía no se pidieron, el panel no los borra y te dice cuáles son (los anulados por completo sí se pueden borrar).
 - Cuando llega la mercadería: sube la misma nota completa en "Importar cantidades" para sumar el stock.
 - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la tabla de pedidos).
 
