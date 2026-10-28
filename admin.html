@@ -31,6 +31,7 @@ dialog{overflow:auto}
 #selbar,.selbar{position:sticky;bottom:12px;z-index:4;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--t);color:var(--bg);border-radius:10px;padding:10px 12px;margin-top:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 #selbar span,.selbar span{flex:1;min-width:120px}#selbar .s,.selbar .s{background:transparent;color:inherit;border-color:currentColor}
 .aviso{background:var(--bg);border:1px dashed var(--b)}
+.mqg{display:grid;grid-template-columns:minmax(0,230px) minmax(0,1fr) minmax(0,280px);gap:16px;align-items:start}.mqf{display:grid;gap:10px}.mqf .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mqd{background:var(--bg);border-radius:10px;padding:10px;text-align:center}.mqd svg{width:100%;max-width:260px;height:auto}.mqd p{margin:4px 0 0;font-size:12px}.mqm table td{padding:5px 4px;font-size:13px}.mqm .tot{font-size:18px;margin:8px 0 0}#mqcfg{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:820px){.mqg{grid-template-columns:1fr}.mqd svg{max-width:200px}}
 .ren{align-items:flex-start;font-size:14px;padding:8px 0;border-bottom:1px solid var(--b)}.ren input{margin-top:3px;flex:none}.ren i{font-style:normal;font-size:12px}#dimpl{max-height:45vh;overflow:auto}
 .tag.nw{background:var(--a);color:#fff;border-color:var(--a);font-weight:700}
 .wp{display:grid;gap:8px}.wp.nuevo{border-left:4px solid var(--a)}.wp .cab{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}.wp .cab b{font-size:16px}
@@ -66,7 +67,7 @@ dialog{overflow:auto}
 </form>
 
 <div id="app" hidden>
-<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Nuevo presupuesto <span id="nl" class="tag" hidden></span></button><button data-t="web" onclick="tab('web')">Pedidos web <span id="nw" class="tag nw" hidden></span></button><button data-t="hist" onclick="tab('hist')">Historial</button><button data-t="ped" onclick="tab('ped')">Pedido</button></div>
+<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Nuevo presupuesto <span id="nl" class="tag" hidden></span></button><button data-t="web" onclick="tab('web')">Pedidos web <span id="nw" class="tag nw" hidden></span></button><button data-t="hist" onclick="tab('hist')">Historial</button><button data-t="ped" onclick="tab('ped')">Pedido</button><button data-t="mos" onclick="tab('mos')">Mosquiteros</button></div>
 
 <section id="t-prod" class="con-abc"><nav class="abc" id="abc" aria-label="Índice alfabético"></nav>
  <div class="top"><div class="bus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
@@ -138,6 +139,35 @@ dialog{overflow:auto}
  <p class="m">Los presupuestos se guardan en tu base de datos de Supabase (solo los datos: cliente, productos, cantidades y precios). El PDF se vuelve a crear cada vez que pulsas "PDF", así que casi no ocupan espacio. Eliminar un presupuesto no devuelve el stock que descontó: si el cliente no compró, usa <b>Anular</b>. <b>Antes de eliminar presupuestos, marca el pedido como enviado</b> (pestaña Pedido): si no, sus ventas no se cuentan en el pedido. Por eso, si marcas presupuestos que todavía no se pidieron, el panel no los borra y te avisa cuáles son.</p>
 </section>
 
+<section id="t-mos" hidden>
+ <div class="c r" style="align-items:flex-end"><label style="flex:1;min-width:200px">Cliente<input id="mcl" placeholder="Nombre del cliente" oninput="MQ.cliente=this.value;guardaMq()"></label><button class="s" onclick="abrirPreciosMq()">Precios de mosquiteros</button></div>
+ <div class="c aviso" id="mqav" hidden></div>
+ <div class="c mqg">
+  <div class="mqf">
+   <b id="mqtit">Nuevo mosquitero</b>
+   <label>Ubicación<input id="mub" placeholder="Dormitorio, cocina…"></label>
+   <label>Línea<select id="mli" onchange="$('mto').checked=this.value!='Herrero';pintaMq()"><option>Módena</option><option>A30</option><option>A40</option><option>Rotonda</option><option>Herrero</option></select></label>
+   <div class="g2"><label>Ancho ventana (m)<input id="man" inputmode="decimal" placeholder="1,50" oninput="pintaMq()"></label><label>Alto (m)<input id="mal" inputmode="decimal" placeholder="1,10" oninput="pintaMq()"></label></div>
+   <p class="m" style="margin:-4px 0 0;font-size:12px">El ancho es el de la ventana entera: el mosquitero cubre una hoja (la mitad).</p>
+   <label>Cantidad<input id="mca" type="number" min="1" step="1" value="1" oninput="pintaMq()"></label>
+   <label class="chk"><input type="checkbox" id="mtr" onchange="pintaMq()"> Lleva travesaño</label>
+   <label id="mtrl" hidden>Altura del travesaño desde abajo (m)<input id="mtra" inputmode="decimal" placeholder="Al medio" oninput="pintaMq()"></label>
+   <label class="chk"><input type="checkbox" id="mto" checked onchange="pintaMq()"> Lleva tope</label>
+   <div class="acc"><button class="s" id="mcan" hidden onclick="limpiaFormMq()">Cancelar</button><button id="mag" onclick="agregaMq()">Agregar al presupuesto</button></div>
+  </div>
+  <div class="mqd"><svg id="mdib" viewBox="0 0 260 320" role="img" aria-label="Dibujo del mosquitero"></svg><p class="m" id="mdibt"></p></div>
+  <div class="mqm"><b>Materiales (1 mosquitero)</b><table><tbody id="mmat"></tbody></table><div id="mcost"></div></div>
+ </div>
+ <div class="c"><b>Mosquiteros del presupuesto</b>
+  <div class="w"><table><thead><tr><th class="n">Cant.</th><th>Mosquitero</th><th class="n hide-sm">Costo u.</th><th class="n">Precio u.</th><th class="n">Subtotal</th><th></th></tr></thead><tbody id="mlis"></tbody></table></div>
+  <p class="m" id="mbar" style="font-size:13px"></p>
+  <div class="mini" style="justify-content:flex-end"><span>Colocación (opcional)</span><input id="mcol" inputmode="decimal" placeholder="0" oninput="MQ.colocacion=num(this.value)||0;guardaMq();pintaListaMq()"></div>
+  <div class="tot" id="mtot"></div>
+  <div class="acc"><button class="s" onclick="vaciarMq()">Vaciar</button><button onclick="pdfMq()">Generar PDF</button></div>
+ </div>
+ <p class="m">El cliente ve en el PDF cada mosquitero con la medida de la ventana, el precio y el total (y la colocación si la cargas). Tus costos y la ganancia solo se ven aquí. El perfil se cobra por barras enteras de 6 m, calculadas para todos los mosquiteros juntos. No descuenta stock ni se guarda en el Historial.</p>
+</section>
+
 <section id="t-ped" hidden>
  <div class="c aviso r" id="pedweb" hidden></div>
  <div class="c"><b>Ventas desde el último pedido</b><p class="m" id="pedinfo" style="margin:6px 0 0"></p></div>
@@ -169,6 +199,13 @@ dialog{overflow:auto}
   <p class="m" style="margin:0;font-size:13px">El proveedor cambió estas descripciones. Marca las que sean el mismo producto: se reemplaza la descripción y conserva tu código, ganancia, foto, sector y stock. Las que no marques se crean como productos nuevos.</p>
   <div id="dimpl" class="secl"></div></div>
  <div class="acc"><button type="button" class="s" id="dimpc">Cancelar</button><button type="button" id="dimpo">Importar</button></div>
+</form></dialog>
+
+<dialog id="dmq"><form method="dialog" onsubmit="return false">
+ <h2>Precios de mosquiteros</h2>
+ <p class="m" style="margin:0;font-size:14px">Precio de costo de cada material. Se guardan en Supabase y se usan en todos los presupuestos de mosquiteros.</p>
+ <div id="mqcfg"></div>
+ <div class="acc"><button type="button" class="s" onclick="$('dmq').close()">Cancelar</button><button type="button" onclick="guardaPreciosMq()">Guardar</button></div>
 </form></dialog>
 
 <dialog id="danu"><form method="dialog" onsubmit="return false">
@@ -285,7 +322,7 @@ async function nuevaClave(e){e.preventDefault();const a=$('pw1').value;if(a!==$(
  const b=e.submitter;b.disabled=true;const{error}=await sb.auth.updateUser({password:a});b.disabled=false;
  if(error)return alert(/different|same/i.test(error.message)?'La contraseña nueva tiene que ser distinta de la anterior.':/session|expired|invalid/i.test(error.message)?'El link venció. Pide otro con "¿Olvidaste tu contraseña?".':error.message);
  $('dpw').close();$('pw1').value=$('pw2').value='';history.replaceState(null,'',location.pathname);toast('Contraseña cambiada. Ya estás dentro del panel.')}
-function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';$('t-ped').hidden=t!='ped';$('t-web').hidden=t!='web';if(t=='web')cargaWeb();if(t=='hist')cargaHist();if(t=='ped')cargaPedido()}
+function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';$('t-ped').hidden=t!='ped';$('t-web').hidden=t!='web';$('t-mos').hidden=t!='mos';if(t=='mos')abrirMq();if(t=='web')cargaWeb();if(t=='hist')cargaHist();if(t=='ped')cargaPedido()}
 
 /* ---------- productos ---------- */
 async function load(silencio){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){if(silencio)throw e;return alert(msg(e))}
@@ -694,6 +731,129 @@ async function borrarHist(){let ids=[...selH];if(!ids.length)return;
 for(let i=0;i<n;i+=200){const{error}=await sb.from('presupuestos').delete().in('id',ids.slice(i,i+200));if(error)throw error}
   ids.forEach(id=>selH.delete(id));toast(`${n} presupuesto(s) eliminado(s)`);await cargaHist()}
  catch(e){alert(msg(e))}finally{b.disabled=false}}
+
+/* ---------- mosquiteros ---------- */
+// Cotizador de mosquiteros corredizos de una hoja (cubren media ventana). Precios en la tabla mosq_config.
+// El perfil se cobra por barras enteras de 6 m: se calculan para todos los mosquiteros juntos (con sierra y despunte)
+// y el costo de cada barra se reparte entre los mosquiteros según los metros que usa cada uno.
+const MQC=[['marco','Barra perfil marco (6 m)','$'],['travesano','Barra perfil travesaño (6 m)','$'],['tope','Barra perfil tope (6 m)','$'],
+ ['tejido','Rollo de tejido (1,20 × 30 m)','$'],['burlete','Rollo de burlete (100 m)','$'],['escuadra','Escuadra (c/u)','$'],
+ ['tornillo','Tornillo del marco (c/u)','$'],['tornillo_trav','Tornillo del travesaño (c/u)','$'],['patin_sup','Patín superior (c/u)','$'],
+ ['patin_inf','Patín inferior (c/u)','$'],['ganancia','Ganancia','%'],['sierra','Corte de sierra','mm'],['despunte','Despunte por barra','mm']];
+let CM=null,MQ={cliente:'',colocacion:0,items:[]},MQE=-1;
+try{const g=JSON.parse(leeLS('mq')||'null');if(g&&Array.isArray(g.items))MQ=g}catch{}
+const guardaMq=()=>guardaLS('mq',JSON.stringify(MQ));
+const mtr=n=>fmt(red(n,2));
+async function abrirMq(){$('mcl').value=MQ.cliente||'';$('mcol').value=MQ.colocacion?fmtIn(MQ.colocacion):'';
+ if(!CM){const{data,error}=await sb.from('mosq_config').select('datos').eq('id',1).maybeSingle();
+  if(error){$('mqav').hidden=false;$('mqav').textContent=/mosq_config/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error);CM={}}
+  else{CM=data?.datos||{};$('mqav').hidden=true}}
+ if(!MQC.some(([k])=>k!='sierra'&&k!='despunte'&&+CM[k]>0)){$('mqav').hidden=false;$('mqav').textContent='Todavía no cargaste los precios: pulsa "Precios de mosquiteros".'}
+ pintaMq();pintaListaMq()}
+function abrirPreciosMq(){$('mqcfg').innerHTML=MQC.map(([k,t,u])=>`<label>${t} (${u})<input id="mq_${k}" inputmode="decimal" value="${CM?.[k]!=null?fmtIn(CM[k]):k=='ganancia'?'50':k=='sierra'?'4':'0'}"></label>`).join('');$('dmq').showModal()}
+async function guardaPreciosMq(){const d={};for(const[k]of MQC){const v=num($('mq_'+k).value);if(v==null||v<0)return alert('Revisa el valor de: '+MQC.find(x=>x[0]==k)[1]);d[k]=v}
+ const{error}=await sb.from('mosq_config').upsert({id:1,datos:d});
+ if(error)return alert(/mosq_config/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
+ CM=d;$('dmq').close();$('mqav').hidden=true;toast('Precios guardados');pintaMq();pintaListaMq()}
+// Mosquitero del formulario (sin validar)
+const formMq=()=>({ub:$('mub').value.trim(),li:$('mli').value,an:num($('man').value)||0,al:num($('mal').value)||0,
+ ca:Math.max(1,Math.round(+$('mca').value||1)),tr:$('mtr').checked,tra:num($('mtra').value),to:$('mto').checked});
+// Largo de tejido a cortar del rollo de 1,20: si el alto entra en 1,20 se corta el ancho; si no, se gira. null = no entra
+const tejidoMq=(a,h)=>h<=1.2?a:a<=1.2?h:null;
+// Barras de 6 m necesarias para cortar las piezas (cada corte suma la sierra; cada barra pierde el despunte)
+function barrasMq(piezas,c){const L=6-(+c.despunte||0)/1000,s=(+c.sierra||0)/1000,b=[];
+ for(const x of [...piezas].sort((a,z)=>z-a)){if(x>L)return{err:`una pieza de ${mtr(x)} m no entra en una barra`};const i=b.findIndex(r=>r+x+s<=L+1e-9);i<0?b.push(x+s):b[i]+=x+s}
+ return{n:b.length,sobra:b.reduce((t,r)=>t+Math.max(0,L-r),0)}}
+// Calcula todos los mosquiteros: costo por unidad, precio y barras de cada perfil
+function calcMq(items,c=CM||{}){const g=+c.ganancia||0,perf={marco:[],travesano:[],tope:[]},R={items:[],barras:{},err:null};
+ items.forEach((it,i)=>{const a=it.an/2,h=it.al,m={marco:[a,a,h,h],travesano:it.tr?[a]:[],tope:it.to?[h]:[]};
+  if(a>0&&h>0)for(const k in m)for(let q=0;q<it.ca;q++)perf[k].push(...m[k]);
+  const lt=tejidoMq(a,h),per=2*a+2*h,mat=[];
+  mat.push(['Perfil marco',mtr(per)+' m',0,'marco',per]);if(it.tr)mat.push(['Perfil travesaño',mtr(a)+' m',0,'travesano',a]);if(it.to)mat.push(['Perfil tope',mtr(h)+' m',0,'tope',h]);
+  mat.push(['Tejido',lt==null?'no entra':mtr(lt)+' m',lt==null?0:lt*(+c.tejido||0)/30],['Burlete',mtr(per)+' m',per*(+c.burlete||0)/100],['Escuadras',4,4*(+c.escuadra||0)],
+   ['Tornillos',8+(it.tr?2:0),8*(+c.tornillo||0)+(it.tr?2*(+c.tornillo_trav||0):0)],['Patines',4,2*(+c.patin_sup||0)+2*(+c.patin_inf||0)]);
+  R.items.push({...it,a,h,lt,mat,err:!(a>0&&h>0)?'Falta el ancho o el alto':lt==null?'El tejido no entra en el rollo de 1,20 m (las dos medidas pasan 1,20)':null})});
+ for(const k in perf){if(!perf[k].length)continue;const b=barrasMq(perf[k],c);if(b.err){R.err=`Perfil ${k=='travesano'?'travesaño':k}: ${b.err}`;continue}
+  const tot=perf[k].reduce((t,x)=>t+x,0);R.barras[k]={...b,metros:tot,costo:b.n*(+c[k]||0)};
+  // cada mosquitero paga la parte de las barras según los metros que usa
+  for(const it of R.items)for(const l of it.mat)if(l[3]==k)l[2]=tot?R.barras[k].costo*l[4]/tot:0}
+ for(const it of R.items){it.costo=it.mat.reduce((t,l)=>t+l[2],0);it.precio=Math.round(it.costo*(1+g/100));it.sub=it.precio*it.ca}
+ R.total=R.items.reduce((t,x)=>t+x.sub,0);return R}
+function pintaMq(){const f=formMq();$('mtrl').hidden=!f.tr;
+ const lista=MQE<0?[...MQ.items,f]:MQ.items.map((x,i)=>i==MQE?f:x),R=calcMq(lista),it=R.items[MQE<0?lista.length-1:MQE];
+ dibujaMq(f);
+ $('mmat').innerHTML=it.mat.map(l=>`<tr><td>${l[0]}</td><td class="n">${l[1]}</td><td class="n">${money(l[2])}</td></tr>`).join('');
+ $('mcost').innerHTML=it.err||R.err?`<p class="falta">${esc(it.err||R.err)}</p>`:`<div class="r" style="justify-content:space-between;font-size:13px"><span class="m">Costo</span><span>${money(it.costo)}</span></div>
+  <div class="tot">${money(it.precio)} <span class="m" style="font-size:12px">c/u con ${fmt(+CM?.ganancia||0)} %</span></div>
+  ${MQ.items.length?'<p class="m" style="font-size:12px;margin:4px 0 0">El perfil está calculado junto con los demás mosquiteros del presupuesto.</p>':''}`}
+function dibujaMq(f){const a=f.an/2,h=f.al;if(!(a>0&&h>0)){$('mdib').innerHTML='<text x="130" y="160" text-anchor="middle" fill="var(--m)" font-size="13">Ingresa ancho y alto</text>';$('mdibt').textContent='';return}
+ const k=Math.min(170/a,250/h),w=a*k,hh=h*k,x=(260-w)/2+10,y=(320-hh)/2,P=7,C='var(--t)';
+ let s=`<rect x="${x}" y="${y}" width="${w}" height="${hh}" fill="none" stroke="${C}" stroke-width="${P}"/>`;
+ for(let i=x+P;i<x+w-P/2;i+=6)s+=`<line x1="${i}" y1="${y+P/2}" x2="${i}" y2="${y+hh-P/2}" stroke="var(--m)" stroke-width=".4"/>`;
+ for(let j=y+P;j<y+hh-P/2;j+=6)s+=`<line x1="${x+P/2}" y1="${j}" x2="${x+w-P/2}" y2="${j}" stroke="var(--m)" stroke-width=".4"/>`;
+ if(f.tr){const t=f.tra>0&&f.tra<h?f.tra:h/2,ty=y+hh-t*k;s+=`<rect x="${x}" y="${ty-3}" width="${w}" height="6" fill="#bd1717"/><text x="${x+w+6}" y="${ty+4}" font-size="11" fill="#bd1717">${mtr(t)} m</text>`}
+ if(f.to)s+=`<rect x="${x-14}" y="${y}" width="6" height="${hh}" fill="var(--m)"/><text x="${x-11}" y="${y-8}" font-size="10" fill="var(--m)" text-anchor="middle">tope</text>`;
+ for(const[px,py]of[[x+w*.2,y-5],[x+w*.8-10,y-5],[x+w*.2,y+hh+1],[x+w*.8-10,y+hh+1]])s+=`<rect x="${px}" y="${py}" width="10" height="4" rx="1" fill="var(--m)"/>`;
+ s+=`<text x="${x+w/2}" y="${y+hh+20}" text-anchor="middle" font-size="12" fill="${C}">${mtr(a)} m</text><text x="${x+w+6}" y="${y+14}" font-size="12" fill="${C}">${mtr(h)} m</text>`;
+ $('mdib').innerHTML=s;$('mdibt').textContent=`Hoja de ${mtr(a)} × ${mtr(h)} m · ventana ${mtr(f.an)} × ${mtr(h)} m`}
+function agregaMq(){const f=formMq(),lista=MQE<0?[...MQ.items,f]:MQ.items.map((x,i)=>i==MQE?f:x),R=calcMq(lista),it=R.items[MQE<0?lista.length-1:MQE];
+ if(it.err||R.err)return alert(it.err||R.err);
+ if(MQE<0)MQ.items.push(f);else MQ.items[MQE]=f;guardaMq();limpiaFormMq();pintaListaMq()}
+function limpiaFormMq(){MQE=-1;for(const i of['mub','man','mal','mtra'])$(i).value='';$('mca').value=1;$('mtr').checked=false;$('mto').checked=$('mli').value!='Herrero';
+ $('mqtit').textContent='Nuevo mosquitero';$('mag').textContent='Agregar al presupuesto';$('mcan').hidden=true;pintaMq()}
+function editaMq(i){const x=MQ.items[i];MQE=i;$('mub').value=x.ub;$('mli').value=x.li;$('man').value=fmtIn(x.an);$('mal').value=fmtIn(x.al);$('mca').value=x.ca;
+ $('mtr').checked=x.tr;$('mtra').value=x.tra?fmtIn(x.tra):'';$('mto').checked=x.to;$('mqtit').textContent=`Editando mosquitero ${i+1}`;$('mag').textContent='Guardar cambios';$('mcan').hidden=false;
+ pintaMq();$('t-mos').scrollIntoView({behavior:'smooth'})}
+function quitaMq(i){MQ.items.splice(i,1);if(MQE==i)limpiaFormMq();else if(MQE>i)MQE--;guardaMq();pintaListaMq();pintaMq()}
+function vaciarMq(){if(!confirm('¿Vaciar el presupuesto de mosquiteros?'))return;MQ={cliente:'',colocacion:0,items:[]};guardaMq();$('mcl').value='';$('mcol').value='';limpiaFormMq();pintaListaMq()}
+const descMq=x=>`Mosquitero línea ${x.li} — ventana ${mtr(x.an)} × ${mtr(x.al)} m`,extraMq=x=>[x.ub,x.tr&&'con travesaño',x.to&&'con tope'].filter(Boolean).join(' · ');
+function pintaListaMq(){const R=calcMq(MQ.items),nom={marco:'marco',travesano:'travesaño',tope:'tope'};
+ $('mlis').innerHTML=R.items.map((x,i)=>`<tr><td class="n"><b>${x.ca}</b></td><td><div class="nom">${esc(descMq(x))}</div><div class="m" style="font-size:12px">${esc(extraMq(x))}</div></td>
+  <td class="n hide-sm m">${money(x.costo)}</td><td class="n">${money(x.precio)}</td><td class="n"><b>${money(x.sub)}</b></td>
+  <td class="n"><div class="acc" style="flex-wrap:nowrap"><button class="s" onclick="editaMq(${i})">Editar</button><button class="s" title="Quitar" onclick="quitaMq(${i})">✕</button></div></td></tr>`).join('')
+  ||'<tr><td colspan="6" class="m">Carga las medidas arriba y pulsa "Agregar al presupuesto".</td></tr>';
+ $('mbar').textContent=Object.entries(R.barras).map(([k,b])=>`Perfil ${nom[k]}: ${b.n} barra(s) para ${mtr(b.metros)} m (sobran ${mtr(b.sobra)} m)`).join(' · ')+(R.err?' · '+R.err:'');
+ const col=+MQ.colocacion||0;$('mtot').innerHTML=R.items.length?`Total: <b>${money(R.total)}</b>${col?`<div class="m" style="font-size:14px">Colocación ${money(col)} · Con colocación <b>${money(R.total+col)}</b></div>`:''}`:''}
+// PDF para el cliente: cada mosquitero con la medida de la ventana, sin costos ni ganancia
+function pdfMq(){const R=calcMq(MQ.items);if(!R.items.length)return alert('Agrega al menos un mosquitero.');
+ const mal=R.items.find(x=>x.err);if(mal||R.err)return alert(mal?.err||R.err);
+ const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=[13,13,13],G=[120,120,120],CL=[226,226,226],W=196,X=14,col=+MQ.colocacion||0;
+ const f=new Date(),fecha=f.toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'numeric'});
+ const esp=(t,x,y,cs,der)=>{const w=d.getTextWidth(t)+cs*(t.length-1);d.text(t,der?x-w:x,y,{charSpace:cs})};
+ d.setFillColor(...NEG);d.rect(X,8,W-X,1.6,'F');d.setFillColor(...ROJO);d.rect(X,9.6,W-X,.6,'F');
+ const lw=40,lh=LOGO?lw*LOGO.k:30;d.setFillColor(244,244,244);d.roundedRect(X,14,lw+5,lh+5,2,2,'F');
+ if(LOGO)d.addImage(LOGO.src,'JPEG',X+2.5,16.5,lw,lh);
+ else{d.setFillColor(...NEG);d.rect(X+2.5,16.5,lw,lh,'F');d.setTextColor(255);d.setFont('helvetica','bold');d.setFontSize(12);d.text(CFG.NOMBRE||'',X+5,33)}
+ d.setFont('helvetica','bold');d.setFontSize(24);d.setTextColor(...NEG);esp('PRESUPUESTO',W,28,1.1,true);
+ d.setFontSize(10);d.setTextColor(...ROJO);esp('MOSQUITEROS',W,35,.8,true);
+ d.setFontSize(8.5);d.setFont('helvetica','normal');d.setTextColor(...G);d.text('Emisión: '+fecha,W,41,{align:'right'});
+ let y=Math.max(14+lh+5,44)+5;d.setDrawColor(...CL);d.setLineWidth(.3);d.line(X,y,W,y);y+=5;
+ d.setDrawColor(...CL);d.roundedRect(X,y,W-X,22,2.5,2.5,'S');d.line(105,y+4,105,y+18);
+ d.setFont('helvetica','bold');d.setFontSize(7);d.setTextColor(...G);esp('CLIENTE',X+6,y+7,.6);esp(col?'TOTAL SIN COLOCACIÓN':'TOTAL A PAGAR',W-6,y+7,.6,true);
+ d.setFontSize(14);d.setTextColor(...NEG);d.text(d.splitTextToSize(String(MQ.cliente||'-'),82)[0],X+6,y+15.5);
+ d.setFontSize(18);d.text(money(R.total),W-6,y+16,{align:'right'});y+=30;
+ const C={cant:X+8,des:30,pu:162,sub:W-3};
+ const cab=()=>{d.setFillColor(...NEG);d.roundedRect(X,y-5.5,W-X,8.5,1.5,1.5,'F');d.setFillColor(...ROJO);d.rect(X,y+2.4,W-X,.6,'F');
+  d.setFont('helvetica','bold');d.setFontSize(7);d.setTextColor(255);esp('CANT.',C.cant-4.5,y,.5);esp('DESCRIPCIÓN',C.des,y,.5);esp('P. UNIT',C.pu,y,.5,true);esp('SUBTOTAL',C.sub,y,.5,true);
+  y+=9;d.setFont('helvetica','normal');d.setFontSize(9)};
+ cab();let i=0;
+ for(const x of R.items){const t=d.splitTextToSize(descMq(x),100),ex=extraMq(x),alto=t.length*4.2+(ex?4:0)+3.6;
+  if(y+alto>260){d.addPage();y=20;cab();i=0}
+  if(i++%2){d.setFillColor(247,247,247);d.rect(X,y-4.6,W-X,alto,'F')}
+  d.setFontSize(9);d.setTextColor(...NEG);d.text(String(x.ca),C.cant,y,{align:'center'});d.text(t,C.des,y);
+  d.text(money(x.precio),C.pu,y,{align:'right'});d.text(money(x.sub),C.sub,y,{align:'right'});
+  if(ex){d.setTextColor(...G);d.setFontSize(7.5);d.text(ex,C.des,y+t.length*4.2-.3)}
+  y+=alto}
+ d.setDrawColor(...CL);d.line(X,y-3,W,y-3);if(y>245){d.addPage();y=20}
+ const fila=(t,v,neg)=>{d.setFont('helvetica',neg?'bold':'normal');d.setFontSize(neg?11:9.5);d.setTextColor(...NEG);d.text(t,150,y,{align:'right'});d.text(money(v),W-3,y,{align:'right'});y+=neg?7:6};
+ y+=3;fila(col?'Total sin colocación':'Total',R.total,!col);if(col){fila('Colocación',col);fila('Total con colocación',R.total+col,true)}
+ y+=6;d.setFontSize(7.5);d.setFont('helvetica','normal');d.setTextColor(...G);d.text('Documento generado electrónicamente — '+fecha,X,y);
+ const marca=(CFG.NOMBRE||'').toUpperCase();d.setFont('helvetica','bold');d.setFontSize(7);const mw=d.getTextWidth(marca)+.6*(marca.length-1)+10;
+ d.setFillColor(...NEG);d.roundedRect(W-mw,y-4,mw,6,3,3,'F');d.setTextColor(255);esp(marca,W-5,y,.6,true);
+ const np=d.getNumberOfPages();if(np>1)for(let k=1;k<=np;k++){d.setPage(k);d.setFont('helvetica','normal');d.setFontSize(7.5);d.setTextColor(...G);d.text(`Página ${k} de ${np}`,W,290,{align:'right'})}
+ const nom=('mosquiteros'+(MQ.cliente?'-'+MQ.cliente:'')+'-'+f.toISOString().slice(0,10)).normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\w-]+/g,'-').toLowerCase()+'.pdf';
+ const file=new File([d.output('blob')],nom,{type:'application/pdf'});
+ if(matchMedia('(pointer:coarse)').matches&&navigator.canShare?.({files:[file]}))navigator.share({files:[file],title:'Presupuesto de mosquiteros'}).catch(()=>{});else d.save(nom)}
 
 /* ---------- copia de seguridad ---------- */
 // Descarga un Excel con todo lo guardado en Supabase, una hoja por tabla.

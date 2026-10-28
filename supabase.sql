@@ -114,6 +114,17 @@ create policy "admin presupuestos" on presupuestos for all to authenticated usin
 revoke select on productos from anon;
 grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado, sector_id, minimo) on productos to anon;
 
+-- ===================== MOSQUITEROS =====================
+-- Precios del cotizador de mosquiteros (una sola fila). Solo tú (con sesión) los ves y cambias.
+create table if not exists mosq_config(
+  id int primary key default 1 check (id = 1),
+  datos jsonb not null default '{}'  -- {marco, travesano, tope, tejido, burlete, escuadra, tornillo, tornillo_trav, patin_sup, patin_inf, ganancia, sierra, despunte}
+);
+alter table mosq_config enable row level security;
+drop policy if exists "admin mosq_config" on mosq_config;
+create policy "admin mosq_config" on mosq_config for all to authenticated using (true) with check (true);
+revoke all on mosq_config from anon;
+
 -- ===================== AVISO DE CAMBIOS =====================
 -- Una sola fila con la hora del último cambio en productos.
 -- El catálogo la consulta cada pocos segundos y, si cambió, recarga los productos.

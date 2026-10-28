@@ -107,6 +107,20 @@ Una sola vez:
 - **Para que le llegue a varias personas**: crea un grupo de Telegram, agrega el bot, escribe algo en el grupo y repite el paso 3: el número del grupo empieza con `-`. Úsalo en el paso 5.
 - **Para apagar los avisos**: `delete from telegram;` en el SQL Editor.
 
+## Mosquiteros (pestaña Mosquiteros)
+Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Herrero), con PDF para el cliente. No toca el stock ni el Historial.
+- La primera vez: ejecuta otra vez `supabase.sql` (crea la tabla `mosq_config`) y pulsa **Precios de mosquiteros** para cargar los costos:
+  barras de 6 m de perfil marco, travesaño y tope; rollo de tejido (1,20 × 30 m); rollo de burlete (100 m); escuadra; tornillo del marco;
+  tornillo del travesaño; patín superior e inferior; % de ganancia; corte de sierra y despunte (en mm).
+- Cada mosquitero: ubicación, línea, **ancho de la ventana entera** y alto (el mosquitero cubre una hoja: la mitad del ancho), cantidad,
+  travesaño (opcional, al medio o a la altura que pongas) y tope (se marca solo, salvo en Herrero). Al costado se ve el dibujo y los materiales.
+- Lleva: perfil de marco (contorno), 4 escuadras, 8 tornillos, burlete en todo el contorno, 2 patines arriba y 2 abajo y el tejido (media hoja × alto).
+  El travesaño suma su perfil y 2 tornillos; el tope, un perfil del alto. Si el tejido no entra en el rollo de 1,20 m, avisa.
+- **El perfil se cobra por barras enteras**: se calcula cuántas barras de cada perfil hacen falta para todos los mosquiteros del presupuesto
+  (con sierra y despunte) y su costo se reparte entre ellos según los metros que usa cada uno. Por eso, al agregar otro mosquitero, los precios de los demás pueden bajar un poco.
+- **PDF**: cada mosquitero con la medida de la ventana (ancho total × alto), cantidad, precio y subtotal, el total y, si cargas **Colocación**, el total con colocación. Tus costos y la ganancia no aparecen.
+- El presupuesto en armado queda guardado en ese dispositivo hasta que pulses **Vaciar**.
+
 ## Copia de seguridad
 - Botón **Copia de seguridad** (pestaña Productos): descarga un Excel `copia-Distribuidor-DEC-AAAA-MM-DD.xlsx` con una hoja por tema:
   **Productos** (código, descripción, costo, ganancia, precio, stock, sector, compra mínima, si está oculto o en la papelera),
