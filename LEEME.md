@@ -107,6 +107,13 @@ Una sola vez:
 - **Para que le llegue a varias personas**: crea un grupo de Telegram, agrega el bot, escribe algo en el grupo y repite el paso 3: el número del grupo empieza con `-`. Úsalo en el paso 5.
 - **Para apagar los avisos**: `delete from telegram;` en el SQL Editor.
 
+## Copia de seguridad
+- Botón **Copia de seguridad** (pestaña Productos): descarga un Excel `copia-Distribuidor-DEC-AAAA-MM-DD.xlsx` con una hoja por tema:
+  **Productos** (código, descripción, costo, ganancia, precio, stock, sector, compra mínima, si está oculto o en la papelera),
+  **Historial** (cada presupuesto con sus productos, lo que faltó y lo anulado), **Pedidos web**, **Pedidos al proveedor** y **Sectores**.
+- Supabase gratis no deja descargar copias de la base: este archivo es tu respaldo. Hazla una vez por semana (por ejemplo el lunes, antes de limpiar el Historial) y guárdala también fuera de la computadora (Google Drive, pendrive).
+- La copia guarda los datos, pero no los restaura con un clic. Si hiciera falta recuperar algo: los productos, costos y stock se pueden volver a cargar con "Importar Excel" e "Importar cantidades"; el resto se recupera desde el archivo.
+
 ## Recuperar la contraseña del panel
 - Configuración (una sola vez): en Supabase > Authentication > URL Configuration
   - **Site URL**: la dirección de tu panel, por ejemplo `https://hector-ariel.github.io/TU-REPO/admin.html`

@@ -82,6 +82,7 @@ dialog{overflow:auto}
   <input id="fq" type="file" accept=".xlsx,.xls,.csv" hidden onchange="impCant(this.files[0])">
   <button class="s" onclick="abrirSectores()">Sectores</button>
   <button class="s" id="bpap" onclick="papelera(true)">Papelera</button>
+  <button class="s" id="bcopia" onclick="copiaSeguridad()" title="Descarga un Excel con productos, historial, pedidos y sectores">Copia de seguridad</button>
  </div>
  <div class="c aviso r" id="avpap" hidden><span style="flex:1;min-width:200px"><b>Papelera.</b> Estos productos no salen en el catálogo y al importar el Excel no se vuelven a crear. Selecciónalos y pulsa "Restaurar" para recuperarlos, o "Eliminar definitivamente" para borrarlos del todo y poder volver a usar su código.</span><button class="s" onclick="papelera(false)">← Volver a productos</button></div>
  <div class="c r" id="gananc" style="justify-content:space-between">
@@ -693,6 +694,30 @@ async function borrarHist(){let ids=[...selH];if(!ids.length)return;
 for(let i=0;i<n;i+=200){const{error}=await sb.from('presupuestos').delete().in('id',ids.slice(i,i+200));if(error)throw error}
   ids.forEach(id=>selH.delete(id));toast(`${n} presupuesto(s) eliminado(s)`);await cargaHist()}
  catch(e){alert(msg(e))}finally{b.disabled=false}}
+
+/* ---------- copia de seguridad ---------- */
+// Descarga un Excel con todo lo guardado en Supabase, una hoja por tabla.
+// Si una tabla todavía no existe (no se ejecutó supabase.sql), esa hoja se omite.
+async function copiaSeguridad(){const b=$('bcopia');b.disabled=true;b.textContent='Preparando copia…';
+ try{const lee=async(t,o='id')=>{try{return await todos(()=>sb.from(t).select('*').order(o))}catch(e){if(t=='productos'||t=='presupuestos')throw e;return null}};
+  const[pr,sec,pres,sol,ped]=await Promise.all([lee('productos'),lee('sectores'),lee('presupuestos'),lee('solicitudes'),lee('pedidos')]);
+  const fh=d=>d?new Date(d).toLocaleString('es',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'',n=v=>v==null||v===''?'':+v;
+  const nomSec=Object.fromEntries((sec||[]).map(x=>[x.id,x.nombre])),wb=XLSX.utils.book_new();
+  const hoja=(nombre,filas,anchos)=>{if(!filas)return;const ws=XLSX.utils.json_to_sheet(filas.length?filas:[{'(vacío)':''}]);ws['!cols']=anchos.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,nombre)};
+  hoja('Productos',pr.map(x=>({'ID':x.id,'Código':x.codigo||'','Descripción':x.nombre,'Descripción proveedor':x.clave||'','Código proveedor':x.cod_prov||'',
+   'Costo':n(x.costo),'Ganancia %':n(x.ganancia),'Precio venta':n(x.precio),'Stock':n(x.stock),'Compra mínima':n(x.minimo),'Sector':nomSec[x.sector_id]||'',
+   'En catálogo':x.activo?'Sí':'No','En papelera':x.borrado?'Sí':'No','Foto':x.imagen||''})),[7,10,45,45,14,12,10,12,9,12,18,11,11,30]);
+  hoja('Historial',pres.flatMap(x=>(x.lineas||[]).map(l=>({'Nº':x.id,'Fecha':fh(x.fecha),'Cliente':x.cliente||'','Total presupuesto':n(x.total),'Código':l.codigo||'','Producto':l.nombre,
+   'Cantidad pedida':n(l.cantidad),'Descontado del stock':n(l.disponible??l.cantidad),'Precio':n(l.precio),'Subtotal':l.anulado?0:+(l.disponible??l.cantidad)*+l.precio,'Anulado':l.anulado?'Sí':''}))),[6,17,24,14,10,45,12,14,12,12,9]);
+  hoja('Pedidos web',sol&&sol.flatMap(x=>(x.lineas||[]).map(l=>({'Nº':x.id,'Fecha':fh(x.fecha),'Cliente':x.cliente,'Teléfono':x.telefono||'','Nota':x.nota||'','Estado':ESTW[x.estado]||x.estado,
+   'Presupuesto Nº':x.presupuesto_id||'','Código':l.codigo||'','Producto':l.nombre,'Cantidad':n(l.cantidad),'Reservado':n(l.reservado),'Precio':n(l.precio)}))),[6,17,22,16,30,14,13,10,45,10,10,12]);
+  hoja('Pedidos al proveedor',ped&&ped.flatMap(x=>(x.lineas||[]).map(l=>({'Nº':x.id,'Fecha':fh(x.fecha),'Hasta presupuesto Nº':x.hasta_presupuesto,'Producto':l.nombre,'Cantidad':n(l.cantidad)}))),[6,17,18,45,10]);
+  hoja('Sectores',sec&&sec.map(x=>({'ID':x.id,'Sector':x.nombre,'Productos':pr.filter(y=>y.sector_id==x.id&&!y.borrado).length})),[7,30,10]);
+  const hoy=new Date(),f=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+  XLSX.writeFile(wb,`copia-${(CFG.NOMBRE||'negocio').normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\w]+/g,'-')}-${f}.xlsx`);
+  toast(`Copia descargada: ${pr.length} productos y ${pres.length} presupuestos`)}
+ catch(e){alert('No se pudo hacer la copia: '+msg(e))}
+ finally{b.disabled=false;b.textContent='Copia de seguridad'}}
 
 /* ---------- pedidos web (carrito del catálogo) ---------- */
 // SOL: el pedido web que se está pasando a presupuesto. Al generar el PDF queda marcado como presupuestado.
