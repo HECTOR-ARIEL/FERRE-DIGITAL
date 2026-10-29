@@ -67,7 +67,7 @@ dialog{overflow:auto}
 </form>
 
 <div id="app" hidden>
-<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Nuevo presupuesto <span id="nl" class="tag" hidden></span></button><button data-t="web" onclick="tab('web')">Pedidos web <span id="nw" class="tag nw" hidden></span></button><button data-t="hist" onclick="tab('hist')">Historial</button><button data-t="ped" onclick="tab('ped')">Pedido</button><button data-t="mos" onclick="tab('mos')">Mosquiteros</button></div>
+<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Nuevo presupuesto <span id="nl" class="tag" hidden></span></button><button data-t="web" onclick="tab('web')">Pedidos web <span id="nw" class="tag nw" hidden></span></button><button data-t="hist" onclick="tab('hist')">Historial</button><button data-t="ped" onclick="tab('ped')">Pedido</button><button data-t="rec" onclick="tab('rec')">Recepción</button><button data-t="mos" onclick="tab('mos')">Mosquiteros</button></div>
 
 <section id="t-prod" class="con-abc"><nav class="abc" id="abc" aria-label="Índice alfabético"></nav>
  <div class="top"><div class="bus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
@@ -147,13 +147,14 @@ dialog{overflow:auto}
    <b id="mqtit">Nuevo mosquitero</b>
    <label>Ubicación<input id="mub" placeholder="Dormitorio, cocina…"></label>
    <label>Línea<select id="mli" onchange="$('mto').checked=this.value!='Herrero';pintaMq()"><option>Módena</option><option>A30</option><option>A40</option><option>Rotonda</option><option>Herrero</option></select></label>
+   <label>Color<select id="mco" onchange="pintaMq()"><option value="blanco">Blanco brillante</option><option value="negro">Negro</option><option value="bronce">Bronce colonial</option></select></label>
    <div class="g2"><label>Ancho ventana (m)<input id="man" inputmode="decimal" placeholder="1,50" oninput="pintaMq()"></label><label>Alto (m)<input id="mal" inputmode="decimal" placeholder="1,10" oninput="pintaMq()"></label></div>
    <p class="m" style="margin:-4px 0 0;font-size:12px">El ancho es el de la ventana entera: el mosquitero cubre una hoja (la mitad).</p>
    <label>Cantidad<input id="mca" type="number" min="1" step="1" value="1" oninput="pintaMq()"></label>
    <label class="chk"><input type="checkbox" id="mtr" onchange="pintaMq()"> Lleva travesaño</label>
    <label id="mtrl" hidden>Altura del travesaño desde abajo (m)<input id="mtra" inputmode="decimal" placeholder="Al medio" oninput="pintaMq()"></label>
    <label class="chk"><input type="checkbox" id="mto" checked onchange="pintaMq()"> Lleva tope</label>
-   <div class="acc"><button class="s" id="mcan" hidden onclick="limpiaFormMq()">Cancelar</button><button id="mag" onclick="agregaMq()">Agregar al presupuesto</button></div>
+   <div class="acc"><button class="s" id="mcan" hidden onclick="limpiaFormMq()">Cancelar</button><button id="mag" onclick="agregaMq()">Agregar a la lista</button></div>
   </div>
   <div class="mqd"><svg id="mdib" viewBox="0 0 260 320" role="img" aria-label="Dibujo del mosquitero"></svg><p class="m" id="mdibt"></p></div>
   <div class="mqm"><b>Materiales (1 mosquitero)</b><table><tbody id="mmat"></tbody></table><div id="mcost"></div></div>
@@ -179,7 +180,22 @@ dialog{overflow:auto}
  <p class="m"><b>Cómo se calcula:</b> se pide solo lo vendido (lo que se descontó del stock). Lo que faltó (lo que pidieron y no había) se muestra aparte y no se pide solo: si lo quieres, escribe la cantidad a mano. Los productos anulados en el Historial no se cuentan. Los productos que en la nota del proveedor dicen "MINIMO 6", "MIN 10"… se piden por bulto completo, y solo si el stock quedó por debajo de 5 (o de la mitad del bulto en los de 20 o más). Puedes cambiar cualquier cantidad antes de completar la nota.<br>
  <b>Completar nota de pedido:</b> se usa automáticamente la última nota que importaste en Productos &gt; "Importar Excel" (la misma de los precios actuales). Se escriben las cantidades en su columna "Cantidad" y se descarga una copia completa, con el mismo formato. Con "Usar otro archivo…" puedes elegir otra a mano.<br>
  <b>Marcar pedido como enviado:</b> hazlo después de mandar la nota. El próximo pedido empieza a contar desde ahí.<br>
- <b>Cuando llega la mercadería:</b> sube esa misma nota completa en Productos &gt; "Importar cantidades" para sumar el stock (corrige antes lo que no haya llegado).</p>
+ <b>Cuando llega la mercadería:</b> sube esa misma nota completa en Productos &gt; "Importar cantidades" para sumar el stock (corrige antes lo que no haya llegado). Para ver qué no llegó, usa la pestaña "Recepción".</p>
+</section>
+<section id="t-rec" hidden>
+ <div class="c"><b>Comparar lo que pedimos con lo que llegó</b>
+  <p class="m" style="margin:6px 0 10px">Elige los dos Excel y se muestra al momento qué llegó y qué no. No se guarda nada ni se toca el stock.</p>
+  <div class="g2"><label>1. Excel de lo que pedimos<input id="recA" type="file" accept=".xlsx,.xls" onchange="leeRec(0,this.files[0])"></label>
+   <label>2. Excel de lo que llegó<input id="recB" type="file" accept=".xlsx,.xls" onchange="leeRec(1,this.files[0])"></label></div>
+  <p class="m" id="recinfo" style="margin:8px 0 0"></p></div>
+ <div id="recres" hidden>
+  <div class="c aviso" id="recfal"></div>
+  <div class="c r"><select id="recf" onchange="pintaRec()" style="width:auto" title="Qué productos mostrar"><option value="f">Solo lo que no llegó o llegó incompleto</option><option value="">Todos</option></select>
+   <span class="m" id="recn" style="flex:1"></span></div>
+  <div class="c w fija" style="padding:0"><table><thead><tr><th>Producto</th><th class="n">Pedimos</th><th class="n">Llegó</th><th class="n">Faltó</th><th class="n hide-sm">Plata a separar</th></tr></thead><tbody id="rect"></tbody></table></div>
+ </div>
+ <p class="m"><b>Cómo se usa:</b> en "1" elige la nota de pedido completa que le mandaste al proveedor; en "2" la misma nota corregida con lo que llegó (la que después subes en "Importar cantidades"). Los productos se reconocen por la descripción.<br>
+ <b>Plata a separar:</b> lo que falta por el precio unitario de la nota (si la nota no tiene precio, se usa el costo cargado en el panel). Sirve para apartar esa plata y volver a pedirlo en el próximo pedido.</p>
 </section>
 </div>
 </main>
@@ -322,7 +338,7 @@ async function nuevaClave(e){e.preventDefault();const a=$('pw1').value;if(a!==$(
  const b=e.submitter;b.disabled=true;const{error}=await sb.auth.updateUser({password:a});b.disabled=false;
  if(error)return alert(/different|same/i.test(error.message)?'La contraseña nueva tiene que ser distinta de la anterior.':/session|expired|invalid/i.test(error.message)?'El link venció. Pide otro con "¿Olvidaste tu contraseña?".':error.message);
  $('dpw').close();$('pw1').value=$('pw2').value='';history.replaceState(null,'',location.pathname);toast('Contraseña cambiada. Ya estás dentro del panel.')}
-function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';$('t-ped').hidden=t!='ped';$('t-web').hidden=t!='web';$('t-mos').hidden=t!='mos';if(t=='mos')abrirMq();if(t=='web')cargaWeb();if(t=='hist')cargaHist();if(t=='ped')cargaPedido()}
+function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';$('t-ped').hidden=t!='ped';$('t-web').hidden=t!='web';$('t-mos').hidden=t!='mos';$('t-rec').hidden=t!='rec';if(t=='mos')abrirMq();if(t=='web')cargaWeb();if(t=='hist')cargaHist();if(t=='ped')cargaPedido()}
 
 /* ---------- productos ---------- */
 async function load(silencio){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){if(silencio)throw e;return alert(msg(e))}
@@ -736,7 +752,9 @@ for(let i=0;i<n;i+=200){const{error}=await sb.from('presupuestos').delete().in('
 // Cotizador de mosquiteros corredizos de una hoja (cubren media ventana). Precios en la tabla mosq_config.
 // El perfil se cobra por barras enteras de 6 m: se calculan para todos los mosquiteros juntos (con sierra y despunte)
 // y el costo de cada barra se reparte entre los mosquiteros según los metros que usa cada uno.
-const MQC=[['marco','Barra perfil marco (6 m)','$'],['travesano','Barra perfil travesaño (6 m)','$'],['tope','Barra perfil tope (6 m)','$'],
+// Colores de perfil: clave, nombre y color del dibujo
+const MQCOL=[['blanco','Blanco brillante','#f4f4f4'],['negro','Negro','#1c1c1c'],['bronce','Bronce colonial','#5a3d24']],MQPER={marco:'marco',travesano:'travesaño',tope:'tope'};
+const MQC=[...Object.keys(MQPER).flatMap(p=>MQCOL.map(([c,n])=>[p+'_'+c,`Barra ${MQPER[p]} ${n} (6 m)`,'$'])),
  ['tejido','Rollo de tejido (1,20 × 30 m)','$'],['burlete','Rollo de burlete (100 m)','$'],['escuadra','Escuadra (c/u)','$'],
  ['tornillo','Tornillo del marco (c/u)','$'],['tornillo_trav','Tornillo del travesaño (c/u)','$'],['patin_sup','Patín superior (c/u)','$'],
  ['patin_inf','Patín inferior (c/u)','$'],['ganancia','Ganancia','%'],['sierra','Corte de sierra','mm'],['despunte','Despunte por barra','mm']];
@@ -750,13 +768,17 @@ async function abrirMq(){$('mcl').value=MQ.cliente||'';$('mcol').value=MQ.coloca
   else{CM=data?.datos||{};$('mqav').hidden=true}}
  if(!MQC.some(([k])=>k!='sierra'&&k!='despunte'&&+CM[k]>0)){$('mqav').hidden=false;$('mqav').textContent='Todavía no cargaste los precios: pulsa "Precios de mosquiteros".'}
  pintaMq();pintaListaMq()}
-function abrirPreciosMq(){$('mqcfg').innerHTML=MQC.map(([k,t,u])=>`<label>${t} (${u})<input id="mq_${k}" inputmode="decimal" value="${CM?.[k]!=null?fmtIn(CM[k]):k=='ganancia'?'50':k=='sierra'?'4':'0'}"></label>`).join('');$('dmq').showModal()}
+function abrirPreciosMq(){const v=k=>CM?.[k]!=null?fmtIn(CM[k]):k.includes('_')&&CM?.[k.split('_')[0]]!=null?fmtIn(CM[k.split('_')[0]]):k=='ganancia'?'50':k=='sierra'?'4':'0';
+ // Perfiles: una fila por perfil y una columna por color
+ $('mqcfg').innerHTML=`<div style="grid-column:1/-1"><b style="font-size:14px">Barras de 6 m (precio por color)</b><table><thead><tr><th></th>${MQCOL.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead>
+  <tbody>${Object.entries(MQPER).map(([p,n])=>`<tr><td style="text-transform:capitalize">${n}</td>${MQCOL.map(([c])=>`<td><input id="mq_${p}_${c}" inputmode="decimal" value="${v(p+'_'+c)}" style="min-width:0"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+  +MQC.filter(([k])=>!k.includes('_')||k.startsWith('tornillo_')||k.startsWith('patin_')).map(([k,t,u])=>`<label>${t} (${u})<input id="mq_${k}" inputmode="decimal" value="${v(k)}"></label>`).join('');$('dmq').showModal()}
 async function guardaPreciosMq(){const d={};for(const[k]of MQC){const v=num($('mq_'+k).value);if(v==null||v<0)return alert('Revisa el valor de: '+MQC.find(x=>x[0]==k)[1]);d[k]=v}
  const{error}=await sb.from('mosq_config').upsert({id:1,datos:d});
  if(error)return alert(/mosq_config/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
  CM=d;$('dmq').close();$('mqav').hidden=true;toast('Precios guardados');pintaMq();pintaListaMq()}
 // Mosquitero del formulario (sin validar)
-const formMq=()=>({ub:$('mub').value.trim(),li:$('mli').value,an:num($('man').value)||0,al:num($('mal').value)||0,
+const formMq=()=>({ub:$('mub').value.trim(),li:$('mli').value,co:$('mco').value,an:num($('man').value)||0,al:num($('mal').value)||0,
  ca:Math.max(1,Math.round(+$('mca').value||1)),tr:$('mtr').checked,tra:num($('mtra').value),to:$('mto').checked});
 // Largo de tejido a cortar del rollo de 1,20: si el alto entra en 1,20 se corta el ancho; si no, se gira. null = no entra
 const tejidoMq=(a,h)=>h<=1.2?a:a<=1.2?h:null;
@@ -764,17 +786,21 @@ const tejidoMq=(a,h)=>h<=1.2?a:a<=1.2?h:null;
 function barrasMq(piezas,c){const L=6-(+c.despunte||0)/1000,s=(+c.sierra||0)/1000,b=[];
  for(const x of [...piezas].sort((a,z)=>z-a)){if(x>L)return{err:`una pieza de ${mtr(x)} m no entra en una barra`};const i=b.findIndex(r=>r+x+s<=L+1e-9);i<0?b.push(x+s):b[i]+=x+s}
  return{n:b.length,sobra:b.reduce((t,r)=>t+Math.max(0,L-r),0)}}
+const nomBarraMq=k=>{const[p,c]=k.split('_');return MQPER[p]+' '+colMq(c)[1].toLowerCase()};
 // Calcula todos los mosquiteros: costo por unidad, precio y barras de cada perfil
-function calcMq(items,c=CM||{}){const g=+c.ganancia||0,perf={marco:[],travesano:[],tope:[]},R={items:[],barras:{},err:null};
- items.forEach((it,i)=>{const a=it.an/2,h=it.al,m={marco:[a,a,h,h],travesano:it.tr?[a]:[],tope:it.to?[h]:[]};
-  if(a>0&&h>0)for(const k in m)for(let q=0;q<it.ca;q++)perf[k].push(...m[k]);
+const colMq=k=>MQCOL.find(x=>x[0]==k)||MQCOL[0];
+// Precio de la barra de un perfil en un color (si falta, usa el precio sin color de la versión anterior)
+const barraMq=(c,k)=>+c[k]||+c[k.split('_')[0]]||0;
+function calcMq(items,c=CM||{}){const g=+c.ganancia||0,perf={},R={items:[],barras:{},err:null};
+ items.forEach((it,i)=>{const a=it.an/2,h=it.al,co=colMq(it.co)[0],m={marco:[a,a,h,h],travesano:it.tr?[a]:[],tope:it.to?[h]:[]};
+  if(a>0&&h>0)for(const k in m)for(let q=0;q<it.ca;q++)(perf[k+'_'+co]??=[]).push(...m[k]);
   const lt=tejidoMq(a,h),per=2*a+2*h,mat=[];
-  mat.push(['Perfil marco',mtr(per)+' m',0,'marco',per]);if(it.tr)mat.push(['Perfil travesaño',mtr(a)+' m',0,'travesano',a]);if(it.to)mat.push(['Perfil tope',mtr(h)+' m',0,'tope',h]);
+  mat.push(['Perfil marco',mtr(per)+' m',0,'marco_'+co,per]);if(it.tr)mat.push(['Perfil travesaño',mtr(a)+' m',0,'travesano_'+co,a]);if(it.to)mat.push(['Perfil tope',mtr(h)+' m',0,'tope_'+co,h]);
   mat.push(['Tejido',lt==null?'no entra':mtr(lt)+' m',lt==null?0:lt*(+c.tejido||0)/30],['Burlete',mtr(per)+' m',per*(+c.burlete||0)/100],['Escuadras',4,4*(+c.escuadra||0)],
    ['Tornillos',8+(it.tr?2:0),8*(+c.tornillo||0)+(it.tr?2*(+c.tornillo_trav||0):0)],['Patines',4,2*(+c.patin_sup||0)+2*(+c.patin_inf||0)]);
   R.items.push({...it,a,h,lt,mat,err:!(a>0&&h>0)?'Falta el ancho o el alto':lt==null?'El tejido no entra en el rollo de 1,20 m (las dos medidas pasan 1,20)':null})});
- for(const k in perf){if(!perf[k].length)continue;const b=barrasMq(perf[k],c);if(b.err){R.err=`Perfil ${k=='travesano'?'travesaño':k}: ${b.err}`;continue}
-  const tot=perf[k].reduce((t,x)=>t+x,0);R.barras[k]={...b,metros:tot,costo:b.n*(+c[k]||0)};
+ for(const k in perf){if(!perf[k].length)continue;const b=barrasMq(perf[k],c);if(b.err){R.err=`Perfil ${nomBarraMq(k)}: ${b.err}`;continue}
+  const tot=perf[k].reduce((t,x)=>t+x,0);R.barras[k]={...b,metros:tot,costo:b.n*barraMq(c,k)};
   // cada mosquitero paga la parte de las barras según los metros que usa
   for(const it of R.items)for(const l of it.mat)if(l[3]==k)l[2]=tot?R.barras[k].costo*l[4]/tot:0}
  for(const it of R.items){it.costo=it.mat.reduce((t,l)=>t+l[2],0);it.precio=Math.round(it.costo*(1+g/100));it.sub=it.precio*it.ca}
@@ -787,32 +813,33 @@ function pintaMq(){const f=formMq();$('mtrl').hidden=!f.tr;
   <div class="tot">${money(it.precio)} <span class="m" style="font-size:12px">c/u con ${fmt(+CM?.ganancia||0)} %</span></div>
   ${MQ.items.length?'<p class="m" style="font-size:12px;margin:4px 0 0">El perfil está calculado junto con los demás mosquiteros del presupuesto.</p>':''}`}
 function dibujaMq(f){const a=f.an/2,h=f.al;if(!(a>0&&h>0)){$('mdib').innerHTML='<text x="130" y="160" text-anchor="middle" fill="var(--m)" font-size="13">Ingresa ancho y alto</text>';$('mdibt').textContent='';return}
- const k=Math.min(170/a,250/h),w=a*k,hh=h*k,x=(260-w)/2+10,y=(320-hh)/2,P=7,C='var(--t)';
- let s=`<rect x="${x}" y="${y}" width="${w}" height="${hh}" fill="none" stroke="${C}" stroke-width="${P}"/>`;
+ const k=Math.min(170/a,250/h),w=a*k,hh=h*k,x=(260-w)/2+10,y=(320-hh)/2,P=8,C='var(--t)',[,cn,K]=colMq(f.co),O='stroke="#888" stroke-width=".7"';
+ // marco del color elegido, con un filo gris para que el blanco se vea sobre fondo claro
+ let s=`<rect x="${x}" y="${y}" width="${w}" height="${hh}" fill="none" stroke="${K}" stroke-width="${P}"/><rect x="${x-P/2}" y="${y-P/2}" width="${w+P}" height="${hh+P}" fill="none" ${O}/><rect x="${x+P/2}" y="${y+P/2}" width="${w-P}" height="${hh-P}" fill="none" ${O}/>`;
  for(let i=x+P;i<x+w-P/2;i+=6)s+=`<line x1="${i}" y1="${y+P/2}" x2="${i}" y2="${y+hh-P/2}" stroke="var(--m)" stroke-width=".4"/>`;
  for(let j=y+P;j<y+hh-P/2;j+=6)s+=`<line x1="${x+P/2}" y1="${j}" x2="${x+w-P/2}" y2="${j}" stroke="var(--m)" stroke-width=".4"/>`;
- if(f.tr){const t=f.tra>0&&f.tra<h?f.tra:h/2,ty=y+hh-t*k;s+=`<rect x="${x}" y="${ty-3}" width="${w}" height="6" fill="#bd1717"/><text x="${x+w+6}" y="${ty+4}" font-size="11" fill="#bd1717">${mtr(t)} m</text>`}
- if(f.to)s+=`<rect x="${x-14}" y="${y}" width="6" height="${hh}" fill="var(--m)"/><text x="${x-11}" y="${y-8}" font-size="10" fill="var(--m)" text-anchor="middle">tope</text>`;
+ if(f.tr){const t=f.tra>0&&f.tra<h?f.tra:h/2,ty=y+hh-t*k;s+=`<rect x="${x}" y="${ty-3.5}" width="${w}" height="7" fill="${K}" ${O}/><text x="${x+w+8}" y="${ty+4}" font-size="11" fill="${C}">${mtr(t)} m</text>`}
+ if(f.to)s+=`<rect x="${x-16}" y="${y-P/2}" width="6" height="${hh+P}" fill="${K}" ${O}/><text x="${x-11}" y="${y-8}" font-size="10" fill="var(--m)" text-anchor="middle">tope</text>`;
  for(const[px,py]of[[x+w*.2,y-5],[x+w*.8-10,y-5],[x+w*.2,y+hh+1],[x+w*.8-10,y+hh+1]])s+=`<rect x="${px}" y="${py}" width="10" height="4" rx="1" fill="var(--m)"/>`;
  s+=`<text x="${x+w/2}" y="${y+hh+20}" text-anchor="middle" font-size="12" fill="${C}">${mtr(a)} m</text><text x="${x+w+6}" y="${y+14}" font-size="12" fill="${C}">${mtr(h)} m</text>`;
- $('mdib').innerHTML=s;$('mdibt').textContent=`Hoja de ${mtr(a)} × ${mtr(h)} m · ventana ${mtr(f.an)} × ${mtr(h)} m`}
+ $('mdib').innerHTML=s;$('mdibt').textContent=`${cn} · hoja de ${mtr(a)} × ${mtr(h)} m · ventana ${mtr(f.an)} × ${mtr(h)} m`}
 function agregaMq(){const f=formMq(),lista=MQE<0?[...MQ.items,f]:MQ.items.map((x,i)=>i==MQE?f:x),R=calcMq(lista),it=R.items[MQE<0?lista.length-1:MQE];
  if(it.err||R.err)return alert(it.err||R.err);
  if(MQE<0)MQ.items.push(f);else MQ.items[MQE]=f;guardaMq();limpiaFormMq();pintaListaMq()}
 function limpiaFormMq(){MQE=-1;for(const i of['mub','man','mal','mtra'])$(i).value='';$('mca').value=1;$('mtr').checked=false;$('mto').checked=$('mli').value!='Herrero';
- $('mqtit').textContent='Nuevo mosquitero';$('mag').textContent='Agregar al presupuesto';$('mcan').hidden=true;pintaMq()}
-function editaMq(i){const x=MQ.items[i];MQE=i;$('mub').value=x.ub;$('mli').value=x.li;$('man').value=fmtIn(x.an);$('mal').value=fmtIn(x.al);$('mca').value=x.ca;
+ $('mqtit').textContent='Nuevo mosquitero';$('mag').textContent='Agregar a la lista';$('mcan').hidden=true;pintaMq()}
+function editaMq(i){const x=MQ.items[i];MQE=i;$('mub').value=x.ub;$('mli').value=x.li;$('mco').value=x.co||'blanco';$('man').value=fmtIn(x.an);$('mal').value=fmtIn(x.al);$('mca').value=x.ca;
  $('mtr').checked=x.tr;$('mtra').value=x.tra?fmtIn(x.tra):'';$('mto').checked=x.to;$('mqtit').textContent=`Editando mosquitero ${i+1}`;$('mag').textContent='Guardar cambios';$('mcan').hidden=false;
  pintaMq();$('t-mos').scrollIntoView({behavior:'smooth'})}
 function quitaMq(i){MQ.items.splice(i,1);if(MQE==i)limpiaFormMq();else if(MQE>i)MQE--;guardaMq();pintaListaMq();pintaMq()}
 function vaciarMq(){if(!confirm('¿Vaciar el presupuesto de mosquiteros?'))return;MQ={cliente:'',colocacion:0,items:[]};guardaMq();$('mcl').value='';$('mcol').value='';limpiaFormMq();pintaListaMq()}
-const descMq=x=>`Mosquitero línea ${x.li} — ventana ${mtr(x.an)} × ${mtr(x.al)} m`,extraMq=x=>[x.ub,x.tr&&'con travesaño',x.to&&'con tope'].filter(Boolean).join(' · ');
-function pintaListaMq(){const R=calcMq(MQ.items),nom={marco:'marco',travesano:'travesaño',tope:'tope'};
+const descMq=x=>`Mosquitero línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — ventana ${mtr(x.an)} × ${mtr(x.al)} m`,extraMq=x=>[x.ub,x.tr&&'con travesaño',x.to&&'con tope'].filter(Boolean).join(' · ');
+function pintaListaMq(){const R=calcMq(MQ.items);
  $('mlis').innerHTML=R.items.map((x,i)=>`<tr><td class="n"><b>${x.ca}</b></td><td><div class="nom">${esc(descMq(x))}</div><div class="m" style="font-size:12px">${esc(extraMq(x))}</div></td>
   <td class="n hide-sm m">${money(x.costo)}</td><td class="n">${money(x.precio)}</td><td class="n"><b>${money(x.sub)}</b></td>
   <td class="n"><div class="acc" style="flex-wrap:nowrap"><button class="s" onclick="editaMq(${i})">Editar</button><button class="s" title="Quitar" onclick="quitaMq(${i})">✕</button></div></td></tr>`).join('')
-  ||'<tr><td colspan="6" class="m">Carga las medidas arriba y pulsa "Agregar al presupuesto".</td></tr>';
- $('mbar').textContent=Object.entries(R.barras).map(([k,b])=>`Perfil ${nom[k]}: ${b.n} barra(s) para ${mtr(b.metros)} m (sobran ${mtr(b.sobra)} m)`).join(' · ')+(R.err?' · '+R.err:'');
+  ||'<tr><td colspan="6" class="m">Carga las medidas arriba y pulsa "Agregar a la lista".</td></tr>';
+ $('mbar').textContent=Object.entries(R.barras).map(([k,b])=>`Perfil ${nomBarraMq(k)}: ${b.n} barra(s) para ${mtr(b.metros)} m (sobran ${mtr(b.sobra)} m)`).join(' · ')+(R.err?' · '+R.err:'');
  const col=+MQ.colocacion||0;$('mtot').innerHTML=R.items.length?`Total: <b>${money(R.total)}</b>${col?`<div class="m" style="font-size:14px">Colocación ${money(col)} · Con colocación <b>${money(R.total+col)}</b></div>`:''}`:''}
 // PDF para el cliente: cada mosquitero con la medida de la ventana, sin costos ni ganancia
 function pdfMq(){const R=calcMq(MQ.items);if(!R.items.length)return alert('Agrega al menos un mosquitero.');
@@ -1045,6 +1072,48 @@ async function marcarEnviado(){if(!PED.n)return;
  const b=$('benv');b.disabled=true;
  const{error}=await sb.from('pedidos').insert({hasta_presupuesto:PED.hasta,lineas:PED.lineas.filter(l=>l.pedir>0).map(l=>({id:l.id,nombre:l.clave||l.nombre,cantidad:l.pedir}))});
  b.disabled=false;if(error)return alert(msg(error));toast('Pedido marcado como enviado');cargaPedido()}
+
+/* ---------- recepción: comparar lo pedido con lo que llegó ---------- */
+// Se eligen dos Excel (lo pedido y lo que llegó) y se comparan en el momento. No se guarda nada.
+let RECX=[null,null];
+// Lee un Excel con columnas Producto/Descripción y Cantidad (y Código y Precio si las tiene). Suma las filas repetidas.
+async function leeCantRec(f){const wb=XLSX.read(await f.arrayBuffer()),ws=wb.Sheets[wb.SheetNames[0]],filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}),t=c=>norm(c).replace(/[.:]/g,'').replace(/\s+/g,' ');
+ let h=-1,cd,cq,cc,cp;
+ for(let i=0;i<Math.min(filas.length,60)&&h<0;i++){const H=filas[i].map(t);cq=H.findIndex(x=>x.startsWith('cantidad')||x=='cant'||x=='unidades');
+  cd=H.findIndex(x=>['producto','productos','descripcion','nombre','detalle','articulo'].includes(x));if(cq>=0&&cd>=0){h=i;cc=H.findIndex(x=>['codigo','cod'].includes(x));cp=H.findIndex(x=>x.startsWith('precio')||x=='costo')}}
+ if(h<0)throw new Error('no encontré la fila de títulos con las columnas "Producto" y "Cantidad"');
+ const M=new Map();
+ for(const r of filas.slice(h+1)){const d=String(r[cd]??'').trim().replace(/\s+/g,' ');if(!d)continue;const q=num(r[cq])||0,k=norm(d).replace(/\s+/g,' ');
+  const x=M.get(k)||{nombre:d,codigo:cc>=0?String(r[cc]??'').trim():'',precio:cp>=0?num(r[cp])||0:0,cant:0};x.cant+=q;M.set(k,x)}
+ return M}
+async function leeRec(n,f){if(!f)return;$('recinfo').textContent='Leyendo…';
+ try{RECX[n]={nombre:f.name,M:await leeCantRec(f)}}catch(e){RECX[n]=null;$(n?'recB':'recA').value='';$('recinfo').textContent='';return alert(`No se pudo leer "${f.name}": ${e.message}.`)}
+ pintaRec()}
+function pintaRec(){const[A,B]=RECX,cnt=x=>[...x.M.values()].filter(y=>y.cant>0).length;
+ $('recinfo').innerHTML=[A&&`Pedimos: <b>${esc(A.nombre)}</b> (${cnt(A)} productos con cantidad)`,B&&`Llegó: <b>${esc(B.nombre)}</b> (${cnt(B)} productos con cantidad)`].filter(Boolean).join('<br>')+(A&&B?'':'<br>Falta elegir el '+(A?'segundo':'primer')+' Excel.');
+ $('recres').hidden=!(A&&B);if(!(A&&B))return;
+ // costo del panel por si la nota no trae precio
+ const k=x=>norm(x).replace(/\s+/g,' '),porDes=new Map();for(const p of P){if(p.borrado)continue;if(p.clave)porDes.set(k(p.clave),p);porDes.set(k(p.nombre),p)}
+ const filas=[],porCod=new Map([...B.M.values()].filter(x=>x.codigo).map(x=>[x.codigo,x]));
+ for(const[key,a]of A.M){if(!(a.cant>0))continue;const b=B.M.get(key)||(a.codigo&&porCod.get(a.codigo)),lleg=b?b.cant:0,pr=a.precio||b?.precio||+porDes.get(key)?.costo||0;
+  filas.push({nombre:a.nombre,pedimos:a.cant,lleg,falta:Math.max(0,a.cant-lleg),precio:pr})}
+ // lo que llegó sin haberlo pedido (o con otra descripción)
+ const extra=[...B.M].filter(([key,b])=>b.cant>0&&!(A.M.get(key)?.cant>0)&&!(b.codigo&&[...A.M.values()].some(a=>a.codigo==b.codigo&&a.cant>0))).map(([,b])=>b);
+ const F=filas.filter(x=>x.falta>0),plata=F.reduce((s,x)=>s+x.falta*x.precio,0),sinP=F.filter(x=>!x.precio).length;
+ RECX.F=F;
+ $('recfal').innerHTML=F.length?`<b>No llegaron completos ${F.length} de ${filas.length} productos pedidos.</b>
+  <div style="font-size:18px;margin:6px 0">Plata a separar para volver a pedirlos: <b>${money(plata)}</b></div>${sinP?`<p class="m" style="margin:0 0 6px">${sinP} producto(s) sin precio no suman.</p>`:''}
+  <div class="r" style="gap:8px"><button class="s" onclick="copiaFalRec()">Copiar lista de faltantes</button><button class="s" onclick="waFalRec()">Mandar por WhatsApp</button></div>`
+  :`<b>Llegó todo lo pedido (${filas.length} productos).</b>`;
+ $('recfal').innerHTML+=extra.length?`<p class="m" style="margin:8px 0 0">Además llegaron ${extra.length} producto(s) que no estaban en el pedido (o tienen otra descripción): ${extra.slice(0,8).map(x=>esc(x.nombre)+' ('+fmt(x.cant)+')').join(' · ')}${extra.length>8?'…':''}</p>`:'';
+ const V=$('recf').value=='f'?F:filas;
+ $('recn').textContent=`${filas.length} pedidos · ${filas.length-F.length} llegaron completos · ${F.length} con faltantes`;
+ $('rect').innerHTML=V.map(x=>`<tr${x.falta?'':' class="off"'}><td><div class="nom">${esc(x.nombre)}</div>${x.falta&&x.precio?`<div class="tags"><span class="tag sub">Separar ${money(x.falta*x.precio)}</span></div>`:''}
+  <td class="n">${fmt(x.pedimos)}<td class="n">${fmt(x.lleg)}<td class="n">${x.falta?`<span class="falta">${fmt(x.falta)}</span>`:'✓'}<td class="n hide-sm">${x.falta&&x.precio?money(x.falta*x.precio):'-'}</tr>`).join('')
+  ||'<tr><td colspan="5" class="m">No faltó nada.</tr>'}
+const textoFalRec=()=>`Faltantes del pedido (${CFG.NOMBRE||''}):\n`+RECX.F.map(x=>`- ${x.nombre.toUpperCase()}: pedimos ${fmt(x.pedimos)}, llegaron ${fmt(x.lleg)} (faltan ${fmt(x.falta)})`).join('\n');
+async function copiaFalRec(){try{await navigator.clipboard.writeText(textoFalRec());toast('Lista de faltantes copiada')}catch{prompt('Copia la lista:',textoFalRec())}}
+function waFalRec(){open('https://wa.me/?text='+encodeURIComponent(textoFalRec()),'_blank')}
 
 init();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>

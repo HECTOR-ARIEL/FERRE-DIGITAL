@@ -73,8 +73,15 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
   - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la carpeta privada `notas`) y volver a importar la nota actual.
 - **Marcar pedido como enviado**: después de mandar la nota. El siguiente pedido cuenta desde ahí. Hazlo antes de borrar presupuestos del Historial.
   - Si en el Historial marcas para borrar presupuestos que todavía no se pidieron, el panel no los borra y te dice cuáles son (los anulados por completo sí se pueden borrar).
-- Cuando llega la mercadería: sube la misma nota completa en "Importar cantidades" para sumar el stock.
+- Cuando llega la mercadería: sube la misma nota completa en "Importar cantidades" para sumar el stock (corregida con lo que llegó).
 - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la tabla de pedidos).
+
+## Recepción (comparar lo pedido con lo que llegó)
+- Se eligen dos Excel: **1** la nota de pedido que se le mandó al proveedor y **2** la misma nota corregida con lo que llegó (la que después se sube en "Importar cantidades").
+- Muestra al momento qué llegó completo, qué llegó incompleto y qué no llegó. Los productos se reconocen por la descripción.
+- **Plata a separar**: lo que falta multiplicado por el precio unitario de la nota (si la nota no trae precio, usa el costo del panel). Sirve para apartar esa plata y volver a pedirlo.
+- Botones para copiar la lista de faltantes o mandarla por WhatsApp. También avisa si llegó algo que no estaba en el pedido.
+- No guarda nada ni toca el stock: el stock se sigue sumando con "Importar cantidades".
 
 ## Carrito del catálogo (pedidos web)
 - La primera vez hay que ejecutar otra vez `supabase.sql` en Supabase (SQL Editor > Run). Crea la tabla `solicitudes` y la función `enviar_solicitud`.
@@ -110,14 +117,14 @@ Una sola vez:
 ## Mosquiteros (pestaña Mosquiteros)
 Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Herrero), con PDF para el cliente. No toca el stock ni el Historial.
 - La primera vez: ejecuta otra vez `supabase.sql` (crea la tabla `mosq_config`) y pulsa **Precios de mosquiteros** para cargar los costos:
-  barras de 6 m de perfil marco, travesaño y tope; rollo de tejido (1,20 × 30 m); rollo de burlete (100 m); escuadra; tornillo del marco;
+  barras de 6 m de perfil marco, travesaño y tope, cada una con su precio en blanco brillante, negro y bronce colonial; rollo de tejido (1,20 × 30 m); rollo de burlete (100 m); escuadra; tornillo del marco;
   tornillo del travesaño; patín superior e inferior; % de ganancia; corte de sierra y despunte (en mm).
-- Cada mosquitero: ubicación, línea, **ancho de la ventana entera** y alto (el mosquitero cubre una hoja: la mitad del ancho), cantidad,
+- Cada mosquitero: ubicación, línea, **color** (el dibujo se pinta de ese color y sale en el PDF), **ancho de la ventana entera** y alto (el mosquitero cubre una hoja: la mitad del ancho), cantidad,
   travesaño (opcional, al medio o a la altura que pongas) y tope (se marca solo, salvo en Herrero). Al costado se ve el dibujo y los materiales.
 - Lleva: perfil de marco (contorno), 4 escuadras, 8 tornillos, burlete en todo el contorno, 2 patines arriba y 2 abajo y el tejido (media hoja × alto).
   El travesaño suma su perfil y 2 tornillos; el tope, un perfil del alto. Si el tejido no entra en el rollo de 1,20 m, avisa.
 - **El perfil se cobra por barras enteras**: se calcula cuántas barras de cada perfil hacen falta para todos los mosquiteros del presupuesto
-  (con sierra y despunte) y su costo se reparte entre ellos según los metros que usa cada uno. Por eso, al agregar otro mosquitero, los precios de los demás pueden bajar un poco.
+  (con sierra y despunte; las barras de distinto color no se comparten) y su costo se reparte entre ellos según los metros que usa cada uno. Por eso, al agregar otro mosquitero, los precios de los demás pueden bajar un poco.
 - **PDF**: cada mosquitero con la medida de la ventana (ancho total × alto), cantidad, precio y subtotal, el total y, si cargas **Colocación**, el total con colocación. Tus costos y la ganancia no aparecen.
 - El presupuesto en armado queda guardado en ese dispositivo hasta que pulses **Vaciar**.
 
