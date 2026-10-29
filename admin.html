@@ -148,16 +148,19 @@ dialog{overflow:auto}
  <div class="c mqg">
   <div class="mqf">
    <b id="mqtit">Nuevo mosquitero</b>
+   <label>Qué se cotiza<select id="mti" autocomplete="off" onchange="pintaMq()"><option value="">Mosquitero</option><option value="tope">Solo tope (repuesto)</option></select></label>
    <label>Ubicación<input id="mub" placeholder="Dormitorio, cocina…"></label>
-   <label>Línea<select id="mli" onchange="$('mto').checked=this.value!='Herrero';pintaMq()"><option>Módena</option><option>A30</option><option>A40</option><option>Rotonda</option><option>Herrero</option></select></label>
+   <label>Línea<select id="mli" onchange="$('mto').checked=this.value!='Herrero';$('mton').value=1;pintaMq()"><option>Módena</option><option>A30</option><option>A40</option><option>Rotonda</option><option>Herrero</option></select></label>
    <label>Color<select id="mco" onchange="pintaMq()"><option value="blanco">Blanco brillante</option><option value="negro">Negro</option><option value="bronce">Bronce colonial</option></select></label>
-   <label class="chk"><input type="checkbox" id="mfi" autocomplete="off" onchange="pintaMq()"> Fijo (se usa la medida tal cual, sin dividir)</label>
-   <div class="g2"><label><span id="manl">Ancho ventana (mm)</span><input id="man" inputmode="numeric" placeholder="1500" oninput="pintaMq()"></label><label>Alto (mm)<input id="mal" inputmode="numeric" placeholder="1100" oninput="pintaMq()"></label></div>
+   <label class="chk" id="mfil"><input type="checkbox" id="mfi" autocomplete="off" onchange="pintaMq()"> Fijo (se usa la medida tal cual, sin dividir)</label>
+   <div class="g2"><label id="manw"><span id="manl">Ancho ventana (mm)</span><input id="man" inputmode="numeric" placeholder="1500" oninput="pintaMq()"></label><label>Alto (mm)<input id="mal" inputmode="numeric" placeholder="1100" oninput="pintaMq()"></label></div>
    <p class="m" id="mhint" style="margin:-4px 0 0;font-size:12px">El ancho es el de la ventana entera: el mosquitero cubre una hoja (la mitad).</p>
-   <label>Cantidad<input id="mca" type="number" min="1" step="1" value="1" oninput="pintaMq()"></label>
-   <label class="chk"><input type="checkbox" id="mtr" onchange="pintaMq()"> Lleva travesaño</label>
-   <label id="mtrl" hidden>Altura del travesaño desde abajo (mm)<input id="mtra" inputmode="numeric" placeholder="Al medio" oninput="pintaMq()"></label>
-   <label class="chk"><input type="checkbox" id="mto" checked onchange="pintaMq()"> Lleva tope</label>
+   <label><span id="mcal">Cantidad</span><input id="mca" type="number" min="1" step="1" value="1" oninput="pintaMq()"></label>
+   <label class="chk" id="mtrcl"><input type="checkbox" id="mtrc" autocomplete="off" onchange="pintaMq()"> Lleva travesaño</label>
+   <div id="mtrl" class="g2" hidden><label>Cantidad de travesaños<input id="mtr" type="number" min="1" max="6" step="1" value="1" inputmode="numeric" oninput="pintaMq()"></label>
+    <label><span id="mtrlt">Altura del travesaño desde abajo (mm)</span><input id="mtra" placeholder="Al medio" oninput="pintaMq()"></label></div>
+   <label class="chk" id="mtocl"><input type="checkbox" id="mto" checked onchange="pintaMq()"> Lleva tope</label>
+   <div id="mtol" class="g2" hidden><label>Cantidad de topes<input id="mton" type="number" min="1" max="4" step="1" value="1" inputmode="numeric" oninput="pintaMq()"></label></div>
    <div class="acc"><button class="s" id="mcan" hidden onclick="limpiaFormMq()">Cancelar</button><button id="mag" onclick="agregaMq()">Agregar a la lista</button></div>
   </div>
   <div class="mqd"><svg id="mdib" viewBox="0 0 260 320" role="img" aria-label="Dibujo del mosquitero"></svg><p class="m" id="mdibt"></p></div>
@@ -172,7 +175,7 @@ dialog{overflow:auto}
  </div>
  <div class="c"><div class="r" style="align-items:center"><b style="flex:1;min-width:180px">Presupuestos de mosquiteros guardados</b><input id="mhb" placeholder="Buscar por cliente, teléfono, dirección o Nº" oninput="pintaHistMq()" style="flex:1;min-width:200px"></div>
   <div class="w"><table><thead><tr><th>Nº</th><th>Cliente</th><th class="n">Total</th><th></th></tr></thead><tbody id="mhis"></tbody></table></div></div>
- <p class="m">El cliente ve en el PDF cada mosquitero con la medida de la ventana, el precio y el total (y la colocación si la cargas). Tus costos y la ganancia solo se ven aquí. El perfil se cobra por barras enteras de 6 m, calculadas para todos los mosquiteros juntos. Los presupuestos se guardan en "Presupuestos de mosquiteros guardados", aparte del Historial de la ferretería, y no descuentan stock.<br>
+ <p class="m">El cliente ve en el PDF cada mosquitero con la medida de la ventana, el precio y el total (y la colocación si la cargas). Tus costos y la ganancia solo se ven aquí. El perfil se cobra por los metros que usa cada mosquitero (precio de la barra ÷ 6 m); abajo de la lista se ve cuántas barras hay que cortar en total. Los presupuestos se guardan en "Presupuestos de mosquiteros guardados", aparte del Historial de la ferretería, y no descuentan stock.<br>
  <b>Fijo:</b> marca la tilde cuando la medida que escribes es la del mosquitero (se cotiza tal cual). Sin la tilde, es un corredizo: escribes la medida de la ventana (por ejemplo 1,50 × 1,10) y se cotiza la mitad del ancho; en el PDF sale la medida de la ventana.</p>
 </section>
 
@@ -757,8 +760,8 @@ for(let i=0;i<n;i+=200){const{error}=await sb.from('presupuestos').delete().in('
 
 /* ---------- mosquiteros ---------- */
 // Cotizador de mosquiteros corredizos de una hoja (cubren media ventana). Precios en la tabla mosq_config.
-// El perfil se cobra por barras enteras de 6 m: se calculan para todos los mosquiteros juntos (con sierra y despunte)
-// y el costo de cada barra se reparte entre los mosquiteros según los metros que usa cada uno.
+// El perfil se cobra por los metros que usa cada mosquitero (precio de la barra / 6 m).
+// Aparte se calculan las barras de 6 m a cortar para todos los mosquiteros juntos (con sierra y despunte), solo como dato.
 // Colores de perfil: clave, nombre y color del dibujo
 const MQCOL=[['blanco','Blanco brillante','#f4f4f4'],['negro','Negro','#1c1c1c'],['bronce','Bronce colonial','#5a3d24']],MQPER={marco:'marco',travesano:'travesaño',tope:'tope'};
 const MQC=[...Object.keys(MQPER).flatMap(p=>MQCOL.map(([c,n])=>[p+'_'+c,`Barra ${MQPER[p]} ${n} (6 m)`,'$'])),
@@ -792,8 +795,12 @@ async function guardaPreciosMq(){const d={};for(const[k]of MQC){const v=num($('m
 // Mosquitero del formulario (sin validar)
 // Las medidas se cargan en milímetros (1500). Un número hasta 10 se toma en metros (1,50). Adentro se guardan en metros.
 const mmMq=v=>{const n=num(v);return n==null?null:n<=10?n:n/1000};
-const formMq=()=>({ub:$('mub').value.trim(),li:$('mli').value,co:$('mco').value,fi:$('mfi').checked,an:mmMq($('man').value)||0,al:mmMq($('mal').value)||0,
- ca:Math.max(1,Math.round(+$('mca').value||1)),tr:$('mtr').checked,tra:mmMq($('mtra').value),to:$('mto').checked});
+// Travesaños de un mosquitero (los guardados antes tenían true/false y una sola altura)
+const ntrMq=x=>x.tr===true?1:+x.tr||0,ntoMq=x=>x.to===true?1:+x.to||0;
+// Alturas desde abajo de cada travesaño: las escritas, o repartidos parejo
+const altTrMq=(x,h)=>{const n=ntrMq(x),t=Array.isArray(x.tra)?x.tra:x.tra?[x.tra]:[];return Array.from({length:n},(_,i)=>t[i]>0&&t[i]<h?t[i]:h*(i+1)/(n+1))};
+const formMq=()=>{const ti=$('mti').value;return{ti,ub:$('mub').value.trim(),li:$('mli').value,co:$('mco').value,fi:!ti&&$('mfi').checked,an:ti?0:mmMq($('man').value)||0,al:mmMq($('mal').value)||0,
+ ca:Math.max(1,Math.round(+$('mca').value||1)),tr:!ti&&$('mtrc').checked?Math.min(6,Math.max(1,Math.round(+$('mtr').value||1))):0,tra:$('mtra').value.trim().split(/[\s;\/]+/).map(mmMq).filter(x=>x>0),to:!ti&&$('mto').checked?Math.min(4,Math.max(1,Math.round(+$('mton').value||1))):0}};
 // Largo de tejido a cortar del rollo de 1,20: si el alto entra en 1,20 se corta el ancho; si no, se gira. null = no entra
 const tejidoMq=(a,h)=>h<=1.2?a:a<=1.2?h:null;
 // Barras de 6 m necesarias para cortar las piezas (cada corte suma la sierra; cada barra pierde el despunte)
@@ -806,21 +813,29 @@ const colMq=k=>MQCOL.find(x=>x[0]==k)||MQCOL[0];
 // Precio de la barra de un perfil en un color (si falta, usa el precio sin color de la versión anterior)
 const barraMq=(c,k)=>+c[k]||+c[k.split('_')[0]]||0;
 function calcMq(items,c=CM||{}){const g=+c.ganancia||0,perf={},R={items:[],barras:{},err:null};
- items.forEach((it,i)=>{const a=it.fi?it.an:it.an/2,h=it.al,co=colMq(it.co)[0],m={marco:[a,a,h,h],travesano:it.tr?[a]:[],tope:it.to?[h]:[]};
+ items.forEach((it,i)=>{const co0=colMq(it.co)[0];
+  // solo tope (repuesto): el perfil del alto, sin burlete ni accesorios
+  if(it.ti=='tope'){const h=it.al;if(h>0)for(let q=0;q<it.ca;q++)(perf['tope_'+co0]??=[]).push(h);
+   R.items.push({...it,a:0,h,mat:[['Perfil tope',mtr(h)+' m',0,'tope_'+co0,h]],err:!(h>0)?'Falta el alto del tope':h<.2?'La medida es muy chica: va en milímetros (por ejemplo 2000 para 2 m).':null});return}
+  const a=it.fi?it.an:it.an/2,h=it.al,co=colMq(it.co)[0],nt=ntrMq(it),no=ntoMq(it),m={marco:[a,a,h,h],travesano:Array(nt).fill(a),tope:Array(no).fill(h)};
   if(a>0&&h>0)for(const k in m)for(let q=0;q<it.ca;q++)(perf[k+'_'+co]??=[]).push(...m[k]);
   const lt=tejidoMq(a,h),per=2*a+2*h,mat=[];
-  mat.push(['Perfil marco',mtr(per)+' m',0,'marco_'+co,per]);if(it.tr)mat.push(['Perfil travesaño',mtr(a)+' m',0,'travesano_'+co,a]);if(it.to)mat.push(['Perfil tope',mtr(h)+' m',0,'tope_'+co,h]);
-  mat.push(['Tejido',lt==null?'no entra':mtr(lt)+' m',lt==null?0:lt*(+c.tejido||0)/30],['Burlete',mtr(per)+' m',per*(+c.burlete||0)/100],['Escuadras',4,4*(+c.escuadra||0)],
-   ['Tornillos',8+(it.tr?2:0),8*(+c.tornillo||0)+(it.tr?2*(+c.tornillo_trav||0):0)]);
+  mat.push(['Perfil marco',mtr(per)+' m',0,'marco_'+co,per]);if(nt)mat.push([nt>1?`Perfil travesaño (${nt})`:'Perfil travesaño',mtr(nt*a)+' m',0,'travesano_'+co,nt*a]);if(no)mat.push([no>1?`Perfil tope (${no})`:'Perfil tope',mtr(no*h)+' m',0,'tope_'+co,no*h]);
+  mat.push(['Tejido',lt==null?'no entra':mtr(lt)+' m',lt==null?0:lt*(+c.tejido||0)/30],['Burlete',mtr(per+2*nt*a)+' m',(per+2*nt*a)*(+c.burlete||0)/100],['Escuadras',4,4*(+c.escuadra||0)],
+   ['Tornillos',8+2*nt,8*(+c.tornillo||0)+2*nt*(+c.tornillo_trav||0)]);
   if(!it.fi)mat.push(['Patines',4,2*(+c.patin_sup||0)+2*(+c.patin_inf||0)]);  // el fijo no corre: no lleva patines
   R.items.push({...it,a,h,lt,mat,err:!(a>0&&h>0)?'Falta el ancho o el alto':it.an<.2||it.al<.2?`La medida es muy chica: va en milímetros (por ejemplo 1500 para 1,50 m).`:lt==null?`El tejido no entra en el rollo de 1,20 m: el mosquitero mide ${mtr(a)} × ${mtr(h)} m y las dos medidas pasan 1,20.`+(it.fi?' Está marcada la tilde "Fijo": si es corredizo, desmárcala y se cotiza la mitad del ancho.':''):null})});
  for(const k in perf){if(!perf[k].length)continue;const b=barrasMq(perf[k],c);if(b.err){R.err=`Perfil ${nomBarraMq(k)}: ${b.err}`;continue}
   const tot=perf[k].reduce((t,x)=>t+x,0);R.barras[k]={...b,metros:tot,costo:b.n*barraMq(c,k)};
-  // cada mosquitero paga la parte de las barras según los metros que usa
-  for(const it of R.items)for(const l of it.mat)if(l[3]==k)l[2]=tot?R.barras[k].costo*l[4]/tot:0}
+}
+ // cada mosquitero paga solo los metros de perfil que usa
+ for(const it of R.items)for(const l of it.mat)if(l[3])l[2]=l[4]*barraMq(c,l[3])/6;
  for(const it of R.items){it.costo=it.mat.reduce((t,l)=>t+l[2],0);it.precio=Math.round(it.costo*(1+g/100));it.sub=it.precio*it.ca}
  R.total=R.items.reduce((t,x)=>t+x.sub,0);return R}
-function pintaMq(){const f=formMq();$('mtrl').hidden=!f.tr;
+function pintaMq(){const f=formMq(),so=f.ti=='tope';
+ for(const i of['mfil','manw','mhint','mtrcl','mtocl'])$(i).hidden=so;$('mtol').hidden=so||!$('mto').checked;
+ $('mcal').textContent=so?'Cantidad de topes':'Cantidad';$('mqtit').textContent=(MQE<0?'Nuevo ':`Editando ${MQE+1}: `)+(so?'tope':'mosquitero');
+ $('mtrl').hidden=!f.tr;$('mtrlt').textContent=f.tr>1?'Alturas desde abajo (mm), separadas por espacio':'Altura del travesaño desde abajo (mm)';$('mtra').placeholder=f.tr>1?'Vacío: repartidos parejo':'Al medio';
  $('manl').textContent=f.fi?'Ancho (mm)':'Ancho ventana (mm)';
  $('mhint').textContent=f.fi?'Fijo: se cotiza con la medida tal cual la escribes.':'El ancho es el de la ventana entera: el mosquitero cubre una hoja (la mitad).';
  const lista=MQE<0?[...MQ.items,f]:MQ.items.map((x,i)=>i==MQE?f:x),R=calcMq(lista),it=R.items[MQE<0?lista.length-1:MQE];
@@ -828,30 +843,34 @@ function pintaMq(){const f=formMq();$('mtrl').hidden=!f.tr;
  $('mmat').innerHTML=it.mat.map(l=>`<tr><td>${l[0]}</td><td class="n">${l[1]}</td><td class="n">${money(l[2])}</td></tr>`).join('');
  $('mcost').innerHTML=it.err||R.err?`<p class="falta">${esc(it.err||R.err)}</p>`:`<div class="r" style="justify-content:space-between;font-size:13px"><span class="m">Costo</span><span>${money(it.costo)}</span></div>
   <div class="tot">${money(it.precio)} <span class="m" style="font-size:12px">c/u con ${fmt(+CM?.ganancia||0)} %</span></div>
-  ${MQ.items.length?'<p class="m" style="font-size:12px;margin:4px 0 0">El perfil está calculado junto con los demás mosquiteros del presupuesto.</p>':''}`}
-function dibujaMq(f){const a=f.fi?f.an:f.an/2,h=f.al;if(!(a>0&&h>0)){$('mdib').innerHTML='<text x="130" y="160" text-anchor="middle" fill="var(--m)" font-size="13">Ingresa ancho y alto</text>';$('mdibt').textContent='';return}
+`}
+function dibujaMq(f){if(f.ti=='tope'){const h=f.al,[,cn,K]=colMq(f.co);if(!(h>0)){$('mdib').innerHTML='<text x="130" y="160" text-anchor="middle" fill="var(--m)" font-size="13">Ingresa el alto</text>';$('mdibt').textContent='';return}
+  const y=35,hh=250;$('mdib').innerHTML=`<rect x="125" y="${y}" width="10" height="${hh}" fill="${K}" stroke="#888" stroke-width=".7"/><text x="145" y="${y+hh/2}" font-size="12" fill="var(--t)">${mtr(h)} m</text><text x="130" y="${y-8}" font-size="10" fill="var(--m)" text-anchor="middle">tope</text>`;
+  $('mdibt').textContent=`${cn} · tope de ${mtr(h)} m`;return}
+ const a=f.fi?f.an:f.an/2,h=f.al;if(!(a>0&&h>0)){$('mdib').innerHTML='<text x="130" y="160" text-anchor="middle" fill="var(--m)" font-size="13">Ingresa ancho y alto</text>';$('mdibt').textContent='';return}
  const k=Math.min(170/a,250/h),w=a*k,hh=h*k,x=(260-w)/2+10,y=(320-hh)/2,P=8,C='var(--t)',[,cn,K]=colMq(f.co),O='stroke="#888" stroke-width=".7"';
  // marco del color elegido, con un filo gris para que el blanco se vea sobre fondo claro
  let s=`<rect x="${x}" y="${y}" width="${w}" height="${hh}" fill="none" stroke="${K}" stroke-width="${P}"/><rect x="${x-P/2}" y="${y-P/2}" width="${w+P}" height="${hh+P}" fill="none" ${O}/><rect x="${x+P/2}" y="${y+P/2}" width="${w-P}" height="${hh-P}" fill="none" ${O}/>`;
  for(let i=x+P;i<x+w-P/2;i+=6)s+=`<line x1="${i}" y1="${y+P/2}" x2="${i}" y2="${y+hh-P/2}" stroke="var(--m)" stroke-width=".4"/>`;
  for(let j=y+P;j<y+hh-P/2;j+=6)s+=`<line x1="${x+P/2}" y1="${j}" x2="${x+w-P/2}" y2="${j}" stroke="var(--m)" stroke-width=".4"/>`;
- if(f.tr){const t=f.tra>0&&f.tra<h?f.tra:h/2,ty=y+hh-t*k;s+=`<rect x="${x}" y="${ty-3.5}" width="${w}" height="7" fill="${K}" ${O}/><text x="${x+w-8}" y="${ty-7}" font-size="11" text-anchor="end" fill="${C}" stroke="#e4e4e4" stroke-width="3" paint-order="stroke">${mtr(t)} m</text>`}
- if(f.to)s+=`<rect x="${x-16}" y="${y-P/2}" width="6" height="${hh+P}" fill="${K}" ${O}/><text x="${x-11}" y="${y-8}" font-size="10" fill="var(--m)" text-anchor="middle">tope</text>`;
+ for(const t of altTrMq(f,h)){const ty=y+hh-t*k;s+=`<rect x="${x+P/2}" y="${ty-3.5}" width="${w-P}" height="7" fill="${K}" ${O}/><text x="${x+w-8}" y="${ty-7}" font-size="11" text-anchor="end" fill="${C}" stroke="#e4e4e4" stroke-width="3" paint-order="stroke">${mtr(t)} m</text>`}
+ const nto=ntoMq(f);if(nto)s+=`<rect x="${x-16}" y="${y-P/2}" width="6" height="${hh+P}" fill="${K}" ${O}/><text x="${x-11}" y="${y-8}" font-size="10" fill="var(--m)" text-anchor="middle">tope</text>`;
+ if(nto>1)s+=`<rect x="${x+w+10}" y="${y-P/2}" width="6" height="${hh+P}" fill="${K}" ${O}/><text x="${x+w+13}" y="${y-8}" font-size="10" fill="var(--m)" text-anchor="middle">tope${nto>2?' ×'+(nto-1):''}</text>`;
  if(!f.fi)for(const[px,py]of[[x+w*.2,y-5],[x+w*.8-10,y-5],[x+w*.2,y+hh+1],[x+w*.8-10,y+hh+1]])s+=`<rect x="${px}" y="${py}" width="10" height="4" rx="1" fill="var(--m)"/>`;
- s+=`<text x="${x+w/2}" y="${y+hh+20}" text-anchor="middle" font-size="12" fill="${C}">${mtr(a)} m</text><text x="${x+w+6}" y="${y+14}" font-size="12" fill="${C}">${mtr(h)} m</text>`;
+ s+=`<text x="${x+w/2}" y="${y+hh+20}" text-anchor="middle" font-size="12" fill="${C}">${mtr(a)} m</text><text x="${x+w+(nto>1?20:6)}" y="${y+14}" font-size="12" fill="${C}">${mtr(h)} m</text>`;
  $('mdib').innerHTML=s;$('mdibt').textContent=f.fi?`${cn} · fijo de ${mtr(a)} × ${mtr(h)} m`:`${cn} · hoja de ${mtr(a)} × ${mtr(h)} m · ventana ${mtr(f.an)} × ${mtr(h)} m`}
 function agregaMq(){const f=formMq(),lista=MQE<0?[...MQ.items,f]:MQ.items.map((x,i)=>i==MQE?f:x),R=calcMq(lista),it=R.items[MQE<0?lista.length-1:MQE];
  if(it.err||R.err)return alert(it.err||R.err);
  if(MQE<0)MQ.items.push(f);else MQ.items[MQE]=f;guardaMq();limpiaFormMq();pintaListaMq()}
-function limpiaFormMq(){MQE=-1;for(const i of['mub','man','mal','mtra'])$(i).value='';$('mca').value=1;$('mtr').checked=false;$('mfi').checked=false;$('mto').checked=$('mli').value!='Herrero';
- $('mqtit').textContent='Nuevo mosquitero';$('mag').textContent='Agregar a la lista';$('mcan').hidden=true;pintaMq()}
-function editaMq(i){const x=MQ.items[i];MQE=i;$('mub').value=x.ub;$('mli').value=x.li;$('mco').value=x.co||'blanco';$('mfi').checked=!!x.fi;$('man').value=Math.round(x.an*1000);$('mal').value=Math.round(x.al*1000);$('mca').value=x.ca;
- $('mtr').checked=x.tr;$('mtra').value=x.tra?Math.round(x.tra*1000):'';$('mto').checked=x.to;$('mqtit').textContent=`Editando mosquitero ${i+1}`;$('mag').textContent='Guardar cambios';$('mcan').hidden=false;
+function limpiaFormMq(){MQE=-1;for(const i of['mub','man','mal','mtra'])$(i).value='';$('mca').value=1;$('mtrc').checked=false;$('mtr').value=1;$('mfi').checked=false;$('mti').value='';$('mton').value=1;$('mto').checked=$('mli').value!='Herrero';
+ $('mag').textContent='Agregar a la lista';$('mcan').hidden=true;pintaMq()}
+function editaMq(i){const x=MQ.items[i];MQE=i;$('mti').value=x.ti||'';$('mub').value=x.ub;$('mli').value=x.li;$('mco').value=x.co||'blanco';$('mfi').checked=!!x.fi;$('man').value=x.an?Math.round(x.an*1000):'';$('mal').value=Math.round(x.al*1000);$('mca').value=x.ca;
+ $('mtrc').checked=ntrMq(x)>0;$('mtr').value=ntrMq(x)||1;$('mtra').value=(Array.isArray(x.tra)?x.tra:x.tra?[x.tra]:[]).map(t=>Math.round(t*1000)).join(' ');$('mto').checked=ntoMq(x)>0;$('mton').value=ntoMq(x)||1;$('mag').textContent='Guardar cambios';$('mcan').hidden=false;
  pintaMq();$('t-mos').scrollIntoView({behavior:'smooth'})}
 function quitaMq(i){MQ.items.splice(i,1);if(MQE==i)limpiaFormMq();else if(MQE>i)MQE--;guardaMq();pintaListaMq();pintaMq()}
 function nuevoMq(){if(cambiosMq()&&!confirm('El presupuesto actual tiene cambios sin guardar. ¿Empezar uno nuevo igual?'))return;
  MQ={id:null,cliente:'',tel:'',dir:'',colocacion:0,items:[]};guardaMq();for(const i of['mcl','mtel','mdir','mcol'])$(i).value='';limpiaFormMq();pintaListaMq();pintaHistMq()}
-const descMq=x=>`Mosquitero ${x.fi?'fijo ':''}línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — ${x.fi?'medida':'ventana'} ${mtr(x.an)} × ${mtr(x.al)} m`,extraMq=x=>[x.ub,x.tr&&'con travesaño',x.to&&'con tope'].filter(Boolean).join(' · ');
+const descMq=x=>x.ti=='tope'?`Tope de mosquitero línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — alto ${mtr(x.al)} m`:`Mosquitero ${x.fi?'fijo ':''}línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — ${x.fi?'medida':'ventana'} ${mtr(x.an)} × ${mtr(x.al)} m`,extraMq=x=>[x.ub,ntrMq(x)==1&&'con travesaño',ntrMq(x)>1&&`con ${ntrMq(x)} travesaños`,ntoMq(x)==1&&'con tope',ntoMq(x)>1&&`con ${ntoMq(x)} topes`].filter(Boolean).join(' · ');
 function pintaListaMq(){const R=calcMq(MQ.items);
  $('mlis').innerHTML=R.items.map((x,i)=>`<tr><td class="n"><b>${x.ca}</b></td><td><div class="nom">${esc(descMq(x))}</div><div class="m" style="font-size:12px">${esc(extraMq(x))}</div></td>
   <td class="n hide-sm m">${money(x.costo)}</td><td class="n">${money(x.precio)}</td><td class="n"><b>${money(x.sub)}</b></td>
@@ -905,7 +924,7 @@ async function guardaHistMq(silencio){const R=calcMq(MQ.items);if(!R.items.lengt
  const mal=R.items.find(x=>x.err);if(mal||R.err){alert(mal?.err||R.err);return false}
  if(!(MQ.cliente||'').trim()){alert('Escribe el nombre del cliente para guardar el presupuesto.');$('mcl').focus();return false}
  const o={cliente:MQ.cliente.trim(),telefono:(MQ.tel||'').trim()||null,direccion:(MQ.dir||'').trim()||null,total:R.total,colocacion:+MQ.colocacion||0,
-  items:R.items.map(x=>({ub:x.ub,li:x.li,co:x.co,fi:!!x.fi,an:x.an,al:x.al,ca:x.ca,tr:x.tr,tra:x.tra,to:x.to,precio:x.precio}))};
+  items:R.items.map(x=>({ti:x.ti||'',ub:x.ub,li:x.li,co:x.co,fi:!!x.fi,an:x.an,al:x.al,ca:x.ca,tr:x.tr,tra:x.tra,to:x.to,precio:x.precio}))};
  const{data,error}=await(MQ.id?sb.from('mosq_presupuestos').update(o).eq('id',MQ.id):sb.from('mosq_presupuestos').insert(o)).select('id');
  if(error){alert(/mosq_presupuestos/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':'No se pudo guardar: '+msg(error));return false}
  if(!data.length){MQ.id=null;return guardaHistMq(silencio)}  // lo habían borrado: se guarda como nuevo
