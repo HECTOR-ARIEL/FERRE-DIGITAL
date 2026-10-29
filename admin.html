@@ -768,7 +768,7 @@ const MQCOL=[['blanco','Blanco brillante','#f4f4f4'],['negro','Negro','#1c1c1c']
 const MQC=[...Object.keys(MQPER).flatMap(p=>MQCOL.map(([c,n])=>[p+'_'+c,`Barra ${MQPER[p]} ${n} (6 m)`,'$'])),
  ['tejido','Rollo de tejido (1,20 × 30 m)','$'],['burlete','Rollo de burlete (100 m)','$'],['escuadra','Escuadra (c/u)','$'],
  ['tornillo','Tornillo del marco (c/u)','$'],['tornillo_trav','Tornillo del travesaño (c/u)','$'],['patin_sup','Patín superior (c/u)','$'],
- ['patin_inf','Patín inferior (c/u)','$'],['ganancia','Ganancia','%'],['sierra','Corte de sierra','mm'],['despunte','Despunte por barra','mm']];
+ ['patin_inf','Patín inferior (c/u)','$'],['ganancia','Ganancia','%'],['sierra','Corte de sierra','mm'],['despunte','Despunte por barra','mm'],['suplemento','Suplemento de alto para las guías (corredizo)','mm']];
 let CM=null,MQ={id:null,cliente:'',tel:'',dir:'',colocacion:0,items:[]},MQE=-1,HMQ=[];
 try{const g=JSON.parse(leeLS('mq')||'null');if(g&&Array.isArray(g.items))MQ=g}catch{}
 // Firma del presupuesto: si cambia después de guardarlo, hay cambios sin guardar
@@ -782,9 +782,9 @@ async function abrirMq(){$('mcl').value=MQ.cliente||'';$('mtel').value=MQ.tel||'
  if(!CM){const{data,error}=await sb.from('mosq_config').select('datos').eq('id',1).maybeSingle();
   if(error){$('mqav').hidden=false;$('mqav').textContent=/mosq_config/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error);CM={}}
   else{CM=data?.datos||{};$('mqav').hidden=true}}
- if(!MQC.some(([k])=>k!='sierra'&&k!='despunte'&&+CM[k]>0)){$('mqav').hidden=false;$('mqav').textContent='Todavía no cargaste los precios: pulsa "Precios de mosquiteros".'}
+ if(!MQC.some(([k])=>k!='sierra'&&k!='despunte'&&k!='suplemento'&&+CM[k]>0)){$('mqav').hidden=false;$('mqav').textContent='Todavía no cargaste los precios: pulsa "Precios de mosquiteros".'}
  pintaMq();pintaListaMq();cargaHistMq()}
-function abrirPreciosMq(){const v=k=>CM?.[k]!=null?fmtIn(CM[k]):k.includes('_')&&CM?.[k.split('_')[0]]!=null?fmtIn(CM[k.split('_')[0]]):k=='ganancia'?'50':k=='sierra'?'4':'0';
+function abrirPreciosMq(){const v=k=>CM?.[k]!=null?fmtIn(CM[k]):k.includes('_')&&CM?.[k.split('_')[0]]!=null?fmtIn(CM[k.split('_')[0]]):k=='ganancia'?'50':k=='sierra'?'4':k=='suplemento'?'6':'0';
  // Perfiles: una fila por perfil y una columna por color
  $('mqcfg').innerHTML=`<div style="grid-column:1/-1"><b style="font-size:14px">Barras de 6 m (precio por color)</b><table><thead><tr><th></th>${MQCOL.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead>
   <tbody>${Object.entries(MQPER).map(([p,n])=>`<tr><td style="text-transform:capitalize">${n}</td>${MQCOL.map(([c])=>`<td><input id="mq_${p}_${c}" inputmode="decimal" value="${v(p+'_'+c)}" style="min-width:0"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`
@@ -813,12 +813,14 @@ const nomBarraMq=k=>{const[p,c]=k.split('_');return MQPER[p]+' '+colMq(c)[1].toL
 const colMq=k=>MQCOL.find(x=>x[0]==k)||MQCOL[0];
 // Precio de la barra de un perfil en un color (si falta, usa el precio sin color de la versión anterior)
 const barraMq=(c,k)=>+c[k]||+c[k.split('_')[0]]||0;
+// Milímetros que se suman al alto del corredizo para que entre en las guías (solo para el costo; no se ve en el PDF)
+const supMq=(c=CM||{})=>(c.suplemento??6)/1000;
 function calcMq(items,c=CM||{}){const g=+c.ganancia||0,perf={},R={items:[],barras:{},err:null};
  items.forEach((it,i)=>{const co0=colMq(it.co)[0];
   // solo tope (repuesto): el perfil del alto, sin burlete ni accesorios
   if(it.ti=='tope'){const h=it.al;if(h>0)for(let q=0;q<it.ca;q++)(perf['tope_'+co0]??=[]).push(h);
    R.items.push({...it,a:0,h,mat:[['Perfil tope',mtr(h)+' m',0,'tope_'+co0,h]],err:!(h>0)?'Falta el alto del tope':h<.2?'La medida es muy chica: va en milímetros (por ejemplo 2000 para 2 m).':null});return}
-  const a=it.fi?it.an:it.an/2,h=it.al,co=colMq(it.co)[0],nt=ntrMq(it),no=ntoMq(it),m={marco:[a,a,h,h],travesano:Array(nt).fill(a),tope:Array(no).fill(h)};
+  const a=it.fi?it.an:it.an/2,h=it.al+(it.fi?0:supMq(c)),co=colMq(it.co)[0],nt=ntrMq(it),no=ntoMq(it),m={marco:[a,a,h,h],travesano:Array(nt).fill(a),tope:Array(no).fill(h)};
   if(a>0&&h>0)for(const k in m)for(let q=0;q<it.ca;q++)(perf[k+'_'+co]??=[]).push(...m[k]);
   const lt=tejidoMq(a,h),per=2*a+2*h,mat=[];
   mat.push(['Perfil marco',mtr(per)+' m',0,'marco_'+co,per]);if(nt)mat.push([nt>1?`Perfil travesaño (${nt})`:'Perfil travesaño',mtr(nt*a)+' m',0,'travesano_'+co,nt*a]);if(no)mat.push([no>1?`Perfil tope (${no})`:'Perfil tope',mtr(no*h)+' m',0,'tope_'+co,no*h]);
@@ -859,7 +861,7 @@ function dibujaMq(f){if(f.ti=='tope'){const h=f.al,[,cn,K]=colMq(f.co);if(!(h>0)
  if(nto>1)s+=`<rect x="${x+w+10}" y="${y-P/2}" width="6" height="${hh+P}" fill="${K}" ${O}/><text x="${x+w+13}" y="${y-8}" font-size="10" fill="var(--m)" text-anchor="middle">tope${nto>2?' ×'+(nto-1):''}</text>`;
  if(!f.fi)for(const[px,py]of[[x+w*.2,y-5],[x+w*.8-10,y-5],[x+w*.2,y+hh+1],[x+w*.8-10,y+hh+1]])s+=`<rect x="${px}" y="${py}" width="10" height="4" rx="1" fill="var(--m)"/>`;
  s+=`<text x="${x+w/2}" y="${y+hh+20}" text-anchor="middle" font-size="12" fill="${C}">${mtr(a)} m</text><text x="${x+w+(nto>1?20:6)}" y="${y+14}" font-size="12" fill="${C}">${mtr(h)} m</text>`;
- $('mdib').innerHTML=s;$('mdibt').textContent=f.fi?`${cn} · fijo de ${mtr(a)} × ${mtr(h)} m`:`${cn} · hoja de ${mtr(a)} × ${mtr(h)} m · ventana ${mtr(f.an)} × ${mtr(h)} m`}
+ $('mdib').innerHTML=s;$('mdibt').textContent=f.fi?`${cn} · fijo de ${mtr(a)} × ${mtr(h)} m`:`${cn} · hoja de ${mtr(a)} × ${mtr(h)} m · ventana ${mtr(f.an)} × ${mtr(h)} m`+(supMq()?` · se cotiza con ${Math.round((h+supMq())*1000)} mm de alto`:'')}
 function agregaMq(){const f=formMq(),lista=MQE<0?[...MQ.items,f]:MQ.items.map((x,i)=>i==MQE?f:x),R=calcMq(lista),it=R.items[MQE<0?lista.length-1:MQE];
  if(it.err||R.err)return alert(it.err||R.err);
  if(MQE<0)MQ.items.push(f);else MQ.items[MQE]=f;guardaMq();limpiaFormMq();pintaListaMq()}
