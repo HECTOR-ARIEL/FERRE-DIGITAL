@@ -115,18 +115,21 @@ Una sola vez:
 - **Para apagar los avisos**: `delete from telegram;` en el SQL Editor.
 
 ## Mosquiteros (pestaña Mosquiteros)
-Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Herrero), con PDF para el cliente. No toca el stock ni el Historial.
-- La primera vez: ejecuta otra vez `supabase.sql` (crea la tabla `mosq_config`) y pulsa **Precios de mosquiteros** para cargar los costos:
+Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Herrero), con PDF para el cliente y su propio historial. No toca el stock, el Historial ni el Pedido de la ferretería.
+- La primera vez: ejecuta otra vez `supabase.sql` (crea las tablas `mosq_config` y `mosq_presupuestos`) y pulsa **Precios de mosquiteros** para cargar los costos:
   barras de 6 m de perfil marco, travesaño y tope, cada una con su precio en blanco brillante, negro y bronce colonial; rollo de tejido (1,20 × 30 m); rollo de burlete (100 m); escuadra; tornillo del marco;
   tornillo del travesaño; patín superior e inferior; % de ganancia; corte de sierra y despunte (en mm).
+- Arriba: **cliente, teléfono y dirección** (salen en el PDF).
 - Cada mosquitero: ubicación, línea, **color** (el dibujo se pinta de ese color y sale en el PDF), **ancho de la ventana entera** y alto (el mosquitero cubre una hoja: la mitad del ancho), cantidad,
   travesaño (opcional, al medio o a la altura que pongas) y tope (se marca solo, salvo en Herrero). Al costado se ve el dibujo y los materiales.
+- **Fijo**: con la tilde marcada, la medida que escribes es la del mosquitero y se cotiza tal cual (no se divide) y no lleva patines. En el PDF sale "Mosquitero fijo … medida A × B".
 - Lleva: perfil de marco (contorno), 4 escuadras, 8 tornillos, burlete en todo el contorno, 2 patines arriba y 2 abajo y el tejido (media hoja × alto).
   El travesaño suma su perfil y 2 tornillos; el tope, un perfil del alto. Si el tejido no entra en el rollo de 1,20 m, avisa.
 - **El perfil se cobra por barras enteras**: se calcula cuántas barras de cada perfil hacen falta para todos los mosquiteros del presupuesto
   (con sierra y despunte; las barras de distinto color no se comparten) y su costo se reparte entre ellos según los metros que usa cada uno. Por eso, al agregar otro mosquitero, los precios de los demás pueden bajar un poco.
-- **PDF**: cada mosquitero con la medida de la ventana (ancho total × alto), cantidad, precio y subtotal, el total y, si cargas **Colocación**, el total con colocación. Tus costos y la ganancia no aparecen.
-- El presupuesto en armado queda guardado en ese dispositivo hasta que pulses **Vaciar**.
+- **Guardar y generar PDF**: primero lo guarda (con número) y después saca el PDF. Cada mosquitero sale con la medida de la ventana (ancho total × alto), cantidad, precio y subtotal, el total y, si cargas **Colocación**, el total con colocación. Tus costos y la ganancia no aparecen.
+- **Presupuestos de mosquiteros guardados** (abajo): lista con número, fecha, cliente, teléfono, dirección y total, con buscador. **Abrir** lo carga para verlo, cambiarlo o volver a sacar el PDF (al guardarlo otra vez se actualiza el mismo número). Si los precios cambiaron desde que se guardó, avisa cuánto daba antes y cuánto da ahora. ✕ lo borra.
+- **Nuevo presupuesto** empieza uno en blanco (si el actual tiene cambios sin guardar, pregunta antes). Arriba se ve si el presupuesto está guardado o tiene cambios sin guardar.
 
 ## Copia de seguridad
 - Botón **Copia de seguridad** (pestaña Productos): descarga un Excel `copia-Distribuidor-DEC-AAAA-MM-DD.xlsx` con una hoja por tema:

@@ -71,7 +71,6 @@ create table if not exists pedidos(
   hasta_presupuesto bigint not null default 0,
   lineas jsonb                              -- [{id, nombre, cantidad}] lo que se pidió
 );
-
 -- ===================== PEDIDOS WEB (CARRITO DEL CATÁLOGO) =====================
 -- Lo que los clientes arman en el carrito y envían. No descuenta stock:
 -- desde el panel (pestaña "Pedidos web") se pasa a presupuesto y ahí se descuenta.
@@ -124,6 +123,19 @@ alter table mosq_config enable row level security;
 drop policy if exists "admin mosq_config" on mosq_config;
 create policy "admin mosq_config" on mosq_config for all to authenticated using (true) with check (true);
 revoke all on mosq_config from anon;
+-- Historial de presupuestos de mosquiteros (aparte del Historial de la ferretería: no toca stock ni pedidos).
+create table if not exists mosq_presupuestos(
+  id bigint generated always as identity primary key,
+  fecha timestamptz default now(),
+  cliente text, telefono text, direccion text,
+  total numeric,                       -- total de los mosquiteros al guardar (sin colocación)
+  colocacion numeric default 0,
+  items jsonb                          -- los mosquiteros: [{ub, li, co, fi, an, al, ca, tr, tra, to, precio}]
+);
+alter table mosq_presupuestos enable row level security;
+drop policy if exists "admin mosq_presupuestos" on mosq_presupuestos;
+create policy "admin mosq_presupuestos" on mosq_presupuestos for all to authenticated using (true) with check (true);
+revoke all on mosq_presupuestos from anon;
 
 -- ===================== AVISO DE CAMBIOS =====================
 -- Una sola fila con la hora del último cambio en productos.
