@@ -819,12 +819,12 @@ function calcMq(items,c=CM||{}){const g=+c.ganancia||0,perf={},R={items:[],barra
  items.forEach((it,i)=>{const co0=colMq(it.co)[0];
   // solo tope (repuesto): el perfil del alto, sin burlete ni accesorios
   if(it.ti=='tope'){const h=it.al;if(h>0)for(let q=0;q<it.ca;q++)(perf['tope_'+co0]??=[]).push(h);
-   R.items.push({...it,a:0,h,mat:[['Perfil tope',mtr(h)+' m',0,'tope_'+co0,h]],err:!(h>0)?'Falta el alto del tope':h<.2?'La medida es muy chica: va en milímetros (por ejemplo 2000 para 2 m).':null});return}
+   R.items.push({...it,a:0,h,mat:[['Perfil tope',mmTxt(h)+' mm',0,'tope_'+co0,h]],err:!(h>0)?'Falta el alto del tope':h<.2?'La medida es muy chica: va en milímetros (por ejemplo 2000 para 2 m).':null});return}
   const a=it.fi?it.an:it.an/2,h=it.al+(it.fi?0:supMq(c)),co=colMq(it.co)[0],nt=ntrMq(it),no=ntoMq(it),m={marco:[a,a,h,h],travesano:Array(nt).fill(a),tope:Array(no).fill(h)};
   if(a>0&&h>0)for(const k in m)for(let q=0;q<it.ca;q++)(perf[k+'_'+co]??=[]).push(...m[k]);
   const lt=tejidoMq(a,h),per=2*a+2*h,mat=[];
-  mat.push(['Perfil marco',mtr(per)+' m',0,'marco_'+co,per]);if(nt)mat.push([nt>1?`Perfil travesaño (${nt})`:'Perfil travesaño',mtr(nt*a)+' m',0,'travesano_'+co,nt*a]);if(no)mat.push([no>1?`Perfil tope (${no})`:'Perfil tope',mtr(no*h)+' m',0,'tope_'+co,no*h]);
-  mat.push(['Tejido',lt==null?'no entra':mtr(lt)+' m',lt==null?0:lt*(+c.tejido||0)/30],['Burlete',mtr(per+2*nt*a)+' m',(per+2*nt*a)*(+c.burlete||0)/100],['Escuadras',4,4*(+c.escuadra||0)],
+  mat.push(['Perfil marco',mmTxt(per)+' mm',0,'marco_'+co,per]);if(nt)mat.push([nt>1?`Perfil travesaño (${nt})`:'Perfil travesaño',mmTxt(nt*a)+' mm',0,'travesano_'+co,nt*a]);if(no)mat.push([no>1?`Perfil tope (${no})`:'Perfil tope',mmTxt(no*h)+' mm',0,'tope_'+co,no*h]);
+  mat.push(['Tejido',lt==null?'no entra':mmTxt(lt)+' mm',lt==null?0:lt*(+c.tejido||0)/30],['Burlete',mmTxt(per+2*nt*a)+' mm',(per+2*nt*a)*(+c.burlete||0)/100],['Escuadras',4,4*(+c.escuadra||0)],
    ['Tornillos',8+2*nt,8*(+c.tornillo||0)+2*nt*(+c.tornillo_trav||0)]);
   if(!it.fi)mat.push(['Patines',4,2*(+c.patin_sup||0)+2*(+c.patin_inf||0)]);  // el fijo no corre: no lleva patines
   R.items.push({...it,a,h,lt,mat,err:!(a>0&&h>0)?'Falta el ancho o el alto':it.an<.2||it.al<.2?`La medida es muy chica: va en milímetros (por ejemplo 1500 para 1,50 m).`:lt==null?`El tejido no entra en el rollo de 1,20 m: el mosquitero mide ${mtr(a)} × ${mtr(h)} m y las dos medidas pasan 1,20.`+(it.fi?' Está marcada la tilde "Fijo": si es corredizo, desmárcala y se cotiza la mitad del ancho.':''):null})});
