@@ -150,7 +150,9 @@ dialog{overflow:auto}
    <b id="mqtit">Nuevo mosquitero</b>
    <label>Qué se cotiza<select id="mti" autocomplete="off" onchange="pintaMq()"><option value="">Mosquitero</option><option value="tope">Solo tope (repuesto)</option></select></label>
    <label>Ubicación<input id="mub" placeholder="Dormitorio, cocina…"></label>
-   <label id="mabl">Abertura<select id="mab" autocomplete="off" onchange="pintaMq()"><option value="">Ventana (V)</option><option value="pv">Puerta-ventana (PV)</option></select></label>
+   <label id="mabl">Abertura<select id="mab" autocomplete="off" onchange="if(this.value=='pvr')$('mto').checked=false;pintaMq()"><option value="">Ventana (V)</option><option value="pv">Puerta-ventana (PV)</option><option value="pvr">Puerta-ventana rebatible (PVR)</option></select></label>
+   <div id="mrbl" class="g2" hidden><label>Modelo<select id="mmo" autocomplete="off" onchange="pintaMq()"><option value="lat">Lateral + bisagras</option><option value="comp">Marco en C + bisagras</option></select></label>
+    <label>Bisagras tipo libro<input id="mbi" type="number" min="1" max="8" step="1" value="4" inputmode="numeric" oninput="pintaMq()"></label></div>
    <label>Línea<select id="mli" onchange="$('mto').checked=this.value!='Herrero';$('mton').value=1;pintaMq()"><option>Módena</option><option>A30</option><option>A40</option><option>Rotonda</option><option>Herrero</option></select></label>
    <label>Color<select id="mco" onchange="pintaMq()"><option value="blanco">Blanco brillante</option><option value="negro">Negro</option><option value="bronce">Bronce colonial</option></select></label>
    <label class="chk" id="mfil"><input type="checkbox" id="mfi" autocomplete="off" onchange="pintaMq()"> Fijo (se usa la medida tal cual, sin dividir)</label>
@@ -768,7 +770,7 @@ const MQCOL=[['blanco','Blanco brillante','#f4f4f4'],['negro','Negro','#1c1c1c']
 const MQC=[...Object.keys(MQPER).flatMap(p=>MQCOL.map(([c,n])=>[p+'_'+c,`Barra ${MQPER[p]} ${n} (6 m)`,'$'])),
  ['tejido','Rollo de tejido (1,20 × 30 m)','$'],['burlete','Rollo de burlete (100 m)','$'],['escuadra','Escuadra (c/u)','$'],
  ['tornillo','Tornillo del marco (c/u)','$'],['tornillo_trav','Tornillo del travesaño (c/u)','$'],['patin_sup','Patín superior (c/u)','$'],
- ['patin_inf','Patín inferior (c/u)','$'],['ganancia','Ganancia','%'],['sierra','Corte de sierra','mm'],['despunte','Despunte por barra','mm'],['suplemento','Suplemento de alto para las guías (corredizo)','mm']];
+ ['patin_inf','Patín inferior (c/u)','$'],['bisagra','Bisagra tipo libro (c/u)','$'],['ganancia','Ganancia','%'],['sierra','Corte de sierra','mm'],['despunte','Despunte por barra','mm'],['suplemento','Suplemento de alto para las guías (corredizo)','mm']];
 let CM=null,MQ={id:null,cliente:'',tel:'',dir:'',colocacion:0,items:[]},MQE=-1,HMQ=[];
 try{const g=JSON.parse(leeLS('mq')||'null');if(g&&Array.isArray(g.items))MQ=g}catch{}
 // Firma del presupuesto: si cambia después de guardarlo, hay cambios sin guardar
@@ -800,8 +802,8 @@ const mmMq=v=>{const n=num(v);return n==null?null:n<=10?n:n/1000};
 const ntrMq=x=>x.tr===true?1:+x.tr||0,ntoMq=x=>x.to===true?1:+x.to||0;
 // Alturas desde abajo de cada travesaño: las escritas, o repartidos parejo
 const altTrMq=(x,h)=>{const n=ntrMq(x),t=Array.isArray(x.tra)?x.tra:x.tra?[x.tra]:[];return Array.from({length:n},(_,i)=>t[i]>0&&t[i]<h?t[i]:h*(i+1)/(n+1))};
-const formMq=()=>{const ti=$('mti').value;return{ti,ab:ti?'':$('mab').value,ub:$('mub').value.trim(),li:$('mli').value,co:$('mco').value,fi:!ti&&$('mfi').checked,an:ti?0:mmMq($('man').value)||0,al:mmMq($('mal').value)||0,
- ca:Math.max(1,Math.round(+$('mca').value||1)),tr:!ti&&$('mtrc').checked?Math.min(6,Math.max(1,Math.round(+$('mtr').value||1))):0,tra:$('mtra').value.trim().split(/[\s;\/]+/).map(mmMq).filter(x=>x>0),to:!ti&&$('mto').checked?Math.min(4,Math.max(1,Math.round(+$('mton').value||1))):0}};
+const formMq=()=>{const ti=$('mti').value,ab=ti?'':$('mab').value,reb=ab=='pvr';return{ti,ab,mo:reb?$('mmo').value:'',nb:reb?Math.min(8,Math.max(1,Math.round(+$('mbi').value||4))):0,ub:$('mub').value.trim(),li:$('mli').value,co:$('mco').value,fi:!ti&&!reb&&$('mfi').checked,an:ti?0:mmMq($('man').value)||0,al:mmMq($('mal').value)||0,
+ ca:Math.max(1,Math.round(+$('mca').value||1)),tr:!ti&&(reb||$('mtrc').checked)?Math.min(6,Math.max(1,Math.round(+$('mtr').value||1))):0,tra:$('mtra').value.trim().split(/[\s;\/]+/).map(mmMq).filter(x=>x>0),to:!ti&&$('mto').checked?Math.min(4,Math.max(1,Math.round(+$('mton').value||1))):0}};
 // Largo de tejido a cortar del rollo de 1,20: si el alto entra en 1,20 se corta el ancho; si no, se gira. null = no entra
 const tejidoMq=(a,h)=>h<=1.2?a:a<=1.2?h:null;
 // Barras de 6 m necesarias para cortar las piezas (cada corte suma la sierra; cada barra pierde el despunte)
@@ -820,13 +822,16 @@ function calcMq(items,c=CM||{}){const g=+c.ganancia||0,perf={},R={items:[],barra
   // solo tope (repuesto): el perfil del alto, sin burlete ni accesorios
   if(it.ti=='tope'){const h=it.al;if(h>0)for(let q=0;q<it.ca;q++)(perf['tope_'+co0]??=[]).push(h);
    R.items.push({...it,a:0,h,mat:[['Perfil tope',mmTxt(h)+' mm',0,'tope_'+co0,h]],err:!(h>0)?'Falta el alto del tope':h<.2?'La medida es muy chica: va en milímetros (por ejemplo 2000 para 2 m).':null});return}
-  const a=it.fi?it.an:it.an/2,h=it.al+(it.fi?0:supMq(c)),co=colMq(it.co)[0],nt=ntrMq(it),no=ntoMq(it),m={marco:[a,a,h,h],travesano:Array(nt).fill(a),tope:Array(no).fill(h)};
+  const reb=it.ab=='pvr',ent=it.fi||reb,a=ent?it.an:it.an/2,h=it.al+(ent?0:supMq(c)),co=colMq(it.co)[0],nt=ntrMq(it),no=ntoMq(it),
+   cm=reb?(it.mo=='comp'?[h,a,h]:[h]):[],m={marco:[a,a,h,h,...cm],travesano:Array(nt).fill(a),tope:Array(no).fill(h)};
   if(a>0&&h>0)for(const k in m)for(let q=0;q<it.ca;q++)(perf[k+'_'+co]??=[]).push(...m[k]);
   const lt=tejidoMq(a,h),per=2*a+2*h,mat=[];
   mat.push(['Perfil marco',mmTxt(per)+' mm',0,'marco_'+co,per]);if(nt)mat.push([nt>1?`Perfil travesaño (${nt})`:'Perfil travesaño',mmTxt(nt*a)+' mm',0,'travesano_'+co,nt*a]);if(no)mat.push([no>1?`Perfil tope (${no})`:'Perfil tope',mmTxt(no*h)+' mm',0,'tope_'+co,no*h]);
   mat.push(['Tejido',lt==null?'no entra':mmTxt(lt)+' mm',lt==null?0:lt*(+c.tejido||0)/30],['Burlete',mmTxt(per+2*nt*a)+' mm',(per+2*nt*a)*(+c.burlete||0)/100],['Escuadras',4,4*(+c.escuadra||0)],
    ['Tornillos',8+2*nt,8*(+c.tornillo||0)+2*nt*(+c.tornillo_trav||0)]);
-  if(!it.fi)mat.push(['Patines',4,2*(+c.patin_sup||0)+2*(+c.patin_inf||0)]);  // el fijo no corre: no lleva patines
+  // rebatible: contramarco del mismo perfil del marco (un lateral, o en C: laterales y parte superior) y bisagras tipo libro
+  if(reb){const lc=cm.reduce((t,v)=>t+v,0);mat.push([it.mo=='comp'?'Contramarco en C (perfil marco)':'Contramarco lateral (perfil marco)',mmTxt(lc)+' mm',0,'marco_'+co,lc],['Bisagras tipo libro',it.nb,it.nb*(+c.bisagra||0)])}
+  if(!ent)mat.push(['Patines',4,2*(+c.patin_sup||0)+2*(+c.patin_inf||0)]);  // el fijo no corre: no lleva patines
   R.items.push({...it,a,h,lt,mat,err:!(a>0&&h>0)?'Falta el ancho o el alto':it.an<.2||it.al<.2?`La medida es muy chica: va en milímetros (por ejemplo 1500 para 1,50 m).`:lt==null?`El tejido no entra en el rollo de 1,20 m: el mosquitero mide ${mtr(a)} × ${mtr(h)} m y las dos medidas pasan 1,20.`+(it.fi?' Está marcada la tilde "Fijo": si es corredizo, desmárcala y se cotiza la mitad del ancho.':''):null})});
  for(const k in perf){if(!perf[k].length)continue;const b=barrasMq(perf[k],c);if(b.err){R.err=`Perfil ${nomBarraMq(k)}: ${b.err}`;continue}
   const tot=perf[k].reduce((t,x)=>t+x,0);R.barras[k]={...b,metros:tot,costo:b.n*barraMq(c,k)};
@@ -836,11 +841,11 @@ function calcMq(items,c=CM||{}){const g=+c.ganancia||0,perf={},R={items:[],barra
  for(const it of R.items){it.costo=it.mat.reduce((t,l)=>t+l[2],0);it.precio=Math.round(it.costo*(1+g/100));it.sub=it.precio*it.ca}
  R.total=R.items.reduce((t,x)=>t+x.sub,0);return R}
 function pintaMq(){const f=formMq(),so=f.ti=='tope';
- for(const i of['mabl','mfil','manw','mhint','mtrcl','mtocl'])$(i).hidden=so;$('mtol').hidden=so||!$('mto').checked;
+ const reb=f.ab=='pvr';for(const i of['mabl','mfil','manw','mhint','mtrcl','mtocl'])$(i).hidden=so;$('mfil').hidden=so||reb;$('mrbl').hidden=so||!reb;$('mtol').hidden=so||!$('mto').checked;
  $('mcal').textContent=so?'Cantidad de topes':'Cantidad';$('mqtit').textContent=(MQE<0?'Nuevo ':`Editando ${MQE+1}: `)+(so?'tope':'mosquitero');
- $('mtrl').hidden=!f.tr;$('mtrlt').textContent=f.tr>1?'Alturas desde abajo (mm), separadas por espacio':'Altura del travesaño desde abajo (mm)';$('mtra').placeholder=f.tr>1?'Vacío: repartidos parejo':'Al medio';
- $('manl').textContent=f.fi?'Ancho (mm)':'Ancho ventana (mm)';
- $('mhint').textContent=f.fi?'Fijo: se cotiza con la medida tal cual la escribes.':'El ancho es el de la ventana entera: el mosquitero cubre una hoja (la mitad).';
+ if(reb)$('mtrc').checked=true;$('mtrc').disabled=reb;$('mtrl').hidden=!f.tr;$('mtrlt').textContent=f.tr>1?'Alturas desde abajo (mm), separadas por espacio':'Altura del travesaño desde abajo (mm)';$('mtra').placeholder=f.tr>1?'Vacío: repartidos parejo':'Al medio';
+ $('manl').textContent=f.fi||reb?'Ancho (mm)':'Ancho ventana (mm)';
+ $('mhint').textContent=reb?'Rebatible: se cotiza con la medida tal cual (sin dividir y sin suplemento de alto).':f.fi?'Fijo: se cotiza con la medida tal cual la escribes.':'El ancho es el de la ventana entera: el mosquitero cubre una hoja (la mitad).';
  const lista=MQE<0?[...MQ.items,f]:MQ.items.map((x,i)=>i==MQE?f:x),R=calcMq(lista),it=R.items[MQE<0?lista.length-1:MQE];
  dibujaMq(f);
  $('mmat').innerHTML=it.mat.map(l=>`<tr><td>${l[0]}</td><td class="n">${l[1]}</td><td class="n">${money(l[2])}</td></tr>`).join('');
@@ -850,32 +855,39 @@ function pintaMq(){const f=formMq(),so=f.ti=='tope';
 function dibujaMq(f){if(f.ti=='tope'){const h=f.al,[,cn,K]=colMq(f.co);if(!(h>0)){$('mdib').innerHTML='<text x="130" y="160" text-anchor="middle" fill="var(--m)" font-size="13">Ingresa el alto</text>';$('mdibt').textContent='';return}
   const y=35,hh=250;$('mdib').innerHTML=`<rect x="125" y="${y}" width="10" height="${hh}" fill="${K}" stroke="#888" stroke-width=".7"/><text x="145" y="${y+hh/2}" font-size="12" fill="var(--t)">${mtr(h)} m</text><text x="130" y="${y-8}" font-size="10" fill="var(--m)" text-anchor="middle">tope</text>`;
   $('mdibt').textContent=`${cn} · tope de ${mtr(h)} m`;return}
- const a=f.fi?f.an:f.an/2,h=f.al;if(!(a>0&&h>0)){$('mdib').innerHTML='<text x="130" y="160" text-anchor="middle" fill="var(--m)" font-size="13">Ingresa ancho y alto</text>';$('mdibt').textContent='';return}
+ const reb=f.ab=='pvr',a=f.fi||reb?f.an:f.an/2,h=f.al;if(!(a>0&&h>0)){$('mdib').innerHTML='<text x="130" y="160" text-anchor="middle" fill="var(--m)" font-size="13">Ingresa ancho y alto</text>';$('mdibt').textContent='';return}
  const k=Math.min(170/a,250/h),w=a*k,hh=h*k,x=(260-w)/2+10,y=(320-hh)/2,P=8,C='var(--t)',[,cn,K]=colMq(f.co),O='stroke="#888" stroke-width=".7"';
  // marco del color elegido, con un filo gris para que el blanco se vea sobre fondo claro
  let s=`<rect x="${x}" y="${y}" width="${w}" height="${hh}" fill="none" stroke="${K}" stroke-width="${P}"/><rect x="${x-P/2}" y="${y-P/2}" width="${w+P}" height="${hh+P}" fill="none" ${O}/><rect x="${x+P/2}" y="${y+P/2}" width="${w-P}" height="${hh-P}" fill="none" ${O}/>`;
+ // uniones a 45° en las cuatro esquinas
+ for(const[cx,cy,sx,sy]of[[x,y,1,1],[x+w,y,-1,1],[x,y+hh,1,-1],[x+w,y+hh,-1,-1]])s+=`<line x1="${cx-sx*P/2}" y1="${cy-sy*P/2}" x2="${cx+sx*P/2}" y2="${cy+sy*P/2}" ${O}/>`;
  for(let i=x+P;i<x+w-P/2;i+=6)s+=`<line x1="${i}" y1="${y+P/2}" x2="${i}" y2="${y+hh-P/2}" stroke="var(--m)" stroke-width=".4"/>`;
  for(let j=y+P;j<y+hh-P/2;j+=6)s+=`<line x1="${x+P/2}" y1="${j}" x2="${x+w-P/2}" y2="${j}" stroke="var(--m)" stroke-width=".4"/>`;
  for(const t of altTrMq(f,h)){const ty=y+hh-t*k;s+=`<rect x="${x+P/2}" y="${ty-3.5}" width="${w-P}" height="7" fill="${K}" ${O}/><text x="${x+w-8}" y="${ty-7}" font-size="11" text-anchor="end" fill="${C}" stroke="#e4e4e4" stroke-width="3" paint-order="stroke">${mtr(t)} m</text>`}
  const nto=ntoMq(f);if(nto)s+=`<rect x="${x-16}" y="${y-P/2}" width="6" height="${hh+P}" fill="${K}" ${O}/><text x="${x-11}" y="${y-8}" font-size="10" fill="var(--m)" text-anchor="middle">tope</text>`;
  if(nto>1)s+=`<rect x="${x+w+10}" y="${y-P/2}" width="6" height="${hh+P}" fill="${K}" ${O}/><text x="${x+w+13}" y="${y-8}" font-size="10" fill="var(--m)" text-anchor="middle">tope${nto>2?' ×'+(nto-1):''}</text>`;
- if(!f.fi)for(const[px,py]of[[x+w*.2,y-5],[x+w*.8-10,y-5],[x+w*.2,y+hh+1],[x+w*.8-10,y+hh+1]])s+=`<rect x="${px}" y="${py}" width="10" height="4" rx="1" fill="var(--m)"/>`;
- s+=`<text x="${x+w/2}" y="${y+hh+20}" text-anchor="middle" font-size="12" fill="${C}">${mtr(a)} m</text><text x="${x+w+(nto>1?20:6)}" y="${y+14}" font-size="12" fill="${C}">${mtr(h)} m</text>`;
- $('mdib').innerHTML=s;$('mdibt').textContent=f.fi?`${cn} · fijo de ${mtr(a)} × ${mtr(h)} m`:`${cn} · hoja de ${mtr(a)} × ${mtr(h)} m · ventana ${mtr(f.an)} × ${mtr(h)} m`+(supMq()?` · se cotiza con ${Math.round((h+supMq())*1000)} mm de alto`:'')}
+ // rebatible: contramarco (lateral a la derecha o marco completo alrededor) y bisagras
+ if(reb){if(f.mo=='comp'){const g=x-P/2-8,t=y-P/2-8,b=y+hh+P/2,R=x+w+P/2+8,pg=pts=>`<polygon points="${pts.map(q=>q.join(',')).join(' ')}" fill="${K}" ${O}/>`;
+   s+=pg([[g,t],[g+5,t+5],[g+5,b],[g,b]])+pg([[g,t],[R,t],[R-5,t+5],[g+5,t+5]])+pg([[R,t],[R,b],[R-5,b],[R-5,t+5]])}
+  else s+=`<rect x="${x+w+P/2+3}" y="${y-P/2}" width="6" height="${hh+P}" fill="${K}" ${O}/>`;
+  for(let b=0;b<f.nb;b++){const by=y+hh*(f.nb>1?.08+.84*b/(f.nb-1):.5)-4;s+=`<rect x="${x+w-2}" y="${by}" width="${f.mo=='comp'?8:12}" height="8" rx="1" fill="#8a8a8a"/>`}}
+ if(!f.fi&&!reb)for(const[px,py]of[[x+w*.2,y-5],[x+w*.8-10,y-5],[x+w*.2,y+hh+1],[x+w*.8-10,y+hh+1]])s+=`<rect x="${px}" y="${py}" width="10" height="4" rx="1" fill="var(--m)"/>`;
+ s+=`<text x="${x+w/2}" y="${y+hh+20}" text-anchor="middle" font-size="12" fill="${C}">${mtr(a)} m</text><text x="${x+w+(nto>1||reb?20:6)}" y="${y+14}" font-size="12" fill="${C}">${mtr(h)} m</text>`;
+ $('mdib').innerHTML=s;$('mdibt').textContent=reb?`${cn} · rebatible de ${mtr(a)} × ${mtr(h)} m · ${f.mo=='comp'?'marco en C':'lateral'} + ${f.nb} bisagras`:f.fi?`${cn} · fijo de ${mtr(a)} × ${mtr(h)} m`:`${cn} · hoja de ${mtr(a)} × ${mtr(h)} m · ventana ${mtr(f.an)} × ${mtr(h)} m`+(supMq()?` · se cotiza con ${Math.round((h+supMq())*1000)} mm de alto`:'')}
 function agregaMq(){const f=formMq(),lista=MQE<0?[...MQ.items,f]:MQ.items.map((x,i)=>i==MQE?f:x),R=calcMq(lista),it=R.items[MQE<0?lista.length-1:MQE];
  if(it.err||R.err)return alert(it.err||R.err);
  if(MQE<0)MQ.items.push(f);else MQ.items[MQE]=f;guardaMq();limpiaFormMq();pintaListaMq()}
-function limpiaFormMq(){MQE=-1;for(const i of['mub','man','mal','mtra'])$(i).value='';$('mca').value=1;$('mtrc').checked=false;$('mtr').value=1;$('mfi').checked=false;$('mti').value='';$('mab').value='';$('mton').value=1;$('mto').checked=$('mli').value!='Herrero';
+function limpiaFormMq(){MQE=-1;for(const i of['mub','man','mal','mtra'])$(i).value='';$('mca').value=1;$('mtrc').checked=false;$('mtr').value=1;$('mfi').checked=false;$('mti').value='';$('mab').value='';$('mmo').value='lat';$('mbi').value=4;$('mton').value=1;$('mto').checked=$('mli').value!='Herrero';
  $('mag').textContent='Agregar a la lista';$('mcan').hidden=true;pintaMq()}
-function editaMq(i){const x=MQ.items[i];MQE=i;$('mti').value=x.ti||'';$('mab').value=x.ab||'';$('mub').value=x.ub;$('mli').value=x.li;$('mco').value=x.co||'blanco';$('mfi').checked=!!x.fi;$('man').value=x.an?Math.round(x.an*1000):'';$('mal').value=Math.round(x.al*1000);$('mca').value=x.ca;
+function editaMq(i){const x=MQ.items[i];MQE=i;$('mti').value=x.ti||'';$('mab').value=x.ab||'';$('mmo').value=x.mo||'lat';$('mbi').value=x.nb||4;$('mub').value=x.ub;$('mli').value=x.li;$('mco').value=x.co||'blanco';$('mfi').checked=!!x.fi;$('man').value=x.an?Math.round(x.an*1000):'';$('mal').value=Math.round(x.al*1000);$('mca').value=x.ca;
  $('mtrc').checked=ntrMq(x)>0;$('mtr').value=ntrMq(x)||1;$('mtra').value=(Array.isArray(x.tra)?x.tra:x.tra?[x.tra]:[]).map(t=>Math.round(t*1000)).join(' ');$('mto').checked=ntoMq(x)>0;$('mton').value=ntoMq(x)||1;$('mag').textContent='Guardar cambios';$('mcan').hidden=false;
  pintaMq();$('t-mos').scrollIntoView({behavior:'smooth'})}
 function quitaMq(i){MQ.items.splice(i,1);if(MQE==i)limpiaFormMq();else if(MQE>i)MQE--;guardaMq();pintaListaMq();pintaMq()}
 function nuevoMq(){if(cambiosMq()&&!confirm('El presupuesto actual tiene cambios sin guardar. ¿Empezar uno nuevo igual?'))return;
  MQ={id:null,cliente:'',tel:'',dir:'',colocacion:0,items:[]};guardaMq();for(const i of['mcl','mtel','mdir','mcol'])$(i).value='';limpiaFormMq();pintaListaMq();pintaHistMq()}
-const descMq=x=>x.ti=='tope'?`Tope de mosquitero línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — alto ${mtr(x.al)} m`:`Mosquitero ${x.fi?'fijo ':''}línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — ${x.fi?'medida':'ventana'} ${mtr(x.an)} × ${mtr(x.al)} m`,extraMq=x=>[x.ub,ntrMq(x)==1&&'con travesaño',ntrMq(x)>1&&`con ${ntrMq(x)} travesaños`,ntoMq(x)==1&&'con tope',ntoMq(x)>1&&`con ${ntoMq(x)} topes`].filter(Boolean).join(' · ');
+const descMq=x=>x.ti=='tope'?`Tope de mosquitero línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — alto ${mtr(x.al)} m`:`Mosquitero ${x.ab=='pvr'?'rebatible ':x.fi?'fijo ':''}línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — ${x.fi||x.ab=='pvr'?'medida':'ventana'} ${mtr(x.an)} × ${mtr(x.al)} m`,extraMq=x=>[x.ub,x.ab=='pvr'&&(x.mo=='comp'?'marco en C':'lateral')+` + ${x.nb} bisagras`,ntrMq(x)==1&&'con travesaño',ntrMq(x)>1&&`con ${ntrMq(x)} travesaños`,ntoMq(x)==1&&'con tope',ntoMq(x)>1&&`con ${ntoMq(x)} topes`].filter(Boolean).join(' · ');
 // Código de cada renglón: V1, V2… (ventanas), PV1… (puerta-ventanas), T1… (topes de repuesto)
-const codMq=items=>{const n={};return items.map(x=>{const k=x.ti=='tope'?'T':x.ab=='pv'?'PV':'V';n[k]=(n[k]||0)+1;return k+n[k]})};
+const codMq=items=>{const n={};return items.map(x=>{const k=x.ti=='tope'?'T':x.ab=='pvr'?'PVR':x.ab=='pv'?'PV':'V';n[k]=(n[k]||0)+1;return k+n[k]})};
 function pintaListaMq(){const R=calcMq(MQ.items),cod=codMq(R.items);
  $('mlis').innerHTML=R.items.map((x,i)=>`<tr><td class="n"><b>${x.ca}</b></td><td><div class="nom"><span class="tag">${cod[i]}</span> ${esc(descMq(x))}</div><div class="m" style="font-size:12px">${esc(extraMq(x))}</div></td>
   <td class="n hide-sm m">${money(x.costo)}</td><td class="n">${money(x.precio)}</td><td class="n"><b>${money(x.sub)}</b></td>
@@ -885,8 +897,10 @@ function pintaListaMq(){const R=calcMq(MQ.items),cod=codMq(R.items);
  numMq();const col=+MQ.colocacion||0;$('mtot').innerHTML=R.items.length?`Total: <b>${money(R.total)}</b>${col?`<div class="m" style="font-size:14px">Colocación ${money(col)} · Con colocación <b>${money(R.total+col)}</b></div>`:''}`:''}
 // Detalle de cada renglón en el PDF (medidas en mm)
 const mmTxt=v=>String(Math.round(v*1000));
-const tituloPdfMq=x=>x.ti=='tope'?`Tope de mosquitero (repuesto) línea ${x.li}`:`Mosquitero ${x.fi?'fijo':'corredizo'} línea ${x.li}`;
+const tituloPdfMq=x=>x.ti=='tope'?`Tope de mosquitero (repuesto) línea ${x.li}`:`Mosquitero ${x.ab=='pvr'?'rebatible':x.fi?'fijo':'corredizo'} línea ${x.li}`;
 function detPdfMq(x){const c=['Color',colMq(x.co)[1]];if(x.ti=='tope')return[c,['Alto',mmTxt(x.al)+' mm']];
+ if(x.ab=='pvr'){const L=[c,['Puerta-ventana',mmTxt(x.an)+' × '+mmTxt(x.al)+' mm'],['Modelo',x.mo=='comp'?'marco en C (laterales y superior) con bisagras tipo libro':'lateral con bisagras tipo libro'],['',`${x.nb} bisagras tipo libro`]],nt=ntrMq(x),no=ntoMq(x);
+  if(nt)L.push(['',nt>1?`Con ${nt} travesaños`:'Con 1 travesaño']);if(no)L.push(['',no>1?`Con ${no} topes`:'Con tope']);L.push(['','Tejido mosquitero']);return L}
  const L=[c,x.fi?['Medida',mmTxt(x.an)+' × '+mmTxt(x.al)+' mm']:[x.ab=='pv'?'Puerta-ventana':'Ventana',`${mmTxt(x.an)} × ${mmTxt(x.al)} mm · Hoja: ${mmTxt(x.an/2)} × ${mmTxt(x.al)} mm`]],nt=ntrMq(x),no=ntoMq(x);
  if(nt)L.push(['',nt>1?`Con ${nt} travesaños`:'Con 1 travesaño']);if(no)L.push(['',no>1?`Con ${no} topes`:'Con tope']);L.push(['','Tejido mosquitero']);return L}
 // Dibujo del mosquitero en el PDF (en vector, con su color y las medidas en mm), dentro de la caja bx,by,bw,bh
@@ -897,13 +911,18 @@ function dibPdfMq(d,x,bx,by,bw,bh){const K=colMq(x.co)[2].match(/\w\w/g).map(h=>
   if(vert)d.text(t,x1+2.6,(y1+y2)/2+tw/2,{angle:90});else d.text(t,(x1+x2)/2-tw/2,y1+3.2)};
  d.setLineWidth(.15);d.setDrawColor(...GR);
  if(x.ti=='tope'){const k=(bh-4)/x.al,hh=x.al*k,cx=bx+bw/2-3;d.setFillColor(...K);d.rect(cx,by,2,hh,'FD');cota(cx+6,by,cx+6,by+hh,mmTxt(x.al),true);return}
- const a=x.fi?x.an:x.an/2,h=x.al,no=ntoMq(x),dx=no>1?6:3,k=Math.min((bw-4-dx-6)/a,(bh-6)/h),w=a*k,hh=h*k,ox=bx+4+(bw-4-dx-6-w)/2,oy=by,P=1.3;
+ const reb=x.ab=='pvr',a=x.fi||reb?x.an:x.an/2,h=x.al,no=ntoMq(x),dx=no>1||reb?6:3,k=Math.min((bw-4-dx-6)/a,(bh-6)/h),w=a*k,hh=h*k,ox=bx+4+(bw-4-dx-6-w)/2,oy=by,P=1.3;
+ const pol=pts=>d.lines(pts.slice(1).map((q,i)=>[q[0]-pts[i][0],q[1]-pts[i][1]]),pts[0][0],pts[0][1],[1,1],'FD',true);
+ if(reb&&x.mo=='comp'){const g=ox-1.6,t=oy-1.6,R=ox+w+1.6,e=1.1,b=oy+hh;d.setFillColor(...K);pol([[g,t],[g+e,t+e],[g+e,b],[g,b]]);pol([[g,t],[R,t],[R-e,t+e],[g+e,t+e]]);pol([[R,t],[R,b],[R-e,b],[R-e,t+e]])}
  d.setFillColor(...K);d.rect(ox,oy,w,hh,'FD');d.setFillColor(250,250,250);d.rect(ox+P,oy+P,w-2*P,hh-2*P,'FD');
+ d.line(ox,oy,ox+P,oy+P);d.line(ox+w,oy,ox+w-P,oy+P);d.line(ox,oy+hh,ox+P,oy+hh-P);d.line(ox+w,oy+hh,ox+w-P,oy+hh-P);  // uniones a 45°
  d.setDrawColor(205,205,205);d.setLineWidth(.05);for(let i=ox+P+1.4;i<ox+w-P;i+=1.4)d.line(i,oy+P,i,oy+hh-P);for(let j=oy+P+1.4;j<oy+hh-P;j+=1.4)d.line(ox+P,j,ox+w-P,j);
  d.setDrawColor(...GR);d.setLineWidth(.15);d.setFillColor(...K);
  for(const t of altTrMq(x,h)){const ty=oy+hh-t*k;d.rect(ox+P,ty-.6,w-2*P,1.2,'FD')}
  if(no)d.rect(ox-3,oy,1.1,hh,'FD');if(no>1)d.rect(ox+w+1.9,oy,1.1,hh,'FD');
- if(!x.fi){d.setFillColor(...GR);for(const px of[ox+w*.2,ox+w*.8-1.8])for(const py of[oy-.8,oy+hh+.1])d.rect(px,py,1.8,.7,'F')}
+ if(reb){d.setFillColor(...K);if(x.mo!='comp')d.rect(ox+w+.8,oy,1.1,hh,'FD');d.setFillColor(138,138,138);
+  for(let b=0;b<x.nb;b++)d.rect(ox+w-.5,oy+hh*(x.nb>1?.08+.84*b/(x.nb-1):.5)-.7,x.mo=='comp'?1.7:2.4,1.4,'F')}
+ if(!x.fi&&!reb){d.setFillColor(...GR);for(const px of[ox+w*.2,ox+w*.8-1.8])for(const py of[oy-.8,oy+hh+.1])d.rect(px,py,1.8,.7,'F')}
  cota(ox,oy+hh+2.5,ox+w,oy+hh+2.5,mmTxt(a));cota(ox+w+dx,oy,ox+w+dx,oy+hh,mmTxt(h),true)}
 // PDF para el cliente: un recuadro por mosquitero con dibujo, detalle y precio, sin costos ni ganancia
 async function pdfMq(){if(!await guardaHistMq(true))return;const R=calcMq(MQ.items);
@@ -960,7 +979,7 @@ async function guardaHistMq(silencio){const R=calcMq(MQ.items);if(!R.items.lengt
  const mal=R.items.find(x=>x.err);if(mal||R.err){alert(mal?.err||R.err);return false}
  if(!(MQ.cliente||'').trim()){alert('Escribe el nombre del cliente para guardar el presupuesto.');$('mcl').focus();return false}
  const o={cliente:MQ.cliente.trim(),telefono:(MQ.tel||'').trim()||null,direccion:(MQ.dir||'').trim()||null,total:R.total,colocacion:+MQ.colocacion||0,
-  items:R.items.map(x=>({ti:x.ti||'',ab:x.ab||'',ub:x.ub,li:x.li,co:x.co,fi:!!x.fi,an:x.an,al:x.al,ca:x.ca,tr:x.tr,tra:x.tra,to:x.to,precio:x.precio}))};
+  items:R.items.map(x=>({ti:x.ti||'',ab:x.ab||'',mo:x.mo||'',nb:x.nb||0,ub:x.ub,li:x.li,co:x.co,fi:!!x.fi,an:x.an,al:x.al,ca:x.ca,tr:x.tr,tra:x.tra,to:x.to,precio:x.precio}))};
  const{data,error}=await(MQ.id?sb.from('mosq_presupuestos').update(o).eq('id',MQ.id):sb.from('mosq_presupuestos').insert(o)).select('id');
  if(error){alert(/mosq_presupuestos/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':'No se pudo guardar: '+msg(error));return false}
  if(!data.length){MQ.id=null;return guardaHistMq(silencio)}  // lo habían borrado: se guarda como nuevo
