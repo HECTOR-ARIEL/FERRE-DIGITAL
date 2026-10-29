@@ -120,13 +120,17 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
   barras de 6 m de perfil marco, travesaño y tope, cada una con su precio en blanco brillante, negro y bronce colonial; rollo de tejido (1,20 × 30 m); rollo de burlete (100 m); escuadra; tornillo del marco;
   tornillo del travesaño; patín superior e inferior; % de ganancia; corte de sierra y despunte (en mm).
 - Arriba: **cliente, teléfono y dirección** (salen en el PDF).
+- **Las medidas se cargan en milímetros** (1500 × 2000). Si escribes en metros (1,50) también lo entiende. En la lista y el PDF salen en metros.
 - Cada mosquitero: ubicación, línea, **color** (el dibujo se pinta de ese color y sale en el PDF), **ancho de la ventana entera** y alto (el mosquitero cubre una hoja: la mitad del ancho), cantidad,
-  travesaño (opcional, al medio o a la altura que pongas) y tope (se marca solo, salvo en Herrero). Al costado se ve el dibujo y los materiales.
+  travesaño (al marcar "Lleva travesaño" aparece debajo la cantidad de travesaños, hasta 6, y sus alturas en mm separadas por espacio; vacío = repartidos parejo) y tope (se marca solo, salvo en Herrero; debajo se elige cuántos topes, por ejemplo 2). Al costado se ve el dibujo y los materiales.
 - **Fijo**: con la tilde marcada, la medida que escribes es la del mosquitero y se cotiza tal cual (no se divide) y no lleva patines. En el PDF sale "Mosquitero fijo … medida A × B".
 - Lleva: perfil de marco (contorno), 4 escuadras, 8 tornillos, burlete en todo el contorno, 2 patines arriba y 2 abajo y el tejido (media hoja × alto).
-  El travesaño suma su perfil y 2 tornillos; el tope, un perfil del alto. Si el tejido no entra en el rollo de 1,20 m, avisa.
-- **El perfil se cobra por barras enteras**: se calcula cuántas barras de cada perfil hacen falta para todos los mosquiteros del presupuesto
-  (con sierra y despunte; las barras de distinto color no se comparten) y su costo se reparte entre ellos según los metros que usa cada uno. Por eso, al agregar otro mosquitero, los precios de los demás pueden bajar un poco.
+  Cada travesaño suma su perfil (va entre los dos laterales), 2 tornillos; y burlete arriba y abajo (2 × su largo por cada travesaño); cada tope, un perfil del alto (el tope no lleva burlete).
+- **Solo tope (repuesto)**: en "Qué se cotiza" se elige "Solo tope" para cotizar únicamente el perfil del tope (por ejemplo, para una ventana que se le rompió): línea, color, alto en mm y cantidad. En el PDF sale "Tope de mosquitero línea … — alto 2 m". Si el tejido no entra en el rollo de 1,20 m, avisa.
+- **El perfil se cobra por metro usado**: precio de la barra ÷ 6 m × los metros que lleva cada mosquitero (no se cobra la barra entera).
+  Debajo de la lista se ve, como dato para cortar, cuántas barras de 6 m de cada perfil y color hacen falta para todo el presupuesto (con sierra y despunte).
+- **Abertura**: ventana o puerta-ventana. Cada renglón lleva un código: **V1, V2…** (ventanas), **PV1, PV2…** (puerta-ventanas) y **T1…** (topes de repuesto); se ve en la lista y en el PDF.
+- **PDF**: después del cliente va un saludo y un recuadro por renglón: arriba el código y la ubicación (por ejemplo "V1 — COCINA"); a la izquierda el dibujo con su color y las medidas en mm; a la derecha línea, color, medida de la ventana y de la hoja, travesaños y topes; abajo UDS, precio unitario y total. Al pie, "Página X de Y".
 - **Guardar y generar PDF**: primero lo guarda (con número) y después saca el PDF. Cada mosquitero sale con la medida de la ventana (ancho total × alto), cantidad, precio y subtotal, el total y, si cargas **Colocación**, el total con colocación. Tus costos y la ganancia no aparecen.
 - **Presupuestos de mosquiteros guardados** (abajo): lista con número, fecha, cliente, teléfono, dirección y total, con buscador. **Abrir** lo carga para verlo, cambiarlo o volver a sacar el PDF (al guardarlo otra vez se actualiza el mismo número). Si los precios cambiaron desde que se guardó, avisa cuánto daba antes y cuánto da ahora. ✕ lo borra.
 - **Nuevo presupuesto** empieza uno en blanco (si el actual tiene cambios sin guardar, pregunta antes). Arriba se ve si el presupuesto está guardado o tiene cambios sin guardar.
