@@ -890,7 +890,7 @@ async function pdfMq(){if(!await guardaHistMq(true))return;const R=calcMq(MQ.ite
   y+=alto}
  d.setDrawColor(...CL);d.line(X,y-3,W,y-3);if(y>245){d.addPage();y=20}
  const fila=(t,v,neg)=>{d.setFont('helvetica',neg?'bold':'normal');d.setFontSize(neg?11:9.5);d.setTextColor(...NEG);d.text(t,150,y,{align:'right'});d.text(money(v),W-3,y,{align:'right'});y+=neg?7:6};
- y+=3;fila(col?'Total sin colocación':'Total',R.total,!col);if(col){fila('Colocación',col);fila('Total con colocación',R.total+col,true)}
+ y+=3;fila(col?'Total sin colocación':'Total',R.total,!col);if(col){d.setFontSize(9.5);fila(MQ.dir?.trim()?d.splitTextToSize('Colocación en '+MQ.dir.trim(),120)[0]:'Colocación',col);fila('Total con colocación',R.total+col,true)}
  y+=6;d.setFontSize(7.5);d.setFont('helvetica','normal');d.setTextColor(...G);d.text('Documento generado electrónicamente — '+fecha,X,y);
  const marca=(CFG.NOMBRE||'').toUpperCase();d.setFont('helvetica','bold');d.setFontSize(7);const mw=d.getTextWidth(marca)+.6*(marca.length-1)+10;
  d.setFillColor(...NEG);d.roundedRect(W-mw,y-4,mw,6,3,3,'F');d.setTextColor(255);esp(marca,W-5,y,.6,true);
