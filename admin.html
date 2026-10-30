@@ -172,10 +172,10 @@ dialog{overflow:auto}
  </div>
  <div class="c"><b>Mosquiteros del presupuesto</b>
   <div class="w"><table><thead><tr><th class="n">Cant.</th><th>Mosquitero</th><th class="n hide-sm">Costo u.</th><th class="n">Precio u.</th><th class="n">Subtotal</th><th></th></tr></thead><tbody id="mlis"></tbody></table></div>
-  <p class="m" id="mbar" style="font-size:13px"></p>
+  <div id="mbar"></div>
   <div class="mini" style="justify-content:flex-end"><span>Colocación (opcional)</span><input id="mcol" inputmode="decimal" placeholder="0" oninput="MQ.colocacion=num(this.value)||0;guardaMq();pintaListaMq()"></div>
   <div class="tot" id="mtot"></div>
-  <div class="acc"><button class="s" onclick="guardaHistMq()">Guardar</button><button onclick="pdfMq()">Guardar y generar PDF</button></div>
+  <div class="acc"><button class="s" onclick="pdfMq(true)" title="Muestra el PDF sin guardar el presupuesto">Vista previa</button><button class="s" onclick="guardaHistMq()">Guardar</button><button onclick="pdfMq()">Guardar y generar PDF</button></div>
  </div>
  <div class="c"><div class="r" style="align-items:center"><b style="flex:1;min-width:180px">Presupuestos de mosquiteros guardados</b><input id="mhb" placeholder="Buscar por cliente, teléfono, dirección o Nº" oninput="pintaHistMq()" style="flex:1;min-width:200px"></div>
   <div class="w"><table><thead><tr><th>Nº</th><th>Cliente</th><th class="n">Total</th><th></th></tr></thead><tbody id="mhis"></tbody></table></div></div>
@@ -896,7 +896,12 @@ function pintaListaMq(){const R=calcMq(MQ.items),cod=codMq(R.items);
   <td class="n hide-sm m">${money(x.costo)}</td><td class="n">${money(x.precio)}</td><td class="n"><b>${money(x.sub)}</b></td>
   <td class="n"><div class="acc" style="flex-wrap:nowrap"><button class="s" onclick="editaMq(${i})">Editar</button><button class="s" title="Quitar" onclick="quitaMq(${i})">✕</button></div></td></tr>`).join('')
   ||'<tr><td colspan="6" class="m">Carga las medidas arriba y pulsa "Agregar a la lista".</td></tr>';
- $('mbar').textContent=Object.entries(R.barras).map(([k,b])=>`Perfil ${nomBarraMq(k)}: ${b.n} barra(s) para ${mtr(b.metros)} m (sobran ${mtr(b.sobra)} m)`).join(' · ')+(R.err?' · '+R.err:'');
+ // Perfilería que lleva todo el presupuesto (para saber cuánto comprar): metros por perfil y color y barras de 6 m
+ const PB=Object.entries(R.barras).sort(([a],[b])=>Object.keys(MQPER).indexOf(a.split('_')[0])-Object.keys(MQPER).indexOf(b.split('_')[0])||a.localeCompare(b));
+ $('mbar').innerHTML=PB.length?`<div style="margin-top:10px"><b style="font-size:14px">Perfilería del presupuesto</b> <span class="m" style="font-size:12px">· para saber cuánto comprar (solo lo ves vos)</span>
+  <div class="w"><table style="font-size:13px"><thead><tr><th>Perfil</th><th>Color</th><th class="n">Se usa</th><th class="n">Barras de 6 m</th><th class="n hide-sm">Sobra</th></tr></thead><tbody>
+  ${PB.map(([k,b])=>{const[p,c]=k.split('_');return`<tr><td style="text-transform:capitalize">${MQPER[p]}</td><td>${colMq(c)[1]}</td><td class="n">${fmt(Math.round(b.metros*1000))} mm <span class="m">(${mtr(b.metros)} m)</span></td><td class="n"><b>${b.n}</b></td><td class="n hide-sm m">${mtr(b.sobra)} m</td></tr>`}).join('')}
+  </tbody></table></div>${R.err?`<p class="falta">${esc(R.err)}</p>`:''}</div>`:(R.err?`<p class="falta">${esc(R.err)}</p>`:'');
  numMq();const col=+MQ.colocacion||0;$('mtot').innerHTML=R.items.length?`Total: <b>${money(R.total)}</b>${col?`<div class="m" style="font-size:14px">Colocación ${money(col)} · Con colocación <b>${money(R.total+col)}</b></div>`:''}`:''}
 // Detalle de cada renglón en el PDF (medidas en mm)
 const mmTxt=v=>String(Math.round(v*1000));
@@ -929,7 +934,9 @@ function dibPdfMq(d,x,bx,by,bw,bh){const K=colMq(x.co)[2].match(/\w\w/g).map(h=>
  if(!x.fi&&!reb){d.setFillColor(...GR);for(const px of[ox+w*.2,ox+w*.8-1.8])for(const py of[oy-.8,oy+hh+.1])d.rect(px,py,1.8,.7,'F')}
  cota(ox,oy+hh+2.5,ox+w,oy+hh+2.5,mmTxt(a));cota(ox+w+dx,oy,ox+w+dx,oy+hh,mmTxt(h),true)}
 // PDF para el cliente: un recuadro por mosquitero con dibujo, detalle y precio, sin costos ni ganancia
-async function pdfMq(){if(!await guardaHistMq(true))return;const R=calcMq(MQ.items);
+async function pdfMq(prev){const R=calcMq(MQ.items);
+ if(prev){if(!R.items.length)return alert('Agrega al menos un mosquitero.');const mal=R.items.find(x=>x.err);if(mal||R.err)return alert(mal?.err||R.err)}
+ else{if(!await guardaHistMq(true))return;Object.assign(R,calcMq(MQ.items))}
  const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=[13,13,13],G=[120,120,120],CL=[226,226,226],W=196,X=14,col=+MQ.colocacion||0;
  const f=new Date(),fecha=f.toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'numeric'});
  const esp=(t,x,y,cs,der)=>{const w=d.getTextWidth(t)+cs*(t.length-1);d.text(t,der?x-w:x,y,{charSpace:cs})};
@@ -939,7 +946,7 @@ async function pdfMq(){if(!await guardaHistMq(true))return;const R=calcMq(MQ.ite
  else{d.setFillColor(...NEG);d.rect(X+2.5,16.5,lw,lh,'F');d.setTextColor(255);d.setFont('helvetica','bold');d.setFontSize(12);d.text(CFG.NOMBRE||'',X+5,33)}
  d.setFont('helvetica','bold');d.setFontSize(24);d.setTextColor(...NEG);esp('PRESUPUESTO',W,28,1.1,true);
  d.setFontSize(10);d.setTextColor(...ROJO);esp('MOSQUITEROS',W,35,.8,true);
- d.setFontSize(8.5);d.setFont('helvetica','normal');d.setTextColor(...G);d.text(`Nº ${MQ.id} · Emisión: ${fecha}`,W,41,{align:'right'});
+ d.setFontSize(8.5);d.setFont('helvetica','normal');d.setTextColor(...G);d.text(`${MQ.id?'Nº '+MQ.id:'Vista previa (sin guardar)'} · Emisión: ${fecha}`,W,41,{align:'right'});
  let y=Math.max(14+lh+5,44)+5;d.setDrawColor(...CL);d.setLineWidth(.3);d.line(X,y,W,y);y+=5;
  const datos=[MQ.tel&&'Tel: '+MQ.tel.trim(),MQ.dir&&MQ.dir.trim()].filter(Boolean),bh=datos.length?28:22;
  d.setDrawColor(...CL);d.roundedRect(X,y,W-X,bh,2.5,2.5,'S');d.line(105,y+4,105,y+bh-4);
@@ -991,6 +998,7 @@ async function pdfMq(){if(!await guardaHistMq(true))return;const R=calcMq(MQ.ite
  const marca=(CFG.NOMBRE||'').toUpperCase();d.setFont('helvetica','bold');d.setFontSize(7);const mw=d.getTextWidth(marca)+.6*(marca.length-1)+10;
  d.setFillColor(...NEG);d.roundedRect(W-mw,y-4,mw,6,3,3,'F');d.setTextColor(255);esp(marca,W-5,y,.6,true);
  const np=d.getNumberOfPages();for(let k=1;k<=np;k++){d.setPage(k);d.setFont('helvetica','normal');d.setFontSize(7.5);d.setTextColor(...G);d.text(`Página ${k} de ${np}`,W,290,{align:'right'})}
+ if(prev){const w=open(URL.createObjectURL(d.output('blob')),'_blank');if(!w)alert('El navegador bloqueó la ventana de la vista previa. Permite las ventanas emergentes para esta página y vuelve a intentar.');return}
  const nom=('mosquiteros-'+MQ.id+(MQ.cliente?'-'+MQ.cliente:'')+'-'+f.toISOString().slice(0,10)).normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\w-]+/g,'-').toLowerCase()+'.pdf';
  const file=new File([d.output('blob')],nom,{type:'application/pdf'});
  if(matchMedia('(pointer:coarse)').matches&&navigator.canShare?.({files:[file]}))navigator.share({files:[file],title:'Presupuesto de mosquiteros'}).catch(e=>{if(e.name!='AbortError')d.save(nom)});else d.save(nom)}
