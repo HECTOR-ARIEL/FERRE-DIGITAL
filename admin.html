@@ -261,7 +261,7 @@ dialog{overflow:auto}
   <div><button type="button" class="s tel" onclick="$('fc2').click()">📷 Sacar foto</button><button type="button" class="s" onclick="$('fi').click()">Elegir imagen</button><button type="button" class="s" id="fqi" onclick="quitarImagen()">Quitar imagen</button></div>
   <input id="fi" type="file" accept="image/*" hidden onchange="elegirImg(this.files[0])">
   <input id="fc2" type="file" accept="image/*" capture="environment" hidden onchange="elegirImg(this.files[0])"></div>
- <label>Código<input id="fcod" autocomplete="off" placeholder="Sin código no aparece en el catálogo"></label>
+ <label>Código <span id="fcodu" class="m" style="font-size:12px;font-weight:400"></span><input id="fcod" autocomplete="off" placeholder="Sin código no aparece en el catálogo"></label>
  <label>Descripción<textarea id="fdes" rows="2" required></textarea></label>
  <div class="g3">
   <label>Costo<input id="fcos" inputmode="decimal" oninput="deCosto()"></label>
@@ -443,9 +443,14 @@ async function aplicarGanancia(){const g=num($('gb').value);if(g===null)return a
  for(let i=0;i<ids.length;i+=200){const{error}=await sb.from('productos').update({ganancia:g}).in('id',ids.slice(i,i+200));if(error)return alert(msg(error))}
  toast('Ganancia actualizada');load()}
 
+// Último código cargado: el número más alto del tipo de código (letras de adelante) del producto con código más reciente; y el que seguiría
+function ultCod(){const C=P.filter(p=>/^\D*\d+$/.test(String(p.codigo||'').trim()));if(!C.length)return null;
+ const pre=c=>String(c).trim().match(/^\D*/)[0].toUpperCase(),nro=c=>+String(c).trim().match(/\d+$/)[0],ref=pre(C.reduce((a,b)=>+b.id>+a.id?b:a).codigo);
+ const c=String(C.filter(p=>pre(p.codigo)==ref).reduce((a,b)=>nro(b.codigo)>nro(a.codigo)?b:a).codigo).trim(),n=c.match(/\d+$/)[0];
+ return{c,sig:c.slice(0,-n.length)+String(+n+1).padStart(n.length,'0')}}
 function editar(id){ed=id?P.find(p=>p.id==id):{codigo:'',nombre:'',costo:0,ganancia:num($('gn').value)??0,stock:0,activo:true,imagen:null};
  nuevaImg=null;quitarImg=false;$('dt').textContent=id?'Editar producto':'Nuevo producto';
- $('fcod').value=ed.codigo||'';$('fdes').value=ed.nombre;$('fcos').value=fmtIn(ed.costo);$('fgan').value=fmtIn(ed.ganancia);$('fsto').value=fmtIn(ed.stock);$('fact').checked=ed.activo;$('fsec').value=ed.sector_id??(id?'':$('fs').value.replace('-',''));$('lsec').hidden=!S.ok;
+ $('fcod').value=ed.codigo||'';{const u=!ed.codigo&&ultCod();$('fcodu').innerHTML=u?`(último código creado: <b>${esc(u.c)}</b> · siguiente: <a href="#" onclick="$('fcod').value='${esc(u.sig)}';return false" title="Usar este código">${esc(u.sig)}</a>)`:''}$('fdes').value=ed.nombre;$('fcos').value=fmtIn(ed.costo);$('fgan').value=fmtIn(ed.ganancia);$('fsto').value=fmtIn(ed.stock);$('fact').checked=ed.activo;$('fsec').value=ed.sector_id??(id?'':$('fs').value.replace('-',''));$('lsec').hidden=!S.ok;
  const bd=minDesc(ed.clave||ed.nombre);$('fmin').value=ed.minimo>0?fmtIn(ed.minimo):'';$('lmin').hidden=!MIN_OK;
  $('fminb').hidden=!bd;$('fminb').dataset.n=bd;$('fminb').textContent=`Usar el de la descripción (${bd})`;
  deCosto();verImg(ed.imagen);$('fdel').hidden=!id;
