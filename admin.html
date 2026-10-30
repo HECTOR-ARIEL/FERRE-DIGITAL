@@ -152,7 +152,8 @@ dialog{overflow:auto}
    <label>Ubicación<input id="mub" placeholder="Dormitorio, cocina…"></label>
    <label id="mabl">Abertura<select id="mab" autocomplete="off" onchange="if(this.value=='pvr')$('mto').checked=false;pintaMq()"><option value="">Ventana (V)</option><option value="pv">Puerta-ventana (PV)</option><option value="pvr">Puerta-ventana rebatible (PVR)</option></select></label>
    <div id="mrbl" class="g2" hidden><label>Modelo<select id="mmo" autocomplete="off" onchange="pintaMq()"><option value="lat">Lateral + bisagras</option><option value="comp">Marco en C + bisagras</option></select></label>
-    <label>Bisagras tipo libro<input id="mbi" type="number" min="1" max="8" step="1" value="4" inputmode="numeric" oninput="pintaMq()"></label></div>
+    <label>Bisagras tipo libro<input id="mbi" type="number" min="1" max="8" step="1" value="4" inputmode="numeric" oninput="pintaMq()"></label>
+    <label class="chk"><input type="checkbox" id="mpa" autocomplete="off" onchange="pintaMq()"> Lleva pasador</label></div>
    <label>Línea<select id="mli" onchange="$('mto').checked=this.value!='Herrero';$('mton').value=1;pintaMq()"><option>Módena</option><option>A30</option><option>A40</option><option>Rotonda</option><option>Herrero</option></select></label>
    <label>Color<select id="mco" onchange="pintaMq()"><option value="blanco">Blanco brillante</option><option value="negro">Negro</option><option value="bronce">Bronce colonial</option></select></label>
    <label class="chk" id="mfil"><input type="checkbox" id="mfi" autocomplete="off" onchange="pintaMq()"> Fijo (se usa la medida tal cual, sin dividir)</label>
@@ -770,7 +771,7 @@ const MQCOL=[['blanco','Blanco brillante','#f4f4f4'],['negro','Negro','#1c1c1c']
 const MQC=[...Object.keys(MQPER).flatMap(p=>MQCOL.map(([c,n])=>[p+'_'+c,`Barra ${MQPER[p]} ${n} (6 m)`,'$'])),
  ['tejido','Rollo de tejido (1,20 × 30 m)','$'],['burlete','Rollo de burlete (100 m)','$'],['escuadra','Escuadra (c/u)','$'],
  ['tornillo','Tornillo del marco (c/u)','$'],['tornillo_trav','Tornillo del travesaño (c/u)','$'],['patin_sup','Patín superior (c/u)','$'],
- ['patin_inf','Patín inferior (c/u)','$'],['bisagra','Bisagra tipo libro (c/u)','$'],['ganancia','Ganancia','%'],['sierra','Corte de sierra','mm'],['despunte','Despunte por barra','mm'],['suplemento','Suplemento de alto para las guías (corredizo)','mm']];
+ ['patin_inf','Patín inferior (c/u)','$'],['bisagra','Bisagra tipo libro (c/u)','$'],['pasador','Pasador (c/u)','$'],['ganancia','Ganancia','%'],['sierra','Corte de sierra','mm'],['despunte','Despunte por barra','mm'],['suplemento','Suplemento de alto para las guías (corredizo)','mm']];
 let CM=null,MQ={id:null,cliente:'',tel:'',dir:'',colocacion:0,items:[]},MQE=-1,HMQ=[];
 try{const g=JSON.parse(leeLS('mq')||'null');if(g&&Array.isArray(g.items))MQ=g}catch{}
 // Firma del presupuesto: si cambia después de guardarlo, hay cambios sin guardar
@@ -803,7 +804,7 @@ const ntrMq=x=>x.tr===true?1:+x.tr||0,ntoMq=x=>x.to===true?1:+x.to||0;
 // Alturas desde abajo de cada travesaño: las escritas, o repartidos parejo
 const altTrMq=(x,h)=>{const n=ntrMq(x),t=Array.isArray(x.tra)?x.tra:x.tra?[x.tra]:[];return Array.from({length:n},(_,i)=>t[i]>0&&t[i]<h?t[i]:h*(i+1)/(n+1))};
 const formMq=()=>{const ti=$('mti').value,ab=ti?'':$('mab').value,reb=ab=='pvr';return{ti,ab,mo:reb?$('mmo').value:'',nb:reb?Math.min(8,Math.max(1,Math.round(+$('mbi').value||4))):0,ub:$('mub').value.trim(),li:$('mli').value,co:$('mco').value,fi:!ti&&!reb&&$('mfi').checked,an:ti?0:mmMq($('man').value)||0,al:mmMq($('mal').value)||0,
- ca:Math.max(1,Math.round(+$('mca').value||1)),tr:!ti&&(reb||$('mtrc').checked)?Math.min(6,Math.max(1,Math.round(+$('mtr').value||1))):0,tra:$('mtra').value.trim().split(/[\s;\/]+/).map(mmMq).filter(x=>x>0),to:!ti&&$('mto').checked?Math.min(4,Math.max(1,Math.round(+$('mton').value||1))):0}};
+ ca:Math.max(1,Math.round(+$('mca').value||1)),tr:!ti&&(reb||$('mtrc').checked)?Math.min(6,Math.max(1,Math.round(+$('mtr').value||1))):0,tra:$('mtra').value.trim().split(/[\s;\/]+/).map(mmMq).filter(x=>x>0),pa:reb&&$('mpa').checked,to:!ti&&!reb&&$('mto').checked?Math.min(4,Math.max(1,Math.round(+$('mton').value||1))):0}};
 // Largo de tejido a cortar del rollo de 1,20: si el alto entra en 1,20 se corta el ancho; si no, se gira. null = no entra
 const tejidoMq=(a,h)=>h<=1.2?a:a<=1.2?h:null;
 // Barras de 6 m necesarias para cortar las piezas (cada corte suma la sierra; cada barra pierde el despunte)
@@ -825,10 +826,11 @@ function calcMq(items,c=CM||{}){const g=+c.ganancia||0,perf={},R={items:[],barra
   const reb=it.ab=='pvr',ent=it.fi||reb,a=ent?it.an:it.an/2,h=it.al+(ent?0:supMq(c)),co=colMq(it.co)[0],nt=ntrMq(it),no=ntoMq(it),
    cm=reb?(it.mo=='comp'?[h,a,h]:[h]):[],m={marco:[a,a,h,h,...cm],travesano:Array(nt).fill(a),tope:Array(no).fill(h)};
   if(a>0&&h>0)for(const k in m)for(let q=0;q<it.ca;q++)(perf[k+'_'+co]??=[]).push(...m[k]);
-  const lt=tejidoMq(a,h),per=2*a+2*h,mat=[];
+  const lt=tejidoMq(a,h),per=2*a+2*h,mat=[],ec=reb&&it.mo=='comp'?2:0;  // ec: escuadras extra del marco en C
   mat.push(['Perfil marco',mmTxt(per)+' mm',0,'marco_'+co,per]);if(nt)mat.push([nt>1?`Perfil travesaño (${nt})`:'Perfil travesaño',mmTxt(nt*a)+' mm',0,'travesano_'+co,nt*a]);if(no)mat.push([no>1?`Perfil tope (${no})`:'Perfil tope',mmTxt(no*h)+' mm',0,'tope_'+co,no*h]);
-  mat.push(['Tejido',lt==null?'no entra':mmTxt(lt)+' mm',lt==null?0:lt*(+c.tejido||0)/30],['Burlete',mmTxt(per+2*nt*a)+' mm',(per+2*nt*a)*(+c.burlete||0)/100],['Escuadras',4,4*(+c.escuadra||0)],
-   ['Tornillos',8+2*nt,8*(+c.tornillo||0)+2*nt*(+c.tornillo_trav||0)]);
+  mat.push(['Tejido',lt==null?'no entra':mmTxt(lt)+' mm',lt==null?0:lt*(+c.tejido||0)/30],['Burlete',mmTxt(per+2*nt*a)+' mm',(per+2*nt*a)*(+c.burlete||0)/100],['Escuadras',4+ec,(4+ec)*(+c.escuadra||0)],
+   ['Tornillos',8+2*ec+2*nt,(8+2*ec)*(+c.tornillo||0)+2*nt*(+c.tornillo_trav||0)]);
+  if(reb&&it.pa)mat.push(['Pasador',1,+c.pasador||0]);
   // rebatible: contramarco del mismo perfil del marco (un lateral, o en C: laterales y parte superior) y bisagras tipo libro
   if(reb){const lc=cm.reduce((t,v)=>t+v,0);mat.push([it.mo=='comp'?'Contramarco en C (perfil marco)':'Contramarco lateral (perfil marco)',mmTxt(lc)+' mm',0,'marco_'+co,lc],['Bisagras tipo libro',it.nb,it.nb*(+c.bisagra||0)])}
   if(!ent)mat.push(['Patines',4,2*(+c.patin_sup||0)+2*(+c.patin_inf||0)]);  // el fijo no corre: no lleva patines
@@ -841,7 +843,7 @@ function calcMq(items,c=CM||{}){const g=+c.ganancia||0,perf={},R={items:[],barra
  for(const it of R.items){it.costo=it.mat.reduce((t,l)=>t+l[2],0);it.precio=Math.round(it.costo*(1+g/100));it.sub=it.precio*it.ca}
  R.total=R.items.reduce((t,x)=>t+x.sub,0);return R}
 function pintaMq(){const f=formMq(),so=f.ti=='tope';
- const reb=f.ab=='pvr';for(const i of['mabl','mfil','manw','mhint','mtrcl','mtocl'])$(i).hidden=so;$('mfil').hidden=so||reb;$('mrbl').hidden=so||!reb;$('mtol').hidden=so||!$('mto').checked;
+ const reb=f.ab=='pvr';for(const i of['mabl','mfil','manw','mhint','mtrcl','mtocl'])$(i).hidden=so;$('mfil').hidden=so||reb;$('mrbl').hidden=so||!reb;$('mtocl').hidden=so||reb;$('mtol').hidden=so||reb||!$('mto').checked;
  $('mcal').textContent=so?'Cantidad de topes':'Cantidad';$('mqtit').textContent=(MQE<0?'Nuevo ':`Editando ${MQE+1}: `)+(so?'tope':'mosquitero');
  if(reb)$('mtrc').checked=true;$('mtrc').disabled=reb;$('mtrl').hidden=!f.tr;$('mtrlt').textContent=f.tr>1?'Alturas desde abajo (mm), separadas por espacio':'Altura del travesaño desde abajo (mm)';$('mtra').placeholder=f.tr>1?'Vacío: repartidos parejo':'Al medio';
  $('manl').textContent=f.fi||reb?'Ancho (mm)':'Ancho ventana (mm)';
@@ -870,22 +872,23 @@ function dibujaMq(f){if(f.ti=='tope'){const h=f.al,[,cn,K]=colMq(f.co);if(!(h>0)
  if(reb){if(f.mo=='comp'){const g=x-P/2-8,t=y-P/2-8,b=y+hh+P/2,R=x+w+P/2+8,pg=pts=>`<polygon points="${pts.map(q=>q.join(',')).join(' ')}" fill="${K}" ${O}/>`;
    s+=pg([[g,t],[g+5,t+5],[g+5,b],[g,b]])+pg([[g,t],[R,t],[R-5,t+5],[g+5,t+5]])+pg([[R,t],[R,b],[R-5,b],[R-5,t+5]])}
   else s+=`<rect x="${x+w+P/2+3}" y="${y-P/2}" width="6" height="${hh+P}" fill="${K}" ${O}/>`;
-  for(let b=0;b<f.nb;b++){const by=y+hh*(f.nb>1?.08+.84*b/(f.nb-1):.5)-4;s+=`<rect x="${x+w-2}" y="${by}" width="${f.mo=='comp'?8:12}" height="8" rx="1" fill="#8a8a8a"/>`}}
+  for(let b=0;b<f.nb;b++){const by=y+hh*(f.nb>1?.08+.84*b/(f.nb-1):.5)-4;s+=`<rect x="${x+w-2}" y="${by}" width="${f.mo=='comp'?8:12}" height="8" rx="1" fill="#8a8a8a"/>`}
+  if(f.pa)s+=`<rect x="${x+1}" y="${y+hh/2-8}" width="6" height="16" rx="1.5" fill="#555"/>`}
  if(!f.fi&&!reb)for(const[px,py]of[[x+w*.2,y-5],[x+w*.8-10,y-5],[x+w*.2,y+hh+1],[x+w*.8-10,y+hh+1]])s+=`<rect x="${px}" y="${py}" width="10" height="4" rx="1" fill="var(--m)"/>`;
  s+=`<text x="${x+w/2}" y="${y+hh+20}" text-anchor="middle" font-size="12" fill="${C}">${mtr(a)} m</text><text x="${x+w+(nto>1||reb?20:6)}" y="${y+14}" font-size="12" fill="${C}">${mtr(h)} m</text>`;
  $('mdib').innerHTML=s;$('mdibt').textContent=reb?`${cn} · rebatible de ${mtr(a)} × ${mtr(h)} m · ${f.mo=='comp'?'marco en C':'lateral'} + ${f.nb} bisagras`:f.fi?`${cn} · fijo de ${mtr(a)} × ${mtr(h)} m`:`${cn} · hoja de ${mtr(a)} × ${mtr(h)} m · ventana ${mtr(f.an)} × ${mtr(h)} m`+(supMq()?` · se cotiza con ${Math.round((h+supMq())*1000)} mm de alto`:'')}
 function agregaMq(){const f=formMq(),lista=MQE<0?[...MQ.items,f]:MQ.items.map((x,i)=>i==MQE?f:x),R=calcMq(lista),it=R.items[MQE<0?lista.length-1:MQE];
  if(it.err||R.err)return alert(it.err||R.err);
  if(MQE<0)MQ.items.push(f);else MQ.items[MQE]=f;guardaMq();limpiaFormMq();pintaListaMq()}
-function limpiaFormMq(){MQE=-1;for(const i of['mub','man','mal','mtra'])$(i).value='';$('mca').value=1;$('mtrc').checked=false;$('mtr').value=1;$('mfi').checked=false;$('mti').value='';$('mab').value='';$('mmo').value='lat';$('mbi').value=4;$('mton').value=1;$('mto').checked=$('mli').value!='Herrero';
+function limpiaFormMq(){MQE=-1;for(const i of['mub','man','mal','mtra'])$(i).value='';$('mca').value=1;$('mtrc').checked=false;$('mtr').value=1;$('mfi').checked=false;$('mti').value='';$('mab').value='';$('mmo').value='lat';$('mbi').value=4;$('mpa').checked=false;$('mton').value=1;$('mto').checked=$('mli').value!='Herrero';
  $('mag').textContent='Agregar a la lista';$('mcan').hidden=true;pintaMq()}
-function editaMq(i){const x=MQ.items[i];MQE=i;$('mti').value=x.ti||'';$('mab').value=x.ab||'';$('mmo').value=x.mo||'lat';$('mbi').value=x.nb||4;$('mub').value=x.ub;$('mli').value=x.li;$('mco').value=x.co||'blanco';$('mfi').checked=!!x.fi;$('man').value=x.an?Math.round(x.an*1000):'';$('mal').value=Math.round(x.al*1000);$('mca').value=x.ca;
+function editaMq(i){const x=MQ.items[i];MQE=i;$('mti').value=x.ti||'';$('mab').value=x.ab||'';$('mmo').value=x.mo||'lat';$('mbi').value=x.nb||4;$('mpa').checked=!!x.pa;$('mub').value=x.ub;$('mli').value=x.li;$('mco').value=x.co||'blanco';$('mfi').checked=!!x.fi;$('man').value=x.an?Math.round(x.an*1000):'';$('mal').value=Math.round(x.al*1000);$('mca').value=x.ca;
  $('mtrc').checked=ntrMq(x)>0;$('mtr').value=ntrMq(x)||1;$('mtra').value=(Array.isArray(x.tra)?x.tra:x.tra?[x.tra]:[]).map(t=>Math.round(t*1000)).join(' ');$('mto').checked=ntoMq(x)>0;$('mton').value=ntoMq(x)||1;$('mag').textContent='Guardar cambios';$('mcan').hidden=false;
  pintaMq();$('t-mos').scrollIntoView({behavior:'smooth'})}
 function quitaMq(i){MQ.items.splice(i,1);if(MQE==i)limpiaFormMq();else if(MQE>i)MQE--;guardaMq();pintaListaMq();pintaMq()}
 function nuevoMq(){if(cambiosMq()&&!confirm('El presupuesto actual tiene cambios sin guardar. ¿Empezar uno nuevo igual?'))return;
  MQ={id:null,cliente:'',tel:'',dir:'',colocacion:0,items:[]};guardaMq();for(const i of['mcl','mtel','mdir','mcol'])$(i).value='';limpiaFormMq();pintaListaMq();pintaHistMq()}
-const descMq=x=>x.ti=='tope'?`Tope de mosquitero línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — alto ${mtr(x.al)} m`:`Mosquitero ${x.ab=='pvr'?'rebatible ':x.fi?'fijo ':''}línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — ${x.fi||x.ab=='pvr'?'medida':'ventana'} ${mtr(x.an)} × ${mtr(x.al)} m`,extraMq=x=>[x.ub,x.ab=='pvr'&&(x.mo=='comp'?'marco en C':'lateral')+` + ${x.nb} bisagras`,ntrMq(x)==1&&'con travesaño',ntrMq(x)>1&&`con ${ntrMq(x)} travesaños`,ntoMq(x)==1&&'con tope',ntoMq(x)>1&&`con ${ntoMq(x)} topes`].filter(Boolean).join(' · ');
+const descMq=x=>x.ti=='tope'?`Tope de mosquitero línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — alto ${mtr(x.al)} m`:`Mosquitero ${x.ab=='pvr'?'rebatible ':x.fi?'fijo ':''}línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — ${x.fi||x.ab=='pvr'?'medida':'ventana'} ${mtr(x.an)} × ${mtr(x.al)} m`,extraMq=x=>[x.ub,x.ab=='pvr'&&(x.mo=='comp'?'marco en C':'lateral')+` + ${x.nb} bisagras`,x.ab=='pvr'&&x.pa&&'con pasador',ntrMq(x)==1&&'con travesaño',ntrMq(x)>1&&`con ${ntrMq(x)} travesaños`,ntoMq(x)==1&&'con tope',ntoMq(x)>1&&`con ${ntoMq(x)} topes`].filter(Boolean).join(' · ');
 // Código de cada renglón: V1, V2… (ventanas), PV1… (puerta-ventanas), T1… (topes de repuesto)
 const codMq=items=>{const n={};return items.map(x=>{const k=x.ti=='tope'?'T':x.ab=='pvr'?'PVR':x.ab=='pv'?'PV':'V';n[k]=(n[k]||0)+1;return k+n[k]})};
 function pintaListaMq(){const R=calcMq(MQ.items),cod=codMq(R.items);
@@ -899,7 +902,7 @@ function pintaListaMq(){const R=calcMq(MQ.items),cod=codMq(R.items);
 const mmTxt=v=>String(Math.round(v*1000));
 const tituloPdfMq=x=>x.ti=='tope'?`Tope de mosquitero (repuesto) línea ${x.li}`:`Mosquitero ${x.ab=='pvr'?'rebatible':x.fi?'fijo':'corredizo'} línea ${x.li}`;
 function detPdfMq(x){const c=['Color',colMq(x.co)[1]];if(x.ti=='tope')return[c,['Alto',mmTxt(x.al)+' mm']];
- if(x.ab=='pvr'){const L=[c,['Puerta-ventana',mmTxt(x.an)+' × '+mmTxt(x.al)+' mm'],['Modelo',x.mo=='comp'?'marco en C (laterales y superior) con bisagras tipo libro':'lateral con bisagras tipo libro'],['',`${x.nb} bisagras tipo libro`]],nt=ntrMq(x),no=ntoMq(x);
+ if(x.ab=='pvr'){const L=[c,['Puerta-ventana',mmTxt(x.an)+' × '+mmTxt(x.al)+' mm'],['Modelo',x.mo=='comp'?'marco en C (laterales y superior) con bisagras tipo libro':'lateral con bisagras tipo libro'],['',`${x.nb} bisagras tipo libro`+(x.pa?' · con pasador':'')]],nt=ntrMq(x),no=ntoMq(x);
   if(nt)L.push(['',nt>1?`Con ${nt} travesaños`:'Con 1 travesaño']);if(no)L.push(['',no>1?`Con ${no} topes`:'Con tope']);L.push(['','Tejido mosquitero']);return L}
  const L=[c,x.fi?['Medida',mmTxt(x.an)+' × '+mmTxt(x.al)+' mm']:[x.ab=='pv'?'Puerta-ventana':'Ventana',`${mmTxt(x.an)} × ${mmTxt(x.al)} mm · Hoja: ${mmTxt(x.an/2)} × ${mmTxt(x.al)} mm`]],nt=ntrMq(x),no=ntoMq(x);
  if(nt)L.push(['',nt>1?`Con ${nt} travesaños`:'Con 1 travesaño']);if(no)L.push(['',no>1?`Con ${no} topes`:'Con tope']);L.push(['','Tejido mosquitero']);return L}
@@ -921,7 +924,8 @@ function dibPdfMq(d,x,bx,by,bw,bh){const K=colMq(x.co)[2].match(/\w\w/g).map(h=>
  for(const t of altTrMq(x,h)){const ty=oy+hh-t*k;d.rect(ox+P,ty-.6,w-2*P,1.2,'FD')}
  if(no)d.rect(ox-3,oy,1.1,hh,'FD');if(no>1)d.rect(ox+w+1.9,oy,1.1,hh,'FD');
  if(reb){d.setFillColor(...K);if(x.mo!='comp')d.rect(ox+w+.8,oy,1.1,hh,'FD');d.setFillColor(138,138,138);
-  for(let b=0;b<x.nb;b++)d.rect(ox+w-.5,oy+hh*(x.nb>1?.08+.84*b/(x.nb-1):.5)-.7,x.mo=='comp'?1.7:2.4,1.4,'F')}
+  for(let b=0;b<x.nb;b++)d.rect(ox+w-.5,oy+hh*(x.nb>1?.08+.84*b/(x.nb-1):.5)-.7,x.mo=='comp'?1.7:2.4,1.4,'F');
+  if(x.pa){d.setFillColor(85,85,85);d.rect(ox+.2,oy+hh/2-1.2,1,2.4,'F')}}
  if(!x.fi&&!reb){d.setFillColor(...GR);for(const px of[ox+w*.2,ox+w*.8-1.8])for(const py of[oy-.8,oy+hh+.1])d.rect(px,py,1.8,.7,'F')}
  cota(ox,oy+hh+2.5,ox+w,oy+hh+2.5,mmTxt(a));cota(ox+w+dx,oy,ox+w+dx,oy+hh,mmTxt(h),true)}
 // PDF para el cliente: un recuadro por mosquitero con dibujo, detalle y precio, sin costos ni ganancia
@@ -965,8 +969,24 @@ async function pdfMq(){if(!await guardaHistMq(true))return;const R=calcMq(MQ.ite
   y+=CH+4});
  y+=1;if(y>255){d.addPage();y=20}
 
- const fila=(t,v,neg)=>{d.setFont('helvetica',neg?'bold':'normal');d.setFontSize(neg?11:9.5);d.setTextColor(...NEG);d.text(t,150,y,{align:'right'});d.text(money(v),W-3,y,{align:'right'});y+=neg?7:6};
- y+=3;fila(col?'Total sin colocación':'Total',R.total,!col);if(col){d.setFontSize(9.5);fila(MQ.dir?.trim()?d.splitTextToSize('Colocación en '+MQ.dir.trim(),120)[0]:'Colocación',col);fila('Total con colocación',R.total+col,true)}
+ const fila=(t,v,neg)=>{if(neg){y+=1.5;d.setDrawColor(...NEG);d.setLineWidth(.4);d.line(112,y-4.8,W,y-4.8)}d.setFont('helvetica',neg?'bold':'normal');d.setFontSize(neg?11:9.5);d.setTextColor(...NEG);d.text(t,150,y,{align:'right'});d.text(typeof v=='string'?v:money(v),W-3,y,{align:'right'});y+=neg?7:6};
+ y+=3;
+ // a la izquierda de los totales: recuadro "toma de medidas y envío incluidos" con un tilde
+ {const tt='TOMA DE MEDIDAS Y ENVÍO INCLUIDOS';d.setFont('helvetica','bold');d.setFontSize(8);const bw=d.getTextWidth(tt)+.3*(tt.length-1)+17,bh=9,by=y-5.8;
+  d.setFillColor(246,246,246);d.setDrawColor(226,226,226);d.setLineWidth(.3);d.roundedRect(X,by,bw,bh,2,2,'FD');d.setFillColor(...ROJO);d.rect(X,by+1.8,.9,bh-3.6,'F');
+  d.circle(X+7,by+bh/2,2.8,'F');d.setDrawColor(255,255,255);d.setLineWidth(.6);d.line(X+5.7,by+bh/2,X+6.7,by+bh/2+1.1);d.line(X+6.7,by+bh/2+1.1,X+8.5,by+bh/2-1.2);
+  d.setTextColor(...NEG);esp(tt,X+12.5,by+bh/2+1,.3)}
+ fila(col?'Total sin colocación':'Total',R.total,!col);if(col){d.setFontSize(9.5);fila(MQ.dir?.trim()?d.splitTextToSize('Colocación en '+MQ.dir.trim(),120)[0]:'Colocación',col);fila('Total con colocación',R.total+col,true)}else fila('Colocación','No incluida');
+ // términos y condiciones: cada sección es una lista de párrafos ('• ' = viñeta)
+ const TYC=[['PLAZO DE ENTREGA',['Los mosquiteros se entregan dentro de los 7 (siete) días posteriores a la toma de medidas.','Si necesita recibirlos en otra fecha, se acuerda al momento de confirmar el pedido.']],
+  ['FORMAS DE PAGO',['Aceptamos efectivo y transferencia bancaria.','• 50 % del total como anticipo, al confirmar el pedido.','• 50 % restante al momento de la entrega o de la colocación.']]];
+ d.setFont('helvetica','normal');d.setFontSize(9.5);const tl=TYC.map(([,ps])=>ps.map(t=>t.startsWith('• ')?d.splitTextToSize(t.slice(2),W-X-10):d.splitTextToSize(t,W-X-4)));
+ if(y+18+tl.reduce((a,ps)=>a+ps.reduce((b,l)=>b+l.length*4.6+1,0)+8,0)>272){d.addPage();y=20}else y+=12;
+ d.setFont('helvetica','bold');d.setFontSize(16);d.setTextColor(...NEG);const tt='TÉRMINOS Y CONDICIONES',tw=d.getTextWidth(tt)+1*(tt.length-1);esp(tt,X,y,1);
+ d.setFillColor(...ROJO);d.rect(X,y+2.3,tw,1,'F');y+=12;
+ TYC.forEach(([ti,ps],k)=>{d.setFont('helvetica','bold');d.setFontSize(9.5);d.setTextColor(...NEG);esp(ti,X,y,.6);y+=5.5;
+  d.setFont('helvetica','normal');d.setFontSize(9.5);d.setTextColor(25,25,25);
+  ps.forEach((t,m)=>{const l=tl[k][m];if(t.startsWith('• ')){d.setTextColor(...ROJO);d.text('•',X+2,y);d.setTextColor(25,25,25);d.text(l,X+6,y)}else d.text(l,X,y);y+=l.length*4.6+1});y+=5});
  y+=6;d.setFontSize(7.5);d.setFont('helvetica','normal');d.setTextColor(...G);d.text('Documento generado electrónicamente — '+fecha,X,y);
  const marca=(CFG.NOMBRE||'').toUpperCase();d.setFont('helvetica','bold');d.setFontSize(7);const mw=d.getTextWidth(marca)+.6*(marca.length-1)+10;
  d.setFillColor(...NEG);d.roundedRect(W-mw,y-4,mw,6,3,3,'F');d.setTextColor(255);esp(marca,W-5,y,.6,true);
@@ -979,7 +999,7 @@ async function guardaHistMq(silencio){const R=calcMq(MQ.items);if(!R.items.lengt
  const mal=R.items.find(x=>x.err);if(mal||R.err){alert(mal?.err||R.err);return false}
  if(!(MQ.cliente||'').trim()){alert('Escribe el nombre del cliente para guardar el presupuesto.');$('mcl').focus();return false}
  const o={cliente:MQ.cliente.trim(),telefono:(MQ.tel||'').trim()||null,direccion:(MQ.dir||'').trim()||null,total:R.total,colocacion:+MQ.colocacion||0,
-  items:R.items.map(x=>({ti:x.ti||'',ab:x.ab||'',mo:x.mo||'',nb:x.nb||0,ub:x.ub,li:x.li,co:x.co,fi:!!x.fi,an:x.an,al:x.al,ca:x.ca,tr:x.tr,tra:x.tra,to:x.to,precio:x.precio}))};
+  items:R.items.map(x=>({ti:x.ti||'',ab:x.ab||'',mo:x.mo||'',nb:x.nb||0,pa:!!x.pa,ub:x.ub,li:x.li,co:x.co,fi:!!x.fi,an:x.an,al:x.al,ca:x.ca,tr:x.tr,tra:x.tra,to:x.to,precio:x.precio}))};
  const{data,error}=await(MQ.id?sb.from('mosq_presupuestos').update(o).eq('id',MQ.id):sb.from('mosq_presupuestos').insert(o)).select('id');
  if(error){alert(/mosq_presupuestos/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':'No se pudo guardar: '+msg(error));return false}
  if(!data.length){MQ.id=null;return guardaHistMq(silencio)}  // lo habían borrado: se guarda como nuevo
