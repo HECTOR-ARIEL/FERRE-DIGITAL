@@ -41,6 +41,14 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - El código del Excel se guarda como **código del proveedor** (no reemplaza tu código). Si un producto tiene guardado otro código del proveedor, no se sugiere: así no se confunde cuando el proveedor reutiliza un código para otro producto.
 - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la columna `cod_prov`). Hasta entonces no aparece la lista.
 
+## Productos a $ 0
+- El presupuesto no se genera si hay un producto a $ 0: dice cuál es, para cargarle el costo o quitarlo.
+- En el catálogo sale "Consultar precio" y no se puede agregar al carrito. En Productos, el filtro **Sin precio (a $ 0)** los muestra juntos.
+- Al importar el Excel, las filas sin precio se ignoran. Si alguna es un producto tuyo, el aviso lo nombra: sigue con su costo anterior.
+
+## Capital en mercadería
+- En Productos, debajo de los botones, se ve la plata invertida en mercadería (stock × costo de lo que no está en la papelera). Se actualiza solo al cargar stock o costos.
+
 ## Último código
 - Al editar un producto **sin código**, al lado de "Código" aparece el último código cargado y el siguiente (por ejemplo "último código creado: A420 · siguiente: A421"). Tocando el siguiente se completa solo.
 

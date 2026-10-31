@@ -78,7 +78,7 @@ function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
  FL=F;pintaAbc($('abc'),F);if(P.length)$('u').textContent=$('q').value.trim()||sec?`${F.length} de ${P.length}`:P.length+' productos';
  $('g').innerHTML=F.slice(0,lim).map(p=>`<article id="a${p.id}" class="card${p.stock>0?'':' agotado'}">
   <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(nom(p))}">`:'Sin imagen'}</div>
-  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(nom(p))}</h2><span class="pr">${money(p.precio)}</span>${p.minimo>0?`<span class="mn">Compra mínima: ${fmt(p.minimo)}</span>`:''}${p.stock>0?`<div class="add" id="k${p.id}">${ctrl(p.id)}</div>`:'<span class="sin">Sin stock</span>'}</div></article>`).join('')
+  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(nom(p))}</h2><span class="pr">${p.precio>0?money(p.precio):'Consultar precio'}</span>${p.minimo>0?`<span class="mn">Compra mínima: ${fmt(p.minimo)}</span>`:''}${!(p.precio>0)?'':p.stock>0?`<div class="add" id="k${p.id}">${ctrl(p.id)}</div>`:'<span class="sin">Sin stock</span>'}</div></article>`).join('')
   ||`<p class="m" style="grid-column:1/-1">${P.length?'No hay productos que coincidan con la búsqueda.':'Todavía no hay productos en el catálogo.'}</p>`;
  $('mas').hidden=F.length<=lim;masObs.unobserve($('mas'));masObs.observe($('mas'))}
 // Índice A-Z: la barra (el) salta al primer producto de la letra; ir(letra) hace el salto
@@ -110,7 +110,7 @@ const fmt=n=>Number(n).toLocaleString('de-DE',{maximumFractionDigits:2});
 let C={};try{C=JSON.parse(leeLS('carrito')||'{}')||{}}catch{}
 // Controles de cada tarjeta: "Agregar" o, si ya está en el carrito, − cantidad +
 const ctrl=id=>C[id]?`<div class="step"><button type="button" class="s" title="Quitar uno" onclick="suma(${id},-1)">−</button><input type="number" min="0" step="any" inputmode="decimal" value="${C[id]}" aria-label="Cantidad" onfocus="this.select()" onchange="ponCant(${id},this.value)"><button type="button" title="Agregar uno" onclick="suma(${id},1)">+</button></div>`:`<button type="button" class="agr" onclick="suma(${id},1)">+ Agregar</button>`;
-const lineasCar=()=>Object.keys(C).map(id=>({p:P.find(x=>x.id==id),c:C[id]})).filter(l=>l.p);
+const lineasCar=()=>Object.keys(C).map(id=>({p:P.find(x=>x.id==id),c:C[id]})).filter(l=>l.p&&l.p.precio>0);
 // Compra mínima: "Agregar" pone el mínimo y "−" desde el mínimo lo quita del carrito
 const minDe=id=>Math.max(1,+P.find(x=>x.id==id)?.minimo||0);
 function suma(id,d){const c=+C[id]||0,m=minDe(id);ponCant(id,!c&&d>0?m:c+d<m?0:c+d)}

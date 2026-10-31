@@ -397,6 +397,7 @@ begin
     select id, codigo, nombre, precio, stock, minimo into pr from productos
       where id = (l->>'id')::bigint and activo and not borrado for update;
     continue when not found;
+    continue when coalesce(pr.precio, 0) <= 0;  -- a $ 0 no se vende por el carrito
     if coalesce(pr.minimo, 0) > c then c := pr.minimo; end if;  -- respeta la compra mínima
     d := least(c, greatest(pr.stock, 0));
     if d > 0 then update productos set stock = stock - d where id = pr.id; end if;

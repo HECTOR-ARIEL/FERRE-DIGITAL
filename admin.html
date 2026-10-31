@@ -75,7 +75,7 @@ dialog{overflow:auto}
   <button id="qx" type="button" hidden title="Borrar búsqueda" onclick="$('q').value='';lim=100;renderP();$('q').focus()">✕</button></div><span class="m" id="u"></span></div>
  <div class="c r" id="tbar">
   <select id="fs" onchange="lim=100;renderP()" title="Filtrar por sector"></select>
-  <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option><option value="k">Sin stock (con código)</option><option value="m">Con compra mínima</option><option value="u">Por unidad</option><option value="x">Dicen MINIMO o CAJA CERRADA pero van por unidad</option></select>
+  <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option><option value="k">Sin stock (con código)</option><option value="p">Sin precio (a $ 0)</option><option value="m">Con compra mínima</option><option value="u">Por unidad</option><option value="x">Dicen MINIMO o CAJA CERRADA pero van por unidad</option></select>
   <button onclick="editar()">+ Nuevo producto</button>
   <button class="s" onclick="$('f').click()">Importar Excel</button>
   <input id="f" type="file" accept=".xlsx,.xls,.csv" hidden onchange="imp(this.files[0])">
@@ -84,6 +84,7 @@ dialog{overflow:auto}
   <button class="s" onclick="abrirSectores()">Sectores</button>
   <button class="s" id="bpap" onclick="papelera(true)">Papelera</button>
   <button class="s" id="bcopia" onclick="copiaSeguridad()" title="Descarga un Excel con productos, historial, pedidos y sectores">Copia de seguridad</button>
+  <span class="m" id="capm" style="width:100%;font-size:14px"></span>
  </div>
  <div class="c aviso r" id="avpap" hidden><span style="flex:1;min-width:200px"><b>Papelera.</b> Estos productos no salen en el catálogo y al importar el Excel no se vuelven a crear. Selecciónalos y pulsa "Restaurar" para recuperarlos, o "Eliminar definitivamente" para borrarlos del todo y poder volver a usar su código.</span><button class="s" onclick="papelera(false)">← Volver a productos</button></div>
  <div class="c r" id="gananc" style="justify-content:space-between">
@@ -372,7 +373,7 @@ function toast(t){const d=document.createElement('div');d.className='toast';d.te
 function msg(e){if(e.code=='23505')return 'Ya existe otro producto con ese código.';return e.message||String(e)}
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 // lo que se ve en la tabla de productos: búsqueda + filtro de código (+ papelera)
-const lista=()=>{const c=$('fc').value,f=$('fs').value;return filtra($('q').value,enPap).filter(p=>(!c||(c=='m'?p.minimo>0:c=='u'?!(p.minimo>0):c=='x'?!(p.minimo>0)&&minDesc(p.clave||p.nombre)>0:c=='k'?!!p.codigo&&!(+p.stock>0):(c=='c')==!!p.codigo))&&(!f||(f=='-'?!p.sector_id:p.sector_id==f)))};
+const lista=()=>{const c=$('fc').value,f=$('fs').value;return filtra($('q').value,enPap).filter(p=>(!c||(c=='m'?p.minimo>0:c=='u'?!(p.minimo>0):c=='x'?!(p.minimo>0)&&minDesc(p.clave||p.nombre)>0:c=='k'?!!p.codigo&&!(+p.stock>0):c=='p'?!(+p.precio>0):(c=='c')==!!p.codigo))&&(!f||(f=='-'?!p.sector_id:p.sector_id==f)))};
 // busca dentro de los productos normales, o de la papelera si enPap=true
 const filtra=(q,enPap=false)=>{const w=norm(q).split(/\s+/).filter(Boolean);return P.filter(p=>!!p.borrado==enPap&&w.every(x=>norm((p.codigo||'')+' '+p.nombre).includes(x)))};
 
@@ -416,7 +417,10 @@ async function load(silencio){try{P=await todos(()=>sb.from('productos').select(
  renderP();renderB();rl()}
 function papelera(v){enPap=v;$('fc').value='';sel.clear();lim=100;$('q').value='';$('avpap').hidden=!v;$('gananc').hidden=v;
  document.querySelectorAll('#tbar>button').forEach(b=>b.hidden=v);$('fs').value='';renderP()}
-function renderP(){const F=lista(),np=P.filter(p=>p.borrado).length;$('nf').textContent=F.length;
+// Plata invertida en mercadería: stock × costo de los productos que no están en la papelera
+function pintaCapital(){const Q=P.filter(p=>!p.borrado&&+p.stock>0),sc=Q.filter(p=>!(+p.costo>0)).length;
+ $('capm').innerHTML=`Capital en mercadería: <b>${money(Q.reduce((s,p)=>s+(+p.stock)*(+p.costo||0),0))}</b>`+(sc?` · ${sc} con stock y sin costo (no suman)`:'')}
+function renderP(){pintaCapital();const F=lista(),np=P.filter(p=>p.borrado).length;$('nf').textContent=F.length;
  $('bpap').textContent='Papelera'+(np?` (${np})`:'');
  pintaAbc($('abc'),F);$('qx').hidden=!$('q').value;$('u').textContent=$('q').value.trim()?`${F.length} de ${P.filter(p=>!!p.borrado==enPap).length}`:F.length+' productos';
  $('pt').innerHTML=F.slice(0,lim).map(p=>`<tr id="r${p.id}" onclick="${enPap?`marca(${p.id})`:`editar(${p.id})`}"${p.activo&&!enPap?'':' class="off"'}>
@@ -580,6 +584,9 @@ async function impCant(f){$('fq').value='';if(!f)return;
  if(n){alert(`Listo: se sumó stock a ${n} producto(s).`+(noEnc.length?`\n\n${noEnc.length} filas no se reconocieron:\n${noEnc.slice(0,15).join('\n')}${noEnc.length>15?'\n…':''}`:''));load()}}
 
 /* ---------- importar Excel ---------- */
+// De las filas sin precio, las que son productos tuyos: siguen con su costo anterior (puede estar viejo)
+function avisoSinP(F){const M=new Map(P.filter(p=>p.clave&&!p.borrado).map(p=>[p.clave,p])),Q=F.map(d=>M.get(d.toLowerCase())).filter(Boolean);if(!Q.length)return'';
+ return`\nOjo: ${Q.length} de esas filas son productos que ya tienes. No se tocan y siguen con su costo anterior:\n${Q.slice(0,15).map(p=>'• '+p.nombre+' ('+money(p.costo)+')').join('\n')}${Q.length>15?`\n… y ${Q.length-15} más`:''}\n`}
 async function imp(f){$('f').value='';if(!f)return;
  let filas;try{const wb=XLSX.read(await f.arrayBuffer());filas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''})}catch{return alert('No se pudo leer el archivo.')}
  // La fila de títulos puede no ser la primera (la nota de pedido la tiene en la fila 12):
@@ -593,9 +600,9 @@ async function imp(f){$('f').value='';if(!f)return;
  if(h<0)return alert('No encontré la fila de títulos con las columnas "Producto" (o "Descripción") y "Precio".');
  // Si trae columna "Cantidad" es la nota de pedido del proveedor: se guarda para completar el pedido con ella
  const esNota=/\.xlsx$/i.test(f.name)&&filas[h].map(t).some(x=>x.startsWith('cantidad')||x=='cant');
- const out=[];let sinPrecio=0;
+ const out=[],sinP=[];let sinPrecio=0;
  for(const r of filas.slice(h+1)){const d=String(r[cd]??'').trim().replace(/\s+/g,' '),c=num(r[cp]);
-  if(!d)continue;if(c===null||c<=0){sinPrecio++;continue}
+  if(!d)continue;if(c===null||c<=0){sinPrecio++;sinP.push(d);continue}
   const o={descripcion:d,costo:red(c,2)};if(cs>=0)o.stock=num(r[cs])??0;if(cc>=0)o.cod=String(r[cc]??'').trim();out.push(o)}
  if(!out.length)return alert('El Excel no tiene productos con precio.');
  // Vista previa: cuántos existen, cuántos son nuevos y cuántos están en la papelera
@@ -606,7 +613,7 @@ async function imp(f){$('f').value='';if(!f)return;
  const elegidos=await revisarImport(`Leí ${out.length} productos de "${f.name}" (títulos en la fila ${h+1}).\n\n`+
   `· ${ex} ya existen → se actualiza su costo${cs>=0?' y stock':''}. Tu ganancia, código, descripción e imagen no cambian.\n`+
   `· ${nuevas.length} descripciones nuevas → se crean con ${fmt(g)} % de ganancia${cs>=0?'':' y stock 0'}`+(sug.length?`, salvo las que marques abajo como renombradas.\n`:'.\n')+
-  (pa?`· ${pa} están en la papelera → se ignoran.\n`:'')+(sinPrecio?`· ${sinPrecio} filas sin precio → se ignoran.\n`:''),sug);
+  (pa?`· ${pa} están en la papelera → se ignoran.\n`:'')+(sinPrecio?`· ${sinPrecio} filas sin precio → se ignoran.\n`:'')+avisoSinP(sinP),sug);
  if(!elegidos)return;
  for(const s of elegidos)s.nueva.reemplaza=s.p.id;
  const b=document.querySelector('[onclick="$(\'f\').click()"]');b.disabled=true;
@@ -751,6 +758,7 @@ async function compartir(){const f=new File([pdfDoc(ult).output('blob')],nomPdf(
 async function save(){const cl=$('cl').value.trim();
  if(!L.length)return alert('Añade productos al presupuesto.');
  if(L.some(l=>!(l.cantidad>=0)))return alert('Revisa las cantidades: hay alguna que no es válida.');
+ const cero=L.filter(l=>l.cantidad>0&&!(+l.precio>0));if(cero.length)return alert(`No se generó el presupuesto: estos productos están a $ 0.\n\n• ${cero.map(l=>l.nombre).join('\n• ')}\n\nCárgales el costo en Productos, o quítalos del presupuesto.`);
  const sinS=L.filter(l=>disp(l)<=0||disp(l)<l.cantidad).length;
  if(!confirm(`¿Generar el presupuesto${cl?' para '+cl:''}?\n\nSe descontará del stock la cantidad disponible de cada producto.`+(sinS?`\n${sinS} producto(s) sin stock suficiente saldrán en rojo en el PDF.`:'')))return;
  const b=$('bs');b.disabled=true;
