@@ -122,6 +122,52 @@ alter table productos add column if not exists compra_aviso numeric;       -- av
 alter table productos add column if not exists compra_vendido numeric not null default 0;     -- vendidas desde la última compra
 alter table productos add column if not exists compra_pendiente boolean not null default false; -- comprado, falta sumar el stock
 
+-- ===================== CAJA =====================
+-- Cada movimiento guarda cuánto suma o resta al capital, a la ganancia y a la deuda del cliente.
+-- Los saldos son la suma de los movimientos: borrar un movimiento mal cargado corrige todo.
+create table if not exists caja_mov(
+  id bigint generated always as identity primary key,
+  fecha timestamptz default now(),
+  tipo text not null check (tipo in ('cobro','fiado','compra','gasto','retiro','inicial')),
+  detalle text,                         -- proveedor, tipo de gasto o aclaración
+  cliente text,
+  monto numeric not null default 0,
+  capital numeric not null default 0,
+  ganancia numeric not null default 0,
+  deuda numeric not null default 0,     -- + el cliente debe más, - pagó deuda
+  bulto boolean not null default false  -- compra de bulto: se paga con la plata a separar
+);
+-- costo_vendido: costo de lo vendido desde que existe la Caja (sin los productos con compra por cantidad).
+create table if not exists caja_config(
+  id int primary key default 1 check (id = 1),
+  divisor numeric not null default 1.3,
+  costo_vendido numeric not null default 0
+);
+insert into caja_config(id) values (1) on conflict (id) do nothing;
+alter table caja_mov enable row level security;
+alter table caja_config enable row level security;
+drop policy if exists "admin caja_mov" on caja_mov;
+create policy "admin caja_mov" on caja_mov for all to authenticated using (true) with check (true);
+drop policy if exists "admin caja_config" on caja_config;
+create policy "admin caja_config" on caja_config for all to authenticated using (true) with check (true);
+revoke all on caja_mov from anon;
+revoke all on caja_config from anon;
+
+-- Lista de clientes: la usan Nuevo presupuesto, Pedidos web y Caja. Los que ya estaban en la Caja se pasan solos.
+create table if not exists clientes(
+  id bigint generated always as identity primary key,
+  nombre text not null,
+  telefono text
+);
+create unique index if not exists clientes_nombre_uq on clientes(lower(nombre));
+insert into clientes(nombre)
+  select distinct on (lower(cliente)) cliente from caja_mov where cliente is not null and trim(cliente) <> ''
+  on conflict do nothing;
+alter table clientes enable row level security;
+drop policy if exists "admin clientes" on clientes;
+create policy "admin clientes" on clientes for all to authenticated using (true) with check (true);
+revoke all on clientes from anon;
+
 -- ===================== MOSQUITEROS =====================
 -- Precios del cotizador de mosquiteros (una sola fila). Solo tú (con sesión) los ves y cambias.
 create table if not exists mosq_config(
@@ -254,16 +300,21 @@ begin
   for l in select * from jsonb_array_elements(p_lineas) loop
     c := (l->>'cantidad')::numeric;
     if c is null or c < 0 then raise exception 'Cantidad no válida: %', l->>'nombre'; end if;
-    select id, codigo, nombre, precio, stock into pr from productos where id = (l->>'id')::bigint for update;
+    select id, codigo, nombre, precio, stock, costo, compra_cant into pr from productos where id = (l->>'id')::bigint for update;
     if not found then raise exception 'Producto no encontrado: %', l->>'nombre'; end if;
     d := least(c, greatest(pr.stock, 0));
     if d > 0 then
       update productos set stock = stock - d,
         compra_vendido = compra_vendido + case when compra_cant is not null then d else 0 end
         where id = pr.id;
+      -- para la Caja: mercadería vendida que hay que reponer (rep = esta línea se contó)
+      if pr.compra_cant is null then
+        update caja_config set costo_vendido = costo_vendido + d * coalesce(pr.costo, 0) where id = 1;
+      end if;
     end if;
     lineas := lineas || jsonb_build_object('id', pr.id, 'codigo', pr.codigo, 'nombre', pr.nombre,
-                                           'precio', pr.precio, 'cantidad', c, 'disponible', d);
+                                           'precio', pr.precio, 'cantidad', c, 'disponible', d,
+                                           'costo', coalesce(pr.costo, 0), 'rep', pr.compra_cant is null);
     t := t + d * pr.precio;
   end loop;
   insert into presupuestos(cliente, total, lineas) values (p_cliente, t, lineas) returning id into n;
@@ -289,6 +340,9 @@ begin
         update productos set stock = stock + d, compra_vendido = greatest(0, compra_vendido - d)
           where id = (l->>'id')::bigint returning stock into v;
         if found then st := st || jsonb_build_object('id', (l->>'id')::bigint, 'stock', v); end if;
+        if coalesce((l->>'rep')::boolean, false) then
+          update caja_config set costo_vendido = greatest(0, costo_vendido - d * coalesce((l->>'costo')::numeric, 0)) where id = 1;
+        end if;
       end if;
       l := l || '{"anulado": true}';
     end if;

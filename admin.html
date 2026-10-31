@@ -67,7 +67,7 @@ dialog{overflow:auto}
 </form>
 
 <div id="app" hidden>
-<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Nuevo presupuesto <span id="nl" class="tag" hidden></span></button><button data-t="web" onclick="tab('web')">Pedidos web <span id="nw" class="tag nw" hidden></span></button><button data-t="hist" onclick="tab('hist')">Historial</button><button data-t="ped" onclick="tab('ped')">Pedido</button><button data-t="rec" onclick="tab('rec')">Recepción</button><button data-t="mos" onclick="tab('mos')">Mosquiteros</button></div>
+<div class="tabs"><button data-t="prod" class="on" onclick="tab('prod')">Productos</button><button data-t="pres" onclick="tab('pres')">Nuevo presupuesto <span id="nl" class="tag" hidden></span></button><button data-t="web" onclick="tab('web')">Pedidos web <span id="nw" class="tag nw" hidden></span></button><button data-t="hist" onclick="tab('hist')">Historial</button><button data-t="ped" onclick="tab('ped')">Pedido</button><button data-t="rec" onclick="tab('rec')">Recepción</button><button data-t="caja" onclick="tab('caja')">Caja</button><button data-t="mos" onclick="tab('mos')">Mosquiteros</button></div>
 
 <section id="t-prod" class="con-abc"><nav class="abc" id="abc" aria-label="Índice alfabético"></nav>
  <div class="top"><div class="bus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
@@ -108,7 +108,7 @@ dialog{overflow:auto}
   <p class="m" style="margin:6px 0 10px">El PDF ya se descargó y el presupuesto quedó guardado en el <b>Historial</b>. Puedes enviarlo al cliente o volver a descargarlo.</p>
   <div class="r"><button class="s" onclick="descargar()">Descargar PDF</button><button id="bcomp" onclick="compartir()">Compartir (WhatsApp, correo…)</button><button class="s" onclick="$('res').hidden=true">Cerrar</button></div></div>
  <div class="c aviso r" id="solav" hidden></div>
- <div class="c"><label>Cliente<input id="cl" placeholder="Nombre del cliente" oninput="guardaBorrador()"></label></div>
+ <div class="c"><label>Cliente<input id="cl" list="cllis" autocomplete="off" placeholder="Busca o escribe el cliente" oninput="guardaBorrador();pintaClH()"></label><datalist id="cllis"></datalist><p class="m" id="clh" style="margin:6px 0 0;font-size:13px" hidden></p></div>
  <div class="c"><b>1. Agrega productos</b><input id="qb" type="search" placeholder="Buscar por descripción o código" oninput="renderB()" style="margin-top:8px">
   <div class="w"><table><tbody id="bt"></tbody></table></div></div>
  <div class="c" id="paso2"><b>2. Revisa las cantidades</b><div class="w"><table><tbody id="lt"></tbody></table></div>
@@ -197,6 +197,17 @@ dialog{overflow:auto}
  <b>Marcar pedido como enviado:</b> hazlo después de mandar la nota. El próximo pedido empieza a contar desde ahí.<br>
  <b>Cuando llega la mercadería:</b> sube esa misma nota completa en Productos &gt; "Importar cantidades" para sumar el stock (corrige antes lo que no haya llegado). Para ver qué no llegó, usa la pestaña "Recepción".</p>
 </section>
+<section id="t-caja" hidden>
+ <div class="c aviso" id="cjav" hidden></div>
+ <div id="cjres"></div>
+ <div class="c"><b>Qué hacer con el capital</b><div id="cjcap"></div></div>
+ <div class="c r"><button style="flex:1" onclick="abreCaja('cobro')">Entró plata</button><button style="flex:1" onclick="abreCaja('compra')">Compré mercadería</button><button style="flex:1" onclick="abreCaja('gasto')">Gasto</button><button style="flex:1" onclick="abreCaja('retiro')">Retiro</button></div>
+ <div class="c"><div class="r" style="justify-content:space-between;align-items:center"><b>Clientes</b><button class="s" onclick="abreCaja('deuda')">+ Cliente con deuda</button></div><div id="cjdeu"></div></div>
+ <div class="c"><div class="r" style="justify-content:space-between;align-items:center"><b>Movimientos</b><select id="cjver" onchange="pintaCaja()" style="width:auto" title="Qué movimientos mostrar"><option value="sem">Esta semana</option><option value="">Todos</option></select></div>
+  <p class="m" id="cjsem" style="font-size:13px;margin:6px 0"></p><div class="w"><table><tbody id="cjmov"></tbody></table></div></div>
+ <div class="c r" style="align-items:center"><span class="m" style="flex:1;min-width:200px">Lo que entra se divide por <input id="cjdiv" inputmode="decimal" style="width:70px;display:inline-block" onchange="guardaDivisor()"> para separar capital y ganancia.</span><button class="s" onclick="abreCaja('inicial')">Cargar saldo inicial</button></div>
+ <p class="m"><b>Cómo funciona:</b> todo lo que entra se divide: una parte va al capital (solo para comprar mercadería) y el resto a la ganancia (de ahí salen gastos y retiros). El costo de lo vendido se cuenta solo desde los presupuestos; lo que tenga compra por cantidad va en Plata a separar. Si cargaste algo mal, bórralo con ✕ y se corrige todo. La cuenta es una estimación porque el porcentaje real cambia en cada producto.</p>
+</section>
 <section id="t-rec" hidden>
  <div class="c"><b>Comparar lo que pedimos con lo que llegó</b>
   <p class="m" style="margin:6px 0 10px">Elige los dos Excel y se muestra al momento qué llegó y qué no. No se guarda nada ni se toca el stock.</p>
@@ -230,6 +241,41 @@ dialog{overflow:auto}
   <p class="m" style="margin:0;font-size:13px">El proveedor cambió estas descripciones. Marca las que sean el mismo producto: se reemplaza la descripción y conserva tu código, ganancia, foto, sector y stock. Las que no marques se crean como productos nuevos.</p>
   <div id="dimpl" class="secl"></div></div>
  <div class="acc"><button type="button" class="s" id="dimpc">Cancelar</button><button type="button" id="dimpo">Importar</button></div>
+</form></dialog>
+
+<dialog id="dpago"><form method="dialog" onsubmit="return false">
+ <h2>¿Cómo pagó?</h2>
+ <p class="m" id="pgt" style="margin:0;font-size:15px"></p>
+ <button type="button" onclick="pagoCaja('todo')">Pagó todo</button>
+ <div id="pgcli"><div class="g3" style="align-items:end"><label style="grid-column:span 2">Pagó una parte<input id="pgm" inputmode="decimal" placeholder="Cuánto pagó"></label><button type="button" class="s" onclick="pagoCaja('parte')">Guardar</button></div>
+  <button type="button" class="s" style="width:100%;margin-top:10px" onclick="pagoCaja('debe')">Queda a deber todo</button></div>
+ <div class="acc"><button type="button" class="s" onclick="$('dpago').close()">No cargar en Caja</button></div>
+</form></dialog>
+
+<dialog id="dcli"><form method="dialog" onsubmit="guardaCli(event)">
+ <h2 id="clt"></h2>
+ <div style="font-size:22px"><span class="m" style="font-size:14px">Saldo:</span> <b id="clsal"></b></div>
+ <div class="g3"><label>Le llevamos<input id="clle" inputmode="decimal" placeholder="0" oninput="pintaCli()"></label><label>Pagó<input id="clpa" inputmode="decimal" placeholder="0" oninput="pintaCli()"></label><label>Aclaración (opcional)<input id="clde" autocomplete="off"></label></div>
+ <p class="m" id="clnv" style="margin:0;font-size:14px"></p>
+ <div class="acc"><button type="button" class="s" onclick="$('dcli').close()">Cerrar</button><button id="clok">Guardar</button></div>
+ <div class="r" style="align-items:flex-end"><label style="flex:1;min-width:180px">Corregir saldo a<input id="claj" inputmode="decimal" placeholder="Cuánto debe en realidad"></label><button type="button" class="s" onclick="ajustaCli()">Corregir</button></div>
+ <div class="w"><table style="font-size:14px"><thead><tr><th>Fecha</th><th>Movimiento</th><th class="n">Saldo</th></tr></thead><tbody id="clmov"></tbody></table></div>
+</form></dialog>
+
+<dialog id="dcaja"><form method="dialog" onsubmit="guardaCaja(event)">
+ <h2 id="cjt"></h2><datalist id="cjlis"></datalist>
+ <label id="cjlcl">Cliente<input id="cjcl" list="cjlis" autocomplete="off" oninput="avisaCaja()"></label>
+ <label id="cjlte">Teléfono (opcional)<input id="cjte" inputmode="tel" autocomplete="off"></label>
+ <label id="cjlpr">Proveedor<select id="cjpr"><option>Proveedor del Excel</option><option>Exult</option><option>Mi madre</option><option>Otro</option></select></label>
+ <label id="cjlga">Tipo de gasto<select id="cjga"><option>Gastos fijos</option><option>Automotor</option><option>Otros</option></select></label>
+ <label id="cjlde">Aclaración (opcional)<input id="cjde" autocomplete="off"></label>
+ <label><span id="cjmt">Monto</span><input id="cjm" inputmode="decimal" oninput="avisaCaja()"></label>
+ <label id="cjlg2">Ganancia inicial<input id="cjm2" inputmode="decimal" placeholder="0"></label>
+ <label class="chk" id="cjlpd"><input type="checkbox" id="cjpd" onchange="avisaCaja()"> Es pago de una deuda anterior</label>
+ <label id="cjlnv">Dejó a deber de esta compra (opcional)<input id="cjnv" inputmode="decimal" placeholder="0" oninput="avisaCaja()"></label>
+ <label class="chk" id="cjlbu"><input type="checkbox" id="cjbu"> Es un bulto (se paga con la plata a separar)</label>
+ <p class="m" id="cjav2" style="margin:0;font-size:14px"></p>
+ <div class="acc"><button type="button" class="s" onclick="$('dcaja').close()">Cancelar</button><button id="cjok">Guardar</button></div>
 </form></dialog>
 
 <dialog id="dmq"><form method="dialog" onsubmit="return false">
@@ -356,14 +402,14 @@ async function nuevaClave(e){e.preventDefault();const a=$('pw1').value;if(a!==$(
  const b=e.submitter;b.disabled=true;const{error}=await sb.auth.updateUser({password:a});b.disabled=false;
  if(error)return alert(/different|same/i.test(error.message)?'La contraseña nueva tiene que ser distinta de la anterior.':/session|expired|invalid/i.test(error.message)?'El link venció. Pide otro con "¿Olvidaste tu contraseña?".':error.message);
  $('dpw').close();$('pw1').value=$('pw2').value='';history.replaceState(null,'',location.pathname);toast('Contraseña cambiada. Ya estás dentro del panel.')}
-function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';$('t-ped').hidden=t!='ped';$('t-web').hidden=t!='web';$('t-mos').hidden=t!='mos';$('t-rec').hidden=t!='rec';if(t=='mos')abrirMq();if(t=='web')cargaWeb();if(t=='hist')cargaHist();if(t=='ped')cargaPedido()}
+function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';$('t-ped').hidden=t!='ped';$('t-web').hidden=t!='web';$('t-mos').hidden=t!='mos';$('t-rec').hidden=t!='rec';$('t-caja').hidden=t!='caja';if(t=='caja')cargaCaja();if(t=='mos')abrirMq();if(t=='web')cargaWeb();if(t=='hist')cargaHist();if(t=='ped')cargaPedido()}
 
 /* ---------- productos ---------- */
 async function load(silencio){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){if(silencio)throw e;return alert(msg(e))}
  MIN_OK=!P.length||'minimo'in P[0];  // false si todavía no se ejecutó el SQL de compra mínima
  COD_OK=!P.length||'cod_prov'in P[0];  // false si todavía no se ejecutó el SQL de renombrados
  COMP_OK=!!P.length&&'compra_cant'in P[0];  // false si todavía no se ejecutó el SQL de compra por cantidad
- await cargaSectores();
+ await cargaSectores();cargaCli();
  // los precios del presupuesto en curso se actualizan con los de la base
  L=L.filter(l=>P.some(p=>p.id==l.id&&!p.borrado)).map(l=>{const p=P.find(x=>x.id==l.id);return{...l,codigo:p.codigo,nombre:p.nombre,precio:+p.precio}});
  for(const id of sel)if(!P.some(p=>p.id==id))sel.delete(id);
@@ -721,9 +767,9 @@ async function save(){const cl=$('cl').value.trim();
  ult={...data,cliente:cl,fecha:new Date().toISOString()};
  // Si venía de un pedido web, la base ya lo marcó como presupuestado con este número
  if(sol){SOL=null;guardaLS('sol','');pintaSol();cuentaWeb()}
- L=[];$('cl').value='';$('qb').value='';guardaBorrador();renderB();rl();renderP();
+ const tel=W.find(x=>x.id==sol)?.telefono;L=[];$('cl').value='';$('qb').value='';guardaBorrador();pintaClH();renderB();rl();renderP();
  $('resT').textContent=`Presupuesto Nº ${data.id}${cl?' · '+cl:''} · Total ${money(data.total)}`;$('res').hidden=false;window.scrollTo(0,0);
- descargar();setTimeout(refrescar,2000)}
+ descargar();setTimeout(refrescar,2000);abrePago(data.id,cl,+data.total,tel)}
 // Recarga productos e historial en segundo plano; si la conexión falla, reintenta sin mostrar errores
 async function refrescar(n=0){try{await load(true)}catch{if(n<3)setTimeout(()=>refrescar(n+1),4000*(n+1))}}
 // Historial: todos los presupuestos guardados, con búsqueda por cliente o número
@@ -1045,12 +1091,116 @@ async function borraHistMq(id){const x=HMQ.find(h=>h.id==id);if(!confirm(`¿Borr
  const{error}=await sb.from('mosq_presupuestos').delete().eq('id',id);if(error)return alert(msg(error));
  if(MQ.id==id){MQ.id=null;guardaMq()}toast(`Presupuesto Nº ${id} borrado`);cargaHistMq()}
 
+/* ---------- clientes ---------- */
+// Una sola lista para Nuevo presupuesto, Pedidos web y Caja. Sin el SQL nuevo (CLI_OK falso) todo sigue como antes.
+let CLI=[],CLI_OK=false,PAGO=null;
+const telK=t=>String(t||'').replace(/\D/g,'').slice(-7);  // los últimos 7 números: 0351 / 351 / 15 no importan
+const cliDeTel=t=>telK(t).length==7?CLI.find(c=>telK(c.telefono)==telK(t)):null;
+const pintaLisCli=()=>$('cllis').innerHTML=CLI.map(c=>`<option value="${esc(c.nombre)}">`).join('');
+async function cargaCli(){const{data,error}=await sb.from('clientes').select('*').order('nombre');CLI_OK=!error;CLI=data||[];pintaLisCli();pintaClH()}
+// Agrega el cliente si no está, y guarda su teléfono si todavía no lo tenía
+async function asegCli(nombre,tel){if(!CLI_OK||!nombre)return;const x=CLI.find(c=>norm(c.nombre)==norm(nombre));
+ if(x){if(tel&&!x.telefono){const{error}=await sb.from('clientes').update({telefono:tel}).eq('id',x.id);if(!error)x.telefono=tel}return}
+ const{data,error}=await sb.from('clientes').insert({nombre,telefono:tel||null}).select().single();if(error)return;CLI.push(data);CLI.sort((a,b)=>a.nombre.localeCompare(b.nombre));pintaLisCli()}
+function pintaClH(){const n=$('cl').value.trim(),s=W.find(x=>x.id==SOL),d=[];
+ if(s){const c=cliDeTel(s.telefono);d.push(`Pedido web a nombre de ${s.cliente}${s.telefono?' · tel. '+s.telefono:''}.`);if(c)d.push(`Ese teléfono es de ${c.nombre}.`);else d.push('Elige el cliente que corresponde.')}
+ if(CLI_OK&&n&&!CLI.some(c=>norm(c.nombre)==norm(n)))d.push('Cliente nuevo: se agrega a la lista.');
+ $('clh').hidden=!d.length;$('clh').textContent=d.join(' ')}
+// Después de generar el presupuesto: la venta pasa a la Caja y a la ficha del cliente
+function abrePago(id,cl,total,tel){if(!CLI_OK||!(total>0))return;PAGO={id,cl,total,tel};
+ $('pgt').textContent=`Presupuesto Nº ${id}${cl?' · '+cl:''} · Total ${money(total)}`;$('pgcli').hidden=!cl;$('pgm').value='';$('dpago').showModal()}
+async function pagoCaja(k){const{id,cl,total,tel}=PAGO,m=k=='todo'?total:k=='debe'?0:num($('pgm').value)||0;
+ if(k=='parte'&&!(m>0&&m<total))return alert(`Escribe cuánto pagó: menos de ${money(total)}.`);
+ const{data:cf}=await sb.from('caja_config').select('divisor').eq('id',1).maybeSingle(),c=m/(+cf?.divisor||1.3),det='Presupuesto Nº '+id;
+ const o=m>0?{tipo:'cobro',cliente:cl||null,detalle:det,monto:m,capital:c,ganancia:m-c,deuda:total-m}:{tipo:'fiado',cliente:cl,detalle:det,monto:total,deuda:total};
+ await asegCli(cl,tel);const{error}=await sb.from('caja_mov').insert(o);if(error)return alert(msg(error));$('dpago').close();toast('Cargado en la Caja')}
+
+/* ---------- caja ---------- */
+// Saldos: la suma de los movimientos. Lo que entra se divide en capital y ganancia; las compras salen del capital y los gastos de la ganancia.
+let CJ={mov:[],cfg:{divisor:1.3,costo_vendido:0},ok:false},CJT='';
+const CJTIT={cobro:'Entró plata',compra:'Compré mercadería',gasto:'Gasto',retiro:'Retiro',inicial:'Saldo inicial',deuda:'Cliente con deuda'};
+const CJNOM={cobro:'Entró plata',fiado:'Deuda',compra:'Compra',gasto:'Gasto',retiro:'Retiro',inicial:'Saldo inicial'};
+// semana de sábado a viernes
+const iniSemana=()=>{const d=new Date;d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+1)%7));return d};
+const sumaCj=(k,f=()=>true)=>CJ.mov.filter(f).reduce((s,m)=>s+(+m[k]||0),0);
+function saldosCaja(){const M=new Map();for(const m of CJ.mov){if(!m.cliente)continue;const k=norm(m.cliente),x=M.get(k)||{nombre:m.cliente,saldo:0};x.saldo+=+m.deuda;M.set(k,x)}return[...M.values()].sort((a,b)=>b.saldo-a.saldo||a.nombre.localeCompare(b.nombre))}
+const saldoTxt=v=>v>.009?money(v):v<-.009?'A favor '+money(-v):'Al día';
+const bultosCaja=()=>P.filter(p=>+p.compra_cant>0&&!p.borrado).reduce((s,p)=>s+(+p.compra_vendido||0)*(+p.costo||0),0);
+async function frescoComp(){if(!COMP_OK)return;const{data}=await sb.from('productos').select('id,stock,costo,compra_cant,compra_aviso,compra_vendido,compra_pendiente').not('compra_cant','is',null);for(const x of data||[])Object.assign(P.find(p=>p.id==x.id)||{},x)}
+async function cargaCaja(){$('cjav').hidden=true;
+ try{const[m,c]=await Promise.all([todos(()=>sb.from('caja_mov').select('*').order('id',{ascending:false})),sb.from('caja_config').select('*').eq('id',1).maybeSingle(),frescoComp()]);
+  if(c.error)throw c.error;CJ={mov:m,cfg:c.data||{divisor:1.3,costo_vendido:0},ok:true};pintaCaja()}
+ catch(e){CJ.ok=false;$('cjav').hidden=false;$('cjav').textContent=/caja_/.test(msg(e))?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(e)}}
+function pintaCaja(){const cap=sumaCj('capital'),gan=sumaCj('ganancia'),D=saldosCaja(),deben=D.reduce((s,x)=>s+Math.max(0,x.saldo),0),comp=sumaCj('monto',m=>m.tipo=='compra'&&!m.bulto);
+ const pend=Math.max(0,(+CJ.cfg.costo_vendido||0)-comp),bul=bultosCaja(),lib=cap-pend-bul;
+ const dato=(t,v,neg)=>`<div style="flex:1;min-width:150px;padding:12px;background:var(--c);border:1px solid var(--b);border-radius:10px"><div class="m" style="font-size:12px">${t}</div><div style="font-size:21px;font-weight:600${neg?';color:var(--no)':''}">${money(v)}</div></div>`;
+ $('cjres').innerHTML=`<div class="r" style="margin-bottom:10px">${dato('Capital en caja',cap,cap<0)}${dato('Ganancia para retirar',gan,gan<0)}${dato('Te deben los clientes',deben)}</div>`;
+ const tot=Math.max(1,pend+bul+Math.max(0,lib)),fila=(n,t,v,c)=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;font-size:15px;padding:3px 0"><span>${n}. ${t}</span><b style="white-space:nowrap${c?';color:var(--no)':''}">${money(v)}</b></div>`;
+ $('cjcap').innerHTML=`<div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--bg);margin:10px 0"><div style="width:${pend/tot*100}%;background:var(--no)"></div><div style="width:${bul/tot*100}%;background:var(--m)"></div><div style="width:${Math.max(0,lib)/tot*100}%;background:var(--b)"></div></div>`
+  +fila(1,'Mercadería vendida sin reponer',pend,pend>0)+fila(2,'Plata a separar para bultos',bul)+(lib<0?`<p class="falta" style="margin:6px 0 0">Faltan ${money(-lib)} de capital para cubrir todo esto.</p>`:fila(3,'Capital libre, de reserva',lib));
+ $('cjlis').innerHTML=CLI.map(c=>`<option value="${esc(c.nombre)}">`).join('');
+ CJ.cli=D;$('cjdeu').innerHTML=D.map((x,i)=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;border-top:1px solid var(--b);padding:7px 0;margin-top:4px"><span class="nom">${esc(x.nombre)}</span><span class="r" style="flex-wrap:nowrap;gap:10px"><b style="white-space:nowrap">${saldoTxt(x.saldo)}</b><button class="s" onclick="abreCli(${i})">Ver</button></span></div>`).join('')||'<p class="m" style="margin:6px 0 0">Todavía no hay clientes con cuenta.</p>';
+ const ini=iniSemana(),sem=$('cjver').value=='sem',V=sem?CJ.mov.filter(m=>new Date(m.fecha)>=ini):CJ.mov,N=V.slice(0,300),s=t=>V.filter(m=>m.tipo==t).reduce((a,m)=>a+(+m.monto||0),0);
+ $('cjsem').textContent=`Entró ${money(s('cobro'))} · Compras ${money(s('compra'))} · Gastos ${money(s('gasto'))} · Retiros ${money(s('retiro'))}`;
+ const efe=m=>[+m.capital?`Capital ${+m.capital>0?'+':'−'} ${money(Math.abs(m.capital))}`:'',+m.ganancia?`Ganancia ${+m.ganancia>0?'+':'−'} ${money(Math.abs(m.ganancia))}`:'',+m.deuda?`Deuda ${+m.deuda>0?'+':'−'} ${money(Math.abs(m.deuda))}`:''].filter(Boolean).join(' · ');
+ $('cjmov').innerHTML=N.map(m=>`<tr><td><div class="nom">${esc(CJNOM[m.tipo]||m.tipo)}${m.cliente?' · '+esc(m.cliente):''}${m.detalle?' · '+esc(m.detalle):''}${m.bulto?' · bulto':''}</div><div class="m" style="font-size:12px">${new Date(m.fecha).toLocaleDateString('es',{day:'2-digit',month:'2-digit'})} · ${efe(m)||money(m.monto)}</div></td><td class="n"><button class="s" title="Borrar movimiento" onclick="borraCaja(${m.id})">✕</button></td></tr>`).join('')
+  ||'<tr><td class="m">Todavía no hay movimientos.</td></tr>';
+ $('cjdiv').value=fmtIn(CJ.cfg.divisor)}
+function abreCaja(t){if(!CJ.ok)return alert('La Caja todavía no está lista. Revisa el aviso de arriba.');CJT=t;$('cjt').textContent=CJTIT[t];
+ const ver=(i,v)=>$(i).hidden=!v;ver('cjlcl',t=='cobro'||t=='deuda');ver('cjlte',t=='deuda');ver('cjlpr',t=='compra');ver('cjlga',t=='gasto');ver('cjlde',['compra','gasto'].includes(t));ver('cjlg2',t=='inicial');ver('cjlpd',t=='cobro');ver('cjlnv',t=='cobro');ver('cjlbu',t=='compra');
+ $('cjmt').textContent=t=='inicial'?'Capital inicial':t=='cobro'?'Plata que entró':t=='deuda'?'Cuánto debe':'Monto';
+ for(const i of['cjcl','cjte','cjde','cjm','cjm2','cjnv'])$(i).value='';$('cjpd').checked=$('cjbu').checked=false;$('cjpr').selectedIndex=$('cjga').selectedIndex=0;avisaCaja();$('dcaja').showModal()}
+// Muestra cómo se va a repartir lo que se está cargando
+function avisaCaja(){let t='';const m=num($('cjm').value)||0,div=+CJ.cfg.divisor||1.3;
+ if(CJT=='cobro'){if(m>0)t=`Capital ${money(m/div)} · Ganancia ${money(m-m/div)}`;
+  const sal=saldosCaja().find(x=>norm(x.nombre)==norm($('cjcl').value.trim()));if(sal)t+=(t?'. ':'')+`Debe ${money(sal.saldo)}.`}
+ $('cjav2').textContent=t}
+async function guardaCaja(e){e.preventDefault();const t=CJT,m=num($('cjm').value)||0,cl=$('cjcl').value.trim()||null,div=+CJ.cfg.divisor||1.3;let o;
+ if(t=='cobro'){const nv=num($('cjnv').value)||0,pd=$('cjpd').checked;if(!(m>0)&&!(nv>0))return alert('Escribe cuánta plata entró.');if((nv>0||pd)&&!cl)return alert('Escribe el nombre del cliente para llevar su deuda.');
+  const sal=saldosCaja().find(x=>norm(x.nombre)==norm(cl||''))?.saldo||0;if(pd&&m>sal+.009&&!confirm(`${cl} debe ${money(sal)} y estás cargando ${money(m)}. ¿Guardar igual?`))return;
+  const c=m/div;o=m>0?{tipo:'cobro',cliente:cl,monto:m,capital:c,ganancia:m-c,deuda:nv-(pd?m:0)}:{tipo:'fiado',cliente:cl,monto:nv,deuda:nv}}
+ else if(t=='deuda'){if(!cl||!(m>0))return alert('Escribe el cliente y cuánto debe.');const ya=saldosCaja().find(x=>norm(x.nombre)==norm(cl))?.saldo||0;if(ya&&!confirm(`${cl} ya tiene saldo: ${saldoTxt(ya)}.
+
+Se le va a sumar ${money(m)}. Para poner otro saldo, usa "Corregir saldo" en su ficha. ¿Sumar igual?`))return;o={tipo:'fiado',cliente:cl,detalle:'Deuda inicial',monto:m,deuda:m}}
+ else if(t=='inicial'){const g=num($('cjm2').value)||0;if(!m&&!g)return alert('Escribe el capital o la ganancia inicial.');o={tipo:'inicial',monto:m+g,capital:m,ganancia:g}}
+ else{if(!(m>0))return alert('Escribe el monto.');const de=$('cjde').value.trim();
+  if(t=='gasto')o={tipo:'gasto',detalle:$('cjga').value+(de?': '+de:''),monto:m,ganancia:-m};
+  else if(t=='retiro'){const gan=sumaCj('ganancia');if(m>gan&&!confirm(`Hay ${money(gan)} de ganancia y vas a retirar ${money(m)}. ¿Guardar igual?`))return;o={tipo:'retiro',detalle:de||null,monto:m,ganancia:-m}}
+  else{const cap=sumaCj('capital');if(m>cap&&!confirm(`No alcanza el capital: hay ${money(cap)} y la compra es de ${money(m)}.\n\nLa ganancia no se toca: el capital va a quedar en ${money(cap-m)}. ¿Guardar igual?`))return;
+   o={tipo:'compra',detalle:$('cjpr').value+(de?': '+de:''),monto:m,capital:-m,bulto:$('cjbu').checked}}}
+ await asegCli(cl,t=='deuda'?$('cjte').value.trim():null);const b=$('cjok');b.disabled=true;const{error}=await sb.from('caja_mov').insert(o);b.disabled=false;if(error)return alert(msg(error));$('dcaja').close();toast('Guardado');cargaCaja()}
+// Ficha del cliente: lo que se le lleva suma a su saldo y lo que paga lo baja (y entra a la caja)
+let CJC='';
+const saldoCli=()=>(saldosCaja().find(x=>norm(x.nombre)==norm(CJC))?.saldo)||0;
+function abreCli(i){CJC=CJ.cli[i].nombre;const te=CLI.find(c=>norm(c.nombre)==norm(CJC))?.telefono;$('clt').textContent=CJC+(te?' · '+te:'');for(const k of['clle','clpa','clde','claj'])$(k).value='';pintaCli();$('dcli').showModal()}
+function pintaCli(){const sal=saldoCli(),le=num($('clle').value)||0,pa=num($('clpa').value)||0,nv=sal+le-pa;$('clsal').textContent=saldoTxt(sal);
+ $('clnv').textContent=le||pa?`${money(sal)} + ${money(le)} − ${money(pa)} = ${saldoTxt(nv)}`:'';
+ let acu=0;const F=CJ.mov.filter(m=>m.cliente&&norm(m.cliente)==norm(CJC)).sort((a,b)=>a.id-b.id).map(m=>{acu+=+m.deuda;
+  const q=m.detalle=='Deuda inicial'?`Deuda inicial ${money(m.monto)}`:m.detalle=='Ajuste de saldo'?`Saldo corregido (${+m.deuda>0?'+':'−'} ${money(m.monto)})`:m.tipo=='fiado'?`Llevó ${money(m.monto)}`:`Pagó ${money(m.monto)}`+(+m.deuda+ +m.monto>.009&&+m.deuda<+m.monto?` · llevó ${money(+m.deuda+ +m.monto)}`:'');
+  return`<tr><td>${new Date(m.fecha).toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'2-digit'})}</td><td>${q}${m.detalle&&!/^(Deuda inicial|Ajuste de saldo)$/.test(m.detalle)?`<div class="m" style="font-size:12px">${esc(m.detalle)}</div>`:''}</td><td class="n">${saldoTxt(acu)}</td></tr>`}).reverse();
+ $('clmov').innerHTML=F.join('')||'<tr><td colspan="3" class="m">Sin movimientos.</td></tr>'}
+// Corrige el saldo sin mover la caja: lo que entró de verdad se carga con Pagó
+async function ajustaCli(){const v=num($('claj').value),sal=saldoCli();if(v==null||!(v>=0))return alert('Escribe cuánto debe en realidad (0 si está al día).');const d=v-sal;
+ if(Math.abs(d)<.01)return alert('Ese ya es su saldo.');if(!confirm(`El saldo de ${CJC} pasa de ${saldoTxt(sal)} a ${saldoTxt(v)}.\n\nNo cambia la plata de la caja. ¿Corregir?`))return;
+ const{error}=await sb.from('caja_mov').insert({tipo:'fiado',cliente:CJC,detalle:'Ajuste de saldo',monto:Math.abs(d),deuda:d});if(error)return alert(msg(error));
+ $('claj').value='';toast('Saldo corregido');await cargaCaja();pintaCli()}
+async function guardaCli(e){e.preventDefault();const le=num($('clle').value)||0,pa=num($('clpa').value)||0,div=+CJ.cfg.divisor||1.3,sal=saldoCli(),de=$('clde').value.trim()||null;
+ if(!(le>0)&&!(pa>0))return alert('Escribe cuánto le llevaron o cuánto pagó.');
+ if(pa>sal+le+.009&&!confirm(`Está pagando más de lo que debe: le quedaría a favor ${money(pa-sal-le)}. ¿Guardar igual?`))return;
+ const c=pa/div,o=pa>0?{tipo:'cobro',cliente:CJC,detalle:de,monto:pa,capital:c,ganancia:pa-c,deuda:le-pa}:{tipo:'fiado',cliente:CJC,detalle:de,monto:le,deuda:le};
+ const b=$('clok');b.disabled=true;const{error}=await sb.from('caja_mov').insert(o);b.disabled=false;if(error)return alert(msg(error));
+ for(const k of['clle','clpa','clde'])$(k).value='';toast('Guardado');await cargaCaja();pintaCli()}
+async function borraCaja(id){const m=CJ.mov.find(x=>x.id==id);if(!m||!confirm(`¿Borrar este movimiento de ${money(m.monto)}?\n\nLos saldos se recalculan.`))return;
+ const{error}=await sb.from('caja_mov').delete().eq('id',id);if(error)return alert(msg(error));toast('Movimiento borrado');cargaCaja()}
+async function guardaDivisor(){const d=num($('cjdiv').value);if(!(d>=1))return alert('Escribe un número como 1,3.');
+ const{error}=await sb.from('caja_config').update({divisor:d}).eq('id',1);if(error)return alert(msg(error));CJ.cfg.divisor=d;toast('Guardado. Se aplica desde ahora; lo ya cargado no cambia.')}
+
 /* ---------- copia de seguridad ---------- */
 // Descarga un Excel con todo lo guardado en Supabase, una hoja por tabla.
 // Si una tabla todavía no existe (no se ejecutó supabase.sql), esa hoja se omite.
 async function copiaSeguridad(){const b=$('bcopia');b.disabled=true;b.textContent='Preparando copia…';
  try{const lee=async(t,o='id')=>{try{return await todos(()=>sb.from(t).select('*').order(o))}catch(e){if(t=='productos'||t=='presupuestos')throw e;return null}};
-  const[pr,sec,pres,sol,ped]=await Promise.all([lee('productos'),lee('sectores'),lee('presupuestos'),lee('solicitudes'),lee('pedidos')]);
+  const[pr,sec,pres,sol,ped,caj,cli]=await Promise.all([lee('productos'),lee('sectores'),lee('presupuestos'),lee('solicitudes'),lee('pedidos'),lee('caja_mov'),lee('clientes')]);
   const fh=d=>d?new Date(d).toLocaleString('es',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'',n=v=>v==null||v===''?'':+v;
   const nomSec=Object.fromEntries((sec||[]).map(x=>[x.id,x.nombre])),wb=XLSX.utils.book_new();
   const hoja=(nombre,filas,anchos)=>{if(!filas)return;const ws=XLSX.utils.json_to_sheet(filas.length?filas:[{'(vacío)':''}]);ws['!cols']=anchos.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,nombre)};
@@ -1062,6 +1212,8 @@ async function copiaSeguridad(){const b=$('bcopia');b.disabled=true;b.textConten
   hoja('Pedidos web',sol&&sol.flatMap(x=>(x.lineas||[]).map(l=>({'Nº':x.id,'Fecha':fh(x.fecha),'Cliente':x.cliente,'Teléfono':x.telefono||'','Nota':x.nota||'','Estado':ESTW[x.estado]||x.estado,
    'Presupuesto Nº':x.presupuesto_id||'','Código':l.codigo||'','Producto':l.nombre,'Cantidad':n(l.cantidad),'Reservado':n(l.reservado),'Precio':n(l.precio)}))),[6,17,22,16,30,14,13,10,45,10,10,12]);
   hoja('Pedidos al proveedor',ped&&ped.flatMap(x=>(x.lineas||[]).map(l=>({'Nº':x.id,'Fecha':fh(x.fecha),'Hasta presupuesto Nº':x.hasta_presupuesto,'Producto':l.nombre,'Cantidad':n(l.cantidad)}))),[6,17,18,45,10]);
+  hoja('Clientes',cli&&cli.map(x=>({'Cliente':x.nombre,'Teléfono':x.telefono||''})),[30,18]);
+  hoja('Caja',caj&&caj.map(x=>({'Nº':x.id,'Fecha':fh(x.fecha),'Tipo':CJNOM[x.tipo]||x.tipo,'Cliente':x.cliente||'','Detalle':x.detalle||'','Monto':n(x.monto),'Capital':n(x.capital),'Ganancia':n(x.ganancia),'Deuda':n(x.deuda)})),[6,17,13,22,28,12,12,12,12]);
   hoja('Sectores',sec&&sec.map(x=>({'ID':x.id,'Sector':x.nombre,'Productos':pr.filter(y=>y.sector_id==x.id&&!y.borrado).length})),[7,30,10]);
   const hoy=new Date(),f=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
   XLSX.writeFile(wb,`copia-${(CFG.NOMBRE||'negocio').normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\w]+/g,'-')}-${f}.xlsx`);
@@ -1125,7 +1277,7 @@ async function estadoWeb(i,e){const s=W[i];if(e=='descartado'&&!confirm(`¿Desca
 function pasarWeb(i){const s=W[i];if(L.length&&!confirm(`Ya hay un presupuesto a medio armar.\n¿Reemplazarlo por el pedido de ${s.cliente}?`))return;
  const no=[];L=[];for(const l of s.lineas||[]){const p=P.find(x=>x.id==l.id);if(!p||p.borrado){no.push(l.nombre);continue}
   L.push({id:p.id,codigo:p.codigo,nombre:p.nombre,precio:+p.precio,cantidad:+l.cantidad,res:+l.reservado||0})}
- $('cl').value=s.cliente;SOL=s.id;guardaLS('sol',SOL);$('qb').value='';rl();renderB();pintaSol();tab('pres');window.scrollTo(0,0);
+ $('cl').value=cliDeTel(s.telefono)?.nombre||s.cliente;SOL=s.id;guardaLS('sol',SOL);guardaBorrador();$('qb').value='';rl();renderB();pintaSol();pintaClH();tab('pres');window.scrollTo(0,0);
  if(no.length)alert('Estos productos ya no existen y no se cargaron:\n\n• '+no.join('\n• '))}
 function pintaSol(){const s=W.find(x=>x.id==SOL);$('solav').hidden=!SOL;
  $('solav').innerHTML=SOL?`<span style="flex:1;min-width:200px">Armando el <b>pedido web Nº ${SOL}</b>${s?.telefono?` · ${esc(s.cliente)} · <a href="https://wa.me/${waNum(s.telefono)}" target="_blank" rel="noopener">${esc(s.telefono)}</a>`:''}. Su stock ya está reservado: al generar el PDF se confirma (no se descuenta dos veces) y queda como presupuestado.</span><button class="s" onclick="if(confirm('¿Desvincular? El pedido web seguirá pendiente con su stock reservado, y este presupuesto descontará stock aparte.')){SOL=null;guardaLS('sol','');pintaSol();rl()}">Desvincular</button>`:''}
@@ -1146,7 +1298,7 @@ let PED={lineas:[],hasta:0,n:0};
 // Suma lo vendido en los presupuestos posteriores al último pedido enviado
 async function cargaPedido(){$('pedinfo').textContent='Cargando…';$('pedt').innerHTML='';$('pedres').hidden=true;PED={lineas:[],hasta:0,n:0};pintaPedido(true);
  // datos al día de los productos con compra por cantidad (las ventas pueden venir de otro equipo)
- if(COMP_OK){const{data}=await sb.from('productos').select('id,stock,costo,compra_cant,compra_aviso,compra_vendido,compra_pendiente').not('compra_cant','is',null);for(const x of data||[])Object.assign(P.find(p=>p.id==x.id)||{},x)}
+ await frescoComp();
  const u=await sb.from('pedidos').select('hasta_presupuesto').order('id',{ascending:false}).limit(1);
  if(u.error)return $('pedinfo').textContent=/pedidos/.test(u.error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(u.error);
  const desde=u.data[0]?.hasta_presupuesto||0;let pres;

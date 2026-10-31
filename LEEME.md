@@ -85,6 +85,22 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Arriba de Pedido se ve cuánto se paga ahora al proveedor, cuánto se guarda para los bultos y el total a apartar.
 - Cuando el stock llega al aviso, sale **Hay que pedir**. Se compra por el Excel aparte y se toca **Ya lo compré**: la cuenta vuelve a cero. El stock se suma con "Importar cantidades".
 
+## Caja (pestaña Caja)
+- La primera vez hay que ejecutar otra vez `supabase.sql`. Después se cargan el **saldo inicial** y las **deudas** que ya existen, cliente por cliente.
+- **Entró plata**: se divide por 1,3 (se puede cambiar): capital para mercadería y ganancia. Si es pago de una deuda, se marca la tilde. Si el cliente queda debiendo, se escribe cuánto.
+- **Compré mercadería**: sale del capital. Si no alcanza, avisa; la ganancia no se toca y, si se guarda igual, el capital queda en negativo. Las compras de bulto llevan su tilde.
+- **Gasto** y **Retiro**: salen de la ganancia.
+- **Clientes**: cada cliente con cuenta tiene su ficha (botón **Ver**) con el saldo y el historial. Ahí se carga cuánto se le llevó y cuánto pagó; lo que paga entra a la caja. Para agregar uno con lo que ya debe, **+ Cliente con deuda**. Si una deuda quedó mal, se arregla con **Corregir saldo a** en su ficha (no mueve la plata de la caja).
+- **Qué hacer con el capital**: primero reponer lo vendido, después los bultos; lo demás queda de reserva. El costo de lo vendido se cuenta solo desde los presupuestos nuevos.
+- Si algo se cargó mal, se borra con ✕ y los saldos se recalculan. La división es una estimación: el porcentaje real varía por producto.
+
+## Clientes y cómo pagó
+- Hay una sola lista de clientes para Nuevo presupuesto, Pedidos web y Caja (ejecutar otra vez `supabase.sql`; los clientes de la Caja se pasan solos).
+- En el campo Cliente se busca en la lista. Si el nombre es nuevo, se agrega al cargar el pago.
+- En un pedido web, si el teléfono coincide con un cliente (por los últimos 7 números), ya queda elegido; se ve el nombre que escribió la persona y se puede cambiar.
+- Al generar el presupuesto, **¿Cómo pagó?** lo pasa a la Caja: pagó todo, pagó una parte o queda a deber todo. Con **No cargar en Caja** no se anota nada. Esa venta no se carga otra vez en "Entró plata".
+- Si después se anula un presupuesto, el movimiento de la Caja no se borra solo: hay que borrarlo con ✕.
+
 ## Recepción (comparar lo pedido con lo que llegó)
 - Se eligen dos Excel: **1** la nota de pedido que se le mandó al proveedor y **2** la misma nota corregida con lo que llegó (la que después se sube en "Importar cantidades").
 - Muestra al momento qué llegó completo, qué llegó incompleto y qué no llegó. Los productos se reconocen por la descripción.
