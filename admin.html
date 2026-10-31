@@ -186,6 +186,7 @@ dialog{overflow:auto}
 <section id="t-ped" hidden>
  <div class="c aviso r" id="pedweb" hidden></div>
  <div class="c"><b>Ventas desde el último pedido</b><p class="m" id="pedinfo" style="margin:6px 0 0"></p></div>
+ <div class="c" id="psep" hidden></div>
  <div class="c w fija" style="padding:0"><table><thead><tr><th>Producto</th><th class="n hide-sm">Vendido</th><th class="n hide-sm">Faltó</th><th class="n hide-sm">Stock</th><th class="n hide-sm">Costo</th><th class="n">Pedir</th><th class="n hide-sm">Subtotal</th></tr></thead><tbody id="pedt"></tbody></table></div>
  <div class="c r" id="pedtot" hidden style="justify-content:space-between"><span class="m" id="pedtotn"></span><span style="font-size:18px">Total a pedir (a costo): <b id="pedtotv"></b></span></div>
  <div class="c aviso" id="pedres" hidden></div>
@@ -271,6 +272,9 @@ dialog{overflow:auto}
  <div class="g3"><label>Stock<input id="fsto" inputmode="decimal"></label><label id="lsec" style="grid-column:span 2">Sector<select id="fsec"></select></label></div>
  <div class="g3" id="lmin"><label>Compra mínima<input id="fmin" inputmode="decimal" placeholder="Por unidad"></label>
   <div style="grid-column:span 2;display:grid;gap:4px;align-content:end"><button type="button" class="s" id="fminb" onclick="$('fmin').value=this.dataset.n"></button><span class="m" style="font-size:12px">Vacío = se vende por unidad. Con número, el cliente no puede pedir menos.</span></div></div>
+ <div id="lcomp"><label class="chk"><input id="fcomp" type="checkbox" onchange="$('lcompd').hidden=!this.checked"> 🔒 Compra por cantidad fija</label>
+  <div id="lcompd" hidden><div class="g3"><label>Se compra de a<input id="fcca" inputmode="decimal" placeholder="500"></label><label>Avisar cuando queden<input id="fcav" inputmode="decimal" placeholder="50"></label></div>
+   <span class="m" style="font-size:12px">No entra en el pedido común. Lo vendido se suma en Pedido &gt; "Plata a separar".</span></div></div>
  <label class="chk"><input id="fact" type="checkbox"> Visible en el catálogo</label>
  <p class="m" id="fclave" style="margin:0;font-size:13px"></p>
  <div class="acc"><button type="button" class="danger" id="fdel" onclick="eliminar()">Eliminar</button>
@@ -304,7 +308,7 @@ const hh=()=>document.documentElement.style.setProperty('--hh',document.querySel
 new ResizeObserver(()=>document.documentElement.style.setProperty('--tb',document.querySelector('#t-prod .top').offsetHeight+'px')).observe(document.querySelector('#t-prod .top'));
 // Al acercarse al final de la lista se cargan 100 productos más, sin botón
 const masObs=new IntersectionObserver(e=>{if(e[0].isIntersecting&&!$('mas').hidden){lim+=100;renderP()}},{rootMargin:'800px'});
-let P=[],L=JSON.parse(leeLS('borrador')||'[]'),ed=null,nuevaImg=null,quitarImg=false,lim=100,enPap=false;const sel=new Set();
+let COMP_OK=false,P=[],L=JSON.parse(leeLS('borrador')||'[]'),ed=null,nuevaImg=null,quitarImg=false,lim=100,enPap=false;const sel=new Set();
 const PH='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44"><path d="M12 30l7-8 5 6 3-3 5 5" fill="none" stroke="#b5c2bf" stroke-width="2"/><circle cx="28" cy="16" r="3" fill="#b5c2bf"/></svg>');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dos=n=>Number(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -358,6 +362,7 @@ function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList
 async function load(silencio){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){if(silencio)throw e;return alert(msg(e))}
  MIN_OK=!P.length||'minimo'in P[0];  // false si todavía no se ejecutó el SQL de compra mínima
  COD_OK=!P.length||'cod_prov'in P[0];  // false si todavía no se ejecutó el SQL de renombrados
+ COMP_OK=!!P.length&&'compra_cant'in P[0];  // false si todavía no se ejecutó el SQL de compra por cantidad
  await cargaSectores();
  // los precios del presupuesto en curso se actualizan con los de la base
  L=L.filter(l=>P.some(p=>p.id==l.id&&!p.borrado)).map(l=>{const p=P.find(x=>x.id==l.id);return{...l,codigo:p.codigo,nombre:p.nombre,precio:+p.precio}});
@@ -450,6 +455,7 @@ function ultCod(){const C=P.filter(p=>/^\D*\d+$/.test(String(p.codigo||'').trim(
  return{c,sig:c.slice(0,-n.length)+String(+n+1).padStart(n.length,'0')}}
 function editar(id){ed=id?P.find(p=>p.id==id):{codigo:'',nombre:'',costo:0,ganancia:num($('gn').value)??0,stock:0,activo:true,imagen:null};
  nuevaImg=null;quitarImg=false;$('dt').textContent=id?'Editar producto':'Nuevo producto';
+ $('lcomp').hidden=!COMP_OK;$('fcomp').checked=+ed.compra_cant>0;$('lcompd').hidden=!(+ed.compra_cant>0);$('fcca').value=+ed.compra_cant>0?fmtIn(ed.compra_cant):'';$('fcav').value=+ed.compra_cant>0?fmtIn(ed.compra_aviso||0):'';
  $('fcod').value=ed.codigo||'';{const u=!ed.codigo&&ultCod();$('fcodu').innerHTML=u?`(último código creado: <b>${esc(u.c)}</b> · siguiente: <a href="#" onclick="$('fcod').value='${esc(u.sig)}';return false" title="Usar este código">${esc(u.sig)}</a>)`:''}$('fdes').value=ed.nombre;$('fcos').value=fmtIn(ed.costo);$('fgan').value=fmtIn(ed.ganancia);$('fsto').value=fmtIn(ed.stock);$('fact').checked=ed.activo;$('fsec').value=ed.sector_id??(id?'':$('fs').value.replace('-',''));$('lsec').hidden=!S.ok;
  const bd=minDesc(ed.clave||ed.nombre);$('fmin').value=ed.minimo>0?fmtIn(ed.minimo):'';$('lmin').hidden=!MIN_OK;
  $('fminb').hidden=!bd;$('fminb').dataset.n=bd;$('fminb').textContent=`Usar el de la descripción (${bd})`;
@@ -473,6 +479,8 @@ async function guardarProd(e){e.preventDefault();
  const o={codigo:$('fcod').value.trim()||null,nombre:$('fdes').value.trim().replace(/\s+/g,' '),costo:num($('fcos').value)??0,ganancia:num($('fgan').value)??0,stock:num($('fsto').value)??0,activo:$('fact').checked};if(S.ok)o.sector_id=+$('fsec').value||null;
  if(MIN_OK){const m=num($('fmin').value);o.minimo=m>1?m:null}
  if(!o.nombre)return alert('La descripción es obligatoria.');
+ if(COMP_OK){const on=$('fcomp').checked,ca=num($('fcca').value),av=num($('fcav').value);if(on&&!(ca>0))return alert('Escribe de a cuántas unidades se compra este producto.');
+  o.compra_cant=on?ca:null;o.compra_aviso=on?Math.max(0,av??0):null;if(!on){o.compra_vendido=0;o.compra_pendiente=false}}
  const b=$('fsave');b.disabled=true;
  try{const vieja=ed.imagen;
   if(nuevaImg){const ruta=Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.jpg';
@@ -1048,7 +1056,7 @@ async function copiaSeguridad(){const b=$('bcopia');b.disabled=true;b.textConten
   const hoja=(nombre,filas,anchos)=>{if(!filas)return;const ws=XLSX.utils.json_to_sheet(filas.length?filas:[{'(vacío)':''}]);ws['!cols']=anchos.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,nombre)};
   hoja('Productos',pr.map(x=>({'ID':x.id,'Código':x.codigo||'','Descripción':x.nombre,'Descripción proveedor':x.clave||'','Código proveedor':x.cod_prov||'',
    'Costo':n(x.costo),'Ganancia %':n(x.ganancia),'Precio venta':n(x.precio),'Stock':n(x.stock),'Compra mínima':n(x.minimo),'Sector':nomSec[x.sector_id]||'',
-   'En catálogo':x.activo?'Sí':'No','En papelera':x.borrado?'Sí':'No','Foto':x.imagen||''})),[7,10,45,45,14,12,10,12,9,12,18,11,11,30]);
+   'En catálogo':x.activo?'Sí':'No','En papelera':x.borrado?'Sí':'No','Foto':x.imagen||'','Compra de a':n(x.compra_cant),'Avisar en':n(x.compra_aviso),'Vendido sin reponer':x.compra_cant?n(x.compra_vendido):''})),[7,10,45,45,14,12,10,12,9,12,18,11,11,30,11,10,12]);
   hoja('Historial',pres.flatMap(x=>(x.lineas||[]).map(l=>({'Nº':x.id,'Fecha':fh(x.fecha),'Cliente':x.cliente||'','Total presupuesto':n(x.total),'Código':l.codigo||'','Producto':l.nombre,
    'Cantidad pedida':n(l.cantidad),'Descontado del stock':n(l.disponible??l.cantidad),'Precio':n(l.precio),'Subtotal':l.anulado?0:+(l.disponible??l.cantidad)*+l.precio,'Anulado':l.anulado?'Sí':''}))),[6,17,24,14,10,45,12,14,12,12,9]);
   hoja('Pedidos web',sol&&sol.flatMap(x=>(x.lineas||[]).map(l=>({'Nº':x.id,'Fecha':fh(x.fecha),'Cliente':x.cliente,'Teléfono':x.telefono||'','Nota':x.nota||'','Estado':ESTW[x.estado]||x.estado,
@@ -1137,6 +1145,8 @@ const limiteDe=b=>b>=20?b/2:5;
 let PED={lineas:[],hasta:0,n:0};
 // Suma lo vendido en los presupuestos posteriores al último pedido enviado
 async function cargaPedido(){$('pedinfo').textContent='Cargando…';$('pedt').innerHTML='';$('pedres').hidden=true;PED={lineas:[],hasta:0,n:0};pintaPedido(true);
+ // datos al día de los productos con compra por cantidad (las ventas pueden venir de otro equipo)
+ if(COMP_OK){const{data}=await sb.from('productos').select('id,stock,costo,compra_cant,compra_aviso,compra_vendido,compra_pendiente').not('compra_cant','is',null);for(const x of data||[])Object.assign(P.find(p=>p.id==x.id)||{},x)}
  const u=await sb.from('pedidos').select('hasta_presupuesto').order('id',{ascending:false}).limit(1);
  if(u.error)return $('pedinfo').textContent=/pedidos/.test(u.error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(u.error);
  const desde=u.data[0]?.hasta_presupuesto||0;let pres;
@@ -1146,6 +1156,7 @@ async function cargaPedido(){$('pedinfo').textContent='Cargando…';$('pedt').in
   x.vendido+=d;x.falto+=Math.max(0,c-d);M.set(l.id,x)}
  PED={hasta:pres.length?pres[pres.length-1].id:desde,n:pres.filter(x=>(x.lineas||[]).some(l=>!l.anulado)).length,lineas:[...M.values()].map(x=>{const p=P.find(q=>q.id==x.id),st=p?Math.max(0,+p.stock):null,
    b=bultoDe(p?.clave||p?.nombre||x.nombre),total=x.vendido;let pedir=total,nota='';
+   if(+p?.compra_cant>0){pedir=0;nota=`Compra de a ${fmt(p.compra_cant)}: va en Plata a separar`}else
    if(b){if(st!=null&&st>=limiteDe(b)){pedir=0;nota=`Bulto x${b} · quedan ${fmt(st)}, no se pide`}else{pedir=Math.max(1,Math.ceil(total/b))*b;nota=`Bulto x${b}`}}
    return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',stock:st,costo:p?+p.costo||0:null,bulto:b,pedir,nota}}).sort((a,b)=>b.vendido-a.vendido||b.falto-a.falto||a.nombre.localeCompare(b.nombre))};
  pintaPedido();avisoWebPedido();pintaNota()}
@@ -1179,7 +1190,25 @@ function pintaPedido(cargando){const n=PED.lineas.filter(l=>l.pedir>0).length;
  const Q=PED.lineas.filter(l=>l.pedir>0),sinC=Q.filter(l=>!l.costo).length;$('pedtot').hidden=cargando||!Q.length;
  $('pedtotv').textContent=money(Q.reduce((s,l)=>s+(l.costo||0)*l.pedir,0));
  $('pedtotn').textContent=`${Q.length} producto(s) · ${fmt(Q.reduce((s,l)=>s+l.pedir,0))} unidades`+(sinC?` · ${sinC} sin costo cargado (no suman)`:'');
- $('bnota').disabled=$('botra').disabled=!n;$('benv').disabled=!PED.n}
+ $('bnota').disabled=$('botra').disabled=!n;$('benv').disabled=!PED.n;pintaSep()}
+// Plata a separar: lo vendido de los productos con compra por cantidad, a costo actual, desde la última compra
+function pintaSep(){const Q=P.filter(p=>+p.compra_cant>0&&!p.borrado).sort((a,b)=>(+a.stock<=+a.compra_aviso?0:1)-(+b.stock<=+b.compra_aviso?0:1)||a.nombre.localeCompare(b.nombre));
+ $('psep').hidden=!Q.length;if(!Q.length)return;
+ // lo comprado ya llegó: se quita la marca cuando el stock pasó el aviso
+ for(const p of Q)if(p.compra_pendiente&&+p.stock>+p.compra_aviso){p.compra_pendiente=false;sb.from('productos').update({compra_pendiente:false}).eq('id',p.id).then(()=>{})}
+ const pagar=PED.lineas.reduce((s,l)=>s+(l.pedir>0?(l.costo||0)*l.pedir:0),0),guardar=Q.reduce((s,p)=>s+(+p.compra_vendido||0)*(+p.costo||0),0);
+ const dato=(t,v,neg)=>`<div style="flex:1;min-width:150px;padding:10px;border:1px solid var(--b);border-radius:10px"><div class="m" style="font-size:12px">${t}</div><div style="font-size:19px${neg?';font-weight:700':''}">${money(v)}</div></div>`;
+ $('psep').innerHTML=`<div class="r" style="margin-bottom:10px">${dato('Se paga ahora al proveedor',pagar)}${dato('Se guarda para los bultos',guardar)}${dato('Total a apartar',pagar+guardar,1)}</div>
+  <b>Plata a separar</b>`+Q.map(p=>{const v=+p.compra_vendido||0,c=+p.costo||0,tot=+p.compra_cant*c,j=v*c,pct=tot?Math.min(100,j/tot*100):0,baja=+p.stock<=+p.compra_aviso,pend=baja&&p.compra_pendiente;
+   return`<div style="border-top:1px solid var(--b);padding:9px 0;margin-top:6px"><div class="r" style="justify-content:space-between;flex-wrap:nowrap"><span class="nom">${esc(p.nombre)}</span><b style="white-space:nowrap">${money(j)}</b></div>
+   <div class="m" style="font-size:12px;margin:2px 0 6px">Stock ${fmt(+p.stock)} · avisa en ${fmt(+p.compra_aviso||0)} · vendidas ${fmt(v)} · compra de ${fmt(+p.compra_cant)}: ${c?money(tot):'sin costo cargado'}</div>
+   <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${baja&&!pend?'var(--no)':'var(--m)'}"></div></div>
+   ${pend?'<p class="m" style="margin:6px 0 0;font-size:13px">Ya comprado: falta sumar el stock con "Importar cantidades".</p>':baja?`<div class="r" style="justify-content:space-between;margin-top:8px"><span class="falta">Hay que pedir ${fmt(+p.compra_cant)}${tot>j?` · faltan ${money(tot-j)}`:''}</span><button class="s" onclick="compreSep(${p.id})">Ya lo compré</button></div>`:v?`<div class="acc" style="margin-top:6px"><button class="s" onclick="compreSep(${p.id})">Ya lo compré</button></div>`:''}</div>`}).join('')}
+// Comprado por el otro Excel: la cuenta vuelve a cero (el stock se suma con "Importar cantidades")
+async function compreSep(id){const p=P.find(x=>x.id==id);if(!p)return;const j=(+p.compra_vendido||0)*(+p.costo||0);
+ if(!confirm(`¿Ya compraste ${p.nombre}?\n\nLa plata a separar de este producto (${money(j)}) vuelve a cero.`))return;
+ const{error}=await sb.from('productos').update({compra_vendido:0,compra_pendiente:true}).eq('id',id);if(error)return alert(msg(error));
+ p.compra_vendido=0;p.compra_pendiente=true;toast('Compra registrada');pintaSep()}
 // Escribe las cantidades en la nota de pedido del proveedor y descarga una copia (el original no se toca)
 async function usarNota(buf,nombre){
  let ws,filas;try{const wb=XLSX.read(buf);ws=wb.Sheets[wb.SheetNames[0]];filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',blankrows:true})}catch{return alert('No se pudo leer el archivo. Tiene que ser la nota de pedido en formato .xlsx.')}

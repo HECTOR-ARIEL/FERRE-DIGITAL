@@ -113,6 +113,15 @@ create policy "admin presupuestos" on presupuestos for all to authenticated usin
 revoke select on productos from anon;
 grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado, sector_id, minimo) on productos to anon;
 
+-- ===================== COMPRA POR CANTIDAD FIJA (PLATA A SEPARAR) =====================
+-- Productos que se compran de a muchas unidades (bulto de fichas, canillas de a 100…): no entran en el
+-- pedido común. Cada venta suma a compra_vendido: esas unidades, a costo, son la plata a separar.
+-- Son columnas internas: el catálogo público no las ve (ver el grant de arriba).
+alter table productos add column if not exists compra_cant numeric;        -- se compra de a tantas (null = pedido común)
+alter table productos add column if not exists compra_aviso numeric;       -- avisar cuando el stock llegue a esto
+alter table productos add column if not exists compra_vendido numeric not null default 0;     -- vendidas desde la última compra
+alter table productos add column if not exists compra_pendiente boolean not null default false; -- comprado, falta sumar el stock
+
 -- ===================== MOSQUITEROS =====================
 -- Precios del cotizador de mosquiteros (una sola fila). Solo tú (con sesión) los ves y cambias.
 create table if not exists mosq_config(
@@ -248,7 +257,11 @@ begin
     select id, codigo, nombre, precio, stock into pr from productos where id = (l->>'id')::bigint for update;
     if not found then raise exception 'Producto no encontrado: %', l->>'nombre'; end if;
     d := least(c, greatest(pr.stock, 0));
-    if d > 0 then update productos set stock = stock - d where id = pr.id; end if;
+    if d > 0 then
+      update productos set stock = stock - d,
+        compra_vendido = compra_vendido + case when compra_cant is not null then d else 0 end
+        where id = pr.id;
+    end if;
     lineas := lineas || jsonb_build_object('id', pr.id, 'codigo', pr.codigo, 'nombre', pr.nombre,
                                            'precio', pr.precio, 'cantidad', c, 'disponible', d);
     t := t + d * pr.precio;
@@ -273,7 +286,8 @@ begin
     if i = any(p_lineas) and not coalesce((l->>'anulado')::boolean, false) then
       d := coalesce((l->>'disponible')::numeric, (l->>'cantidad')::numeric, 0);
       if d > 0 then
-        update productos set stock = stock + d where id = (l->>'id')::bigint returning stock into v;
+        update productos set stock = stock + d, compra_vendido = greatest(0, compra_vendido - d)
+          where id = (l->>'id')::bigint returning stock into v;
         if found then st := st || jsonb_build_object('id', (l->>'id')::bigint, 'stock', v); end if;
       end if;
       l := l || '{"anulado": true}';

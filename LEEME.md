@@ -41,6 +41,9 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - El código del Excel se guarda como **código del proveedor** (no reemplaza tu código). Si un producto tiene guardado otro código del proveedor, no se sugiere: así no se confunde cuando el proveedor reutiliza un código para otro producto.
 - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la columna `cod_prov`). Hasta entonces no aparece la lista.
 
+## Último código
+- Al editar un producto **sin código**, al lado de "Código" aparece el último código cargado y el siguiente (por ejemplo "último código creado: A420 · siguiente: A421"). Tocando el siguiente se completa solo.
+
 ## Sectores
 - Botón **Sectores** (pestaña Productos): crear, renombrar o borrar sectores. Al borrar uno, sus productos quedan "sin sector".
 - Cada producto tiene su sector en la ficha. Para muchos a la vez: márcalos y usa **Mover a sector…** en la barra de abajo.
@@ -75,6 +78,12 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
   - Si en el Historial marcas para borrar presupuestos que todavía no se pidieron, el panel no los borra y te dice cuáles son (los anulados por completo sí se pueden borrar).
 - Cuando llega la mercadería: sube la misma nota completa en "Importar cantidades" para sumar el stock (corregida con lo que llegó).
 - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la tabla de pedidos).
+
+## Compra por cantidad fija y Plata a separar (pestaña Pedido)
+- Para productos que se compran de a muchas unidades (bultos de fichas, canillas de a 100): en Productos > editar, activa **🔒 Compra por cantidad fija** y escribe de a cuántas se compra y cuándo avisar. La primera vez hay que ejecutar otra vez `supabase.sql`.
+- Esos productos no entran en el pedido común. Cada venta suma a **Plata a separar** (unidades vendidas × costo actual), y la cuenta empieza en cero al activar el candado. Los pedidos web cuentan recién al pasarlos a presupuesto; los productos anulados se descuentan. Borrar el Historial no afecta la cuenta.
+- Arriba de Pedido se ve cuánto se paga ahora al proveedor, cuánto se guarda para los bultos y el total a apartar.
+- Cuando el stock llega al aviso, sale **Hay que pedir**. Se compra por el Excel aparte y se toca **Ya lo compré**: la cuenta vuelve a cero. El stock se suma con "Importar cantidades".
 
 ## Recepción (comparar lo pedido con lo que llegó)
 - Se eligen dos Excel: **1** la nota de pedido que se le mandó al proveedor y **2** la misma nota corregida con lo que llegó (la que después se sube en "Importar cantidades").
@@ -123,15 +132,20 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 - **Las medidas se cargan en milímetros** (1500 × 2000). Si escribes en metros (1,50) también lo entiende. En la lista y el PDF salen en metros.
 - Cada mosquitero: ubicación, línea, **color** (el dibujo se pinta de ese color y sale en el PDF), **ancho de la ventana entera** y alto (el mosquitero cubre una hoja: la mitad del ancho), cantidad,
   travesaño (al marcar "Lleva travesaño" aparece debajo la cantidad de travesaños, hasta 6, y sus alturas en mm separadas por espacio; vacío = repartidos parejo) y tope (se marca solo, salvo en Herrero; debajo se elige cuántos topes, por ejemplo 2). Al costado se ve el dibujo y los materiales.
+- **Suplemento de alto**: al corredizo se le suman automáticamente unos mm al alto (6 mm de fábrica; se cambia en "Precios de mosquiteros") para que entre en las guías. Se usa para cortar y cobrar el perfil, el tejido y el burlete, pero en el PDF sale el alto medido (por ejemplo 2000 mm). El fijo y el tope de repuesto no lo llevan.
+- **Puerta-ventana rebatible (PVR)**: se cotiza con la medida tal cual (sin dividir, sin suplemento de alto y sin patines). Dos modelos:
+  **Lateral + bisagras** (suma un lateral del alto) y **Marco en C + bisagras** (suma lateral izquierdo, parte superior y lateral derecho; abajo no lleva). Se elige la cantidad de bisagras tipo libro (4 de fábrica). Siempre lleva al menos un travesaño, al medio salvo que se escriba otra altura. No lleva tope. El **marco en C** suma 2 escuadras y 4 tornillos de marco (las dos esquinas de arriba). **Pasador** opcional (tilde "Lleva pasador"), con su precio en "Precios de mosquiteros".
+  El contramarco es el mismo perfil del marco: se cobra con el precio del marco del color y se corta de las mismas barras. En "Precios de mosquiteros" se carga la **bisagra tipo libro** (c/u).
 - **Fijo**: con la tilde marcada, la medida que escribes es la del mosquitero y se cotiza tal cual (no se divide) y no lleva patines. En el PDF sale "Mosquitero fijo … medida A × B".
 - Lleva: perfil de marco (contorno), 4 escuadras, 8 tornillos, burlete en todo el contorno, 2 patines arriba y 2 abajo y el tejido (media hoja × alto).
   Cada travesaño suma su perfil (va entre los dos laterales), 2 tornillos; y burlete arriba y abajo (2 × su largo por cada travesaño); cada tope, un perfil del alto (el tope no lleva burlete).
 - **Solo tope (repuesto)**: en "Qué se cotiza" se elige "Solo tope" para cotizar únicamente el perfil del tope (por ejemplo, para una ventana que se le rompió): línea, color, alto en mm y cantidad. En el PDF sale "Tope de mosquitero línea … — alto 2 m". Si el tejido no entra en el rollo de 1,20 m, avisa.
 - **El perfil se cobra por metro usado**: precio de la barra ÷ 6 m × los metros que lleva cada mosquitero (no se cobra la barra entera).
-  Debajo de la lista se ve, como dato para cortar, cuántas barras de 6 m de cada perfil y color hacen falta para todo el presupuesto (con sierra y despunte).
-- **Abertura**: ventana o puerta-ventana. Cada renglón lleva un código: **V1, V2…** (ventanas), **PV1, PV2…** (puerta-ventanas) y **T1…** (topes de repuesto); se ve en la lista y en el PDF.
+  Debajo de la lista está la tabla **Perfilería del presupuesto** (solo en pantalla): por cada perfil (marco, travesaño, tope) y color, los mm que se usan en todo el presupuesto, cuántas barras de 6 m comprar (con sierra y despunte) y cuánto sobra. El contramarco del rebatible cuenta dentro del marco.
+- **Abertura**: ventana, puerta-ventana o puerta-ventana rebatible. Cada renglón lleva un código: **V1, V2…** (ventanas), **PV1, PV2…** (puerta-ventanas), **PVR1…** (rebatibles) y **T1…** (topes de repuesto); se ve en la lista y en el PDF.
 - **PDF**: después del cliente va un saludo y un recuadro por renglón: arriba el código y la ubicación (por ejemplo "V1 — COCINA"); a la izquierda el dibujo con su color y las medidas en mm; a la derecha línea, color, medida de la ventana y de la hoja, travesaños y topes; abajo UDS, precio unitario y total. Al pie, "Página X de Y".
-- **Guardar y generar PDF**: primero lo guarda (con número) y después saca el PDF. Cada mosquitero sale con la medida de la ventana (ancho total × alto), cantidad, precio y subtotal, el total y, si cargas **Colocación**, el total con colocación. Tus costos y la ganancia no aparecen.
+- **Vista previa**: abre el PDF en otra pestaña sin guardar el presupuesto (arriba dice "Vista previa (sin guardar)"). Si algo no está bien, se corrige en el formulario y se vuelve a ver.
+- **Guardar y generar PDF**: primero lo guarda (con número) y después saca el PDF. Cada mosquitero sale con la medida de la ventana (ancho total × alto), cantidad, precio y subtotal, el total y, si cargas **Colocación**, el total con colocación. Si no hay colocación, dice "Colocación: No incluida". Junto al total va el recuadro "Toma de medidas y envío incluidos". Al final van los **Términos y condiciones** (plazo de entrega y formas de pago). Tus costos y la ganancia no aparecen.
 - **Presupuestos de mosquiteros guardados** (abajo): lista con número, fecha, cliente, teléfono, dirección y total, con buscador. **Abrir** lo carga para verlo, cambiarlo o volver a sacar el PDF (al guardarlo otra vez se actualiza el mismo número). Si los precios cambiaron desde que se guardó, avisa cuánto daba antes y cuánto da ahora. ✕ lo borra.
 - **Nuevo presupuesto** empieza uno en blanco (si el actual tiene cambios sin guardar, pregunta antes). Arriba se ve si el presupuesto está guardado o tiene cambios sin guardar.
 
