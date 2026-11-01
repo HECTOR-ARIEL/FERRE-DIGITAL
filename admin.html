@@ -175,6 +175,7 @@ dialog{overflow:auto}
   <div class="w"><table><thead><tr><th class="n">Cant.</th><th>Mosquitero</th><th class="n hide-sm">Costo u.</th><th class="n">Precio u.</th><th class="n">Subtotal</th><th></th></tr></thead><tbody id="mlis"></tbody></table></div>
   <div id="mbar"></div>
   <div class="mini" style="justify-content:flex-end"><span>Colocación (opcional)</span><input id="mcol" inputmode="decimal" placeholder="0" oninput="MQ.colocacion=num(this.value)||0;guardaMq();pintaListaMq()"></div>
+  <label class="chk" style="justify-content:flex-end;margin-top:8px"><input type="checkbox" id="mmed" autocomplete="off" checked onchange="MQ.sm=!this.checked;guardaMq()"> Incluye toma de medidas y envío</label>
   <div class="tot" id="mtot"></div>
   <div class="acc"><button class="s" onclick="pdfMq(true)" title="Muestra el PDF sin guardar el presupuesto">Vista previa</button><button class="s" onclick="guardaHistMq()">Guardar</button><button onclick="pdfMq()">Guardar y generar PDF</button></div>
  </div>
@@ -842,13 +843,13 @@ const MQC=[...Object.keys(MQPER).flatMap(p=>MQCOL.map(([c,n])=>[p+'_'+c,`Barra $
 let CM=null,MQ={id:null,cliente:'',tel:'',dir:'',colocacion:0,items:[]},MQE=-1,HMQ=[];
 try{const g=JSON.parse(leeLS('mq')||'null');if(g&&Array.isArray(g.items))MQ=g}catch{}
 // Firma del presupuesto: si cambia después de guardarlo, hay cambios sin guardar
-const firmaMq=()=>JSON.stringify([MQ.cliente||'',MQ.tel||'',MQ.dir||'',+MQ.colocacion||0,MQ.items]);
+const firmaMq=()=>JSON.stringify([MQ.cliente||'',MQ.tel||'',MQ.dir||'',+MQ.colocacion||0,MQ.items,!!MQ.sm]);
 const cambiosMq=()=>MQ.items.length>0&&firmaMq()!==MQ.firma;
 const numMq=()=>$('mqnum').textContent=MQ.id?`Presupuesto Nº ${MQ.id}`+(cambiosMq()?' · cambios sin guardar':' · guardado'):'Presupuesto nuevo (sin guardar)';
 const guardaMq=()=>{guardaLS('mq',JSON.stringify(MQ));numMq()};
 const fechaMq=d=>new Date(d).toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'numeric'});
 const mtr=n=>fmt(red(n,2));
-async function abrirMq(){$('mcl').value=MQ.cliente||'';$('mtel').value=MQ.tel||'';$('mdir').value=MQ.dir||'';numMq();$('mcol').value=MQ.colocacion?fmtIn(MQ.colocacion):'';
+async function abrirMq(){$('mcl').value=MQ.cliente||'';$('mtel').value=MQ.tel||'';$('mdir').value=MQ.dir||'';$('mmed').checked=!MQ.sm;numMq();$('mcol').value=MQ.colocacion?fmtIn(MQ.colocacion):'';
  if(!CM){const{data,error}=await sb.from('mosq_config').select('datos').eq('id',1).maybeSingle();
   if(error){$('mqav').hidden=false;$('mqav').textContent=/mosq_config/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error);CM={}}
   else{CM=data?.datos||{};$('mqav').hidden=true}}
@@ -954,7 +955,7 @@ function editaMq(i){const x=MQ.items[i];MQE=i;$('mti').value=x.ti||'';$('mab').v
  pintaMq();$('t-mos').scrollIntoView({behavior:'smooth'})}
 function quitaMq(i){MQ.items.splice(i,1);if(MQE==i)limpiaFormMq();else if(MQE>i)MQE--;guardaMq();pintaListaMq();pintaMq()}
 function nuevoMq(){if(cambiosMq()&&!confirm('El presupuesto actual tiene cambios sin guardar. ¿Empezar uno nuevo igual?'))return;
- MQ={id:null,cliente:'',tel:'',dir:'',colocacion:0,items:[]};guardaMq();for(const i of['mcl','mtel','mdir','mcol'])$(i).value='';limpiaFormMq();pintaListaMq();pintaHistMq()}
+ MQ={id:null,cliente:'',tel:'',dir:'',colocacion:0,items:[]};guardaMq();$('mmed').checked=true;for(const i of['mcl','mtel','mdir','mcol'])$(i).value='';limpiaFormMq();pintaListaMq();pintaHistMq()}
 const descMq=x=>x.ti=='tope'?`Tope de mosquitero línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — alto ${mtr(x.al)} m`:`Mosquitero ${x.ab=='pvr'?'rebatible ':x.fi?'fijo ':''}línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — ${x.fi||x.ab=='pvr'?'medida':'ventana'} ${mtr(x.an)} × ${mtr(x.al)} m`,extraMq=x=>[x.ub,x.ab=='pvr'&&(x.mo=='comp'?'marco en C':'lateral')+` + ${x.nb} bisagras`,x.ab=='pvr'&&x.pa&&'con pasador',ntrMq(x)==1&&'con travesaño',ntrMq(x)>1&&`con ${ntrMq(x)} travesaños`,ntoMq(x)==1&&'con tope',ntoMq(x)>1&&`con ${ntoMq(x)} topes`].filter(Boolean).join(' · ');
 // Código de cada renglón: V1, V2… (ventanas), PV1… (puerta-ventanas), T1… (topes de repuesto)
 const codMq=items=>{const n={};return items.map(x=>{const k=x.ti=='tope'?'T':x.ab=='pvr'?'PVR':x.ab=='pv'?'PV':'V';n[k]=(n[k]||0)+1;return k+n[k]})};
@@ -1046,7 +1047,7 @@ async function pdfMq(prev){const R=calcMq(MQ.items);
  const fila=(t,v,neg)=>{if(neg){y+=1.5;d.setDrawColor(...NEG);d.setLineWidth(.4);d.line(112,y-4.8,W,y-4.8)}d.setFont('helvetica',neg?'bold':'normal');d.setFontSize(neg?11:9.5);d.setTextColor(...NEG);d.text(t,150,y,{align:'right'});d.text(typeof v=='string'?v:money(v),W-3,y,{align:'right'});y+=neg?7:6};
  y+=3;
  // a la izquierda de los totales: recuadro "toma de medidas y envío incluidos" con un tilde
- {const tt='TOMA DE MEDIDAS Y ENVÍO INCLUIDOS';d.setFont('helvetica','bold');d.setFontSize(8);const bw=d.getTextWidth(tt)+.3*(tt.length-1)+17,bh=9,by=y-5.8;
+ if(!MQ.sm){const tt='TOMA DE MEDIDAS Y ENVÍO INCLUIDOS';d.setFont('helvetica','bold');d.setFontSize(8);const bw=d.getTextWidth(tt)+.3*(tt.length-1)+17,bh=9,by=y-5.8;
   d.setFillColor(246,246,246);d.setDrawColor(226,226,226);d.setLineWidth(.3);d.roundedRect(X,by,bw,bh,2,2,'FD');d.setFillColor(...ROJO);d.rect(X,by+1.8,.9,bh-3.6,'F');
   d.circle(X+7,by+bh/2,2.8,'F');d.setDrawColor(255,255,255);d.setLineWidth(.6);d.line(X+5.7,by+bh/2,X+6.7,by+bh/2+1.1);d.line(X+6.7,by+bh/2+1.1,X+8.5,by+bh/2-1.2);
   d.setTextColor(...NEG);esp(tt,X+12.5,by+bh/2+1,.3)}
@@ -1074,7 +1075,7 @@ async function guardaHistMq(silencio){const R=calcMq(MQ.items);if(!R.items.lengt
  const mal=R.items.find(x=>x.err);if(mal||R.err){alert(mal?.err||R.err);return false}
  if(!(MQ.cliente||'').trim()){alert('Escribe el nombre del cliente para guardar el presupuesto.');$('mcl').focus();return false}
  const o={cliente:MQ.cliente.trim(),telefono:(MQ.tel||'').trim()||null,direccion:(MQ.dir||'').trim()||null,total:R.total,colocacion:+MQ.colocacion||0,
-  items:R.items.map(x=>({ti:x.ti||'',ab:x.ab||'',mo:x.mo||'',nb:x.nb||0,pa:!!x.pa,ub:x.ub,li:x.li,co:x.co,fi:!!x.fi,an:x.an,al:x.al,ca:x.ca,tr:x.tr,tra:x.tra,to:x.to,precio:x.precio}))};
+  items:R.items.map(x=>({ti:x.ti||'',ab:x.ab||'',mo:x.mo||'',nb:x.nb||0,pa:!!x.pa,ub:x.ub,li:x.li,co:x.co,fi:!!x.fi,an:x.an,al:x.al,ca:x.ca,tr:x.tr,tra:x.tra,to:x.to,precio:x.precio,sm:!!MQ.sm}))};
  const{data,error}=await(MQ.id?sb.from('mosq_presupuestos').update(o).eq('id',MQ.id):sb.from('mosq_presupuestos').insert(o)).select('id');
  if(error){alert(/mosq_presupuestos/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':'No se pudo guardar: '+msg(error));return false}
  if(!data.length){MQ.id=null;return guardaHistMq(silencio)}  // lo habían borrado: se guarda como nuevo
@@ -1091,7 +1092,7 @@ function pintaHistMq(){const b=norm($('mhb').value.trim()),L=HMQ.filter(x=>!b||n
 // Abre un presupuesto guardado para verlo, cambiarlo o volver a sacar el PDF (se recalcula con los precios de hoy)
 function abreHistMq(id){const x=HMQ.find(h=>h.id==id);if(!x)return;
  if(cambiosMq()&&MQ.id!=id&&!confirm('El presupuesto que estás armando tiene cambios sin guardar y se va a reemplazar. ¿Continuar?'))return;
- MQ={id:x.id,cliente:x.cliente||'',tel:x.telefono||'',dir:x.direccion||'',colocacion:+x.colocacion||0,items:(x.items||[]).map(({precio,...i})=>i)};MQ.firma=firmaMq();guardaMq();
+ MQ={id:x.id,cliente:x.cliente||'',tel:x.telefono||'',dir:x.direccion||'',colocacion:+x.colocacion||0,sm:!!x.items?.[0]?.sm,items:(x.items||[]).map(({precio,sm,...i})=>i)};MQ.firma=firmaMq();guardaMq();$('mmed').checked=!MQ.sm;
  $('mcl').value=MQ.cliente;$('mtel').value=MQ.tel;$('mdir').value=MQ.dir;$('mcol').value=MQ.colocacion?fmtIn(MQ.colocacion):'';limpiaFormMq();pintaListaMq();pintaHistMq();
  const R=calcMq(MQ.items);if(Math.round(R.total)!=Math.round(+x.total))alert(`Ojo: los precios cambiaron desde que se guardó este presupuesto.\n\nCuando se guardó daba ${money(x.total)} y con los precios de hoy da ${money(R.total)}.\n\nSi lo guardas otra vez o generas el PDF, queda con los precios de hoy.`);
  $('t-mos').scrollIntoView({behavior:'smooth'})}
