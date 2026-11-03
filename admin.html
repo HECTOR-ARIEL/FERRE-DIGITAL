@@ -291,7 +291,7 @@ dialog{overflow:auto}
 
 <dialog id="danu"><form method="dialog" onsubmit="return false">
  <h2 id="anut">Anular</h2>
- <p class="m" style="margin:0;font-size:14px">Marca los productos que el cliente no se lleva. Lo que se había descontado vuelve al stock, deja de salir en el PDF y no se pide al proveedor.</p>
+ <p class="m" style="margin:0;font-size:14px">Marca los productos que el cliente no se lleva. Lo que se había descontado vuelve al stock, deja de salir en el PDF y no se pide al proveedor. Si el presupuesto está en la Caja, se le descuenta al cliente de su deuda.</p>
  <div id="anuav"></div>
  <label class="chk" style="font-size:14px"><input type="checkbox" class="ck" id="anutodo" onchange="document.querySelectorAll('#anul .ck:not(:disabled)').forEach(c=>c.checked=this.checked);pintaAnu()"> Todos</label>
  <div class="secl" id="anul" style="max-height:50vh;overflow:auto;gap:0"></div>
@@ -825,7 +825,7 @@ async function anular(){const p=ANU,js=[...document.querySelectorAll('#anul .ck:
  const b=$('banu');b.disabled=true;const{data,error}=await sb.rpc('anular_presupuesto',{p_id:p.id,p_lineas:js});b.disabled=false;
  if(error)return alert(error.code=='PGRST202'?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
  p.lineas=data.lineas;p.total=data.total;for(const x of data.stock||[]){const q=P.find(y=>y.id==x.id);if(q)q.stock=+x.stock}
- $('danu').close();pintaHist();renderP();toast(todo?`Presupuesto Nº ${p.id} anulado`:`${js.length} producto(s) anulado(s)`)}
+ $('danu').close();pintaHist();renderP();toast((todo?`Presupuesto Nº ${p.id} anulado`:`${js.length} producto(s) anulado(s)`)+(+data.baja_deuda>0?` · se le descontaron ${money(data.baja_deuda)} a ${data.cliente} en la Caja`:''));if(+data.baja_deuda>0&&CJ.ok)cargaCaja()}
 // Un presupuesto "sin pedir" es posterior al último pedido enviado y tiene algo vendido (no anulado):
 // si se borra, sus ventas desaparecen del cálculo de la pestaña Pedido.
 const sinPedir=l=>!l.anulado&&+(l.disponible??l.cantidad)>0;
@@ -1203,7 +1203,7 @@ function abreCli(i){CJC=CJ.cli[i].nombre;const te=CLI.find(c=>norm(c.nombre)==no
 function pintaCli(){const sal=saldoCli(),le=num($('clle').value)||0,pa=num($('clpa').value)||0,nv=sal+le-pa;$('clsal').textContent=saldoTxt(sal);
  $('clnv').textContent=le||pa?`${money(sal)} + ${money(le)} − ${money(pa)} = ${saldoTxt(nv)}`:'';
  let acu=0;const F=CJ.mov.filter(m=>m.cliente&&norm(m.cliente)==norm(CJC)).sort((a,b)=>a.id-b.id).map(m=>{acu+=+m.deuda;
-  const q=m.detalle=='Deuda inicial'?`Deuda inicial ${money(m.monto)}`:m.detalle=='Ajuste de saldo'?`Saldo corregido (${+m.deuda>0?'+':'−'} ${money(m.monto)})`:m.tipo=='fiado'?`Llevó ${money(m.monto)}`:`Pagó ${money(m.monto)}`+(+m.deuda+ +m.monto>.009&&+m.deuda<+m.monto?` · llevó ${money(+m.deuda+ +m.monto)}`:'');
+  const q=m.detalle=='Deuda inicial'?`Deuda inicial ${money(m.monto)}`:m.detalle=='Ajuste de saldo'?`Saldo corregido (${+m.deuda>0?'+':'−'} ${money(m.monto)})`:m.tipo=='fiado'?(+m.deuda<0?`Anulado ${money(m.monto)}`:`Llevó ${money(m.monto)}`):`Pagó ${money(m.monto)}`+(+m.deuda+ +m.monto>.009&&+m.deuda<+m.monto?` · llevó ${money(+m.deuda+ +m.monto)}`:'');
   return`<tr><td>${new Date(m.fecha).toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'2-digit'})}</td><td>${q}${m.detalle&&!/^(Deuda inicial|Ajuste de saldo)$/.test(m.detalle)?`<div class="m" style="font-size:12px">${esc(m.detalle)}</div>`:''}</td><td class="n">${saldoTxt(acu)}</td></tr>`}).reverse();
  $('clmov').innerHTML=F.join('')||'<tr><td colspan="3" class="m">Sin movimientos.</td></tr>'}
 // Guarda o cambia el teléfono del cliente (si todavía no estaba en la lista de clientes, lo agrega)
