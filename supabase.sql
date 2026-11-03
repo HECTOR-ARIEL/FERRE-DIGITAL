@@ -61,6 +61,10 @@ create table if not exists presupuestos(
   total numeric(12,2),
   lineas jsonb
 );
+-- Presupuestos unificados: los originales guardan en qué presupuesto final quedaron (unificado_en)
+-- y el final guarda qué presupuestos junta (une). El final no descuenta stock ni cuenta para el pedido.
+alter table presupuestos add column if not exists unificado_en bigint;
+alter table presupuestos add column if not exists une bigint[];
 
 -- ===================== PEDIDOS AL PROVEEDOR =====================
 -- Cada pedido enviado recuerda hasta qué presupuesto incluyó:
@@ -333,6 +337,8 @@ declare pr record; l jsonb; i int := 0; d numeric; nuevas jsonb := '[]'; t numer
 begin
   select * into pr from presupuestos where id = p_id for update;
   if not found then raise exception 'No existe el presupuesto Nº %', p_id; end if;
+  if pr.une is not null or pr.unificado_en is not null then
+    raise exception 'El presupuesto Nº % está unificado. Primero deshacé la unificación.', p_id; end if;
   for l in select * from jsonb_array_elements(pr.lineas) loop
     if i = any(p_lineas) and not coalesce((l->>'anulado')::boolean, false) then
       d := coalesce((l->>'disponible')::numeric, (l->>'cantidad')::numeric, 0);
@@ -357,6 +363,58 @@ begin
 end $$;
 revoke execute on function anular_presupuesto(bigint, int[]) from public, anon;
 grant execute on function anular_presupuesto(bigint, int[]) to authenticated;
+
+-- Unificar varios presupuestos de un cliente en uno final (para mandarle un solo PDF).
+-- No toca el stock (ya se descontó con cada presupuesto), ni la Caja (la deuda ya está cargada),
+-- ni el pedido al proveedor (las ventas se siguen contando por los presupuestos originales).
+-- Un mismo producto se suma en una línea si tiene el mismo precio; lo que salió sin stock sigue en rojo.
+create or replace function unificar_presupuestos(p_ids bigint[])
+returns jsonb language plpgsql as $$
+declare pr record; l jsonb; lineas jsonb := '[]'; t numeric := 0; n bigint; cli text; k int; ids bigint[];
+begin
+  select array_agg(distinct x order by x) into ids from unnest(p_ids) x;
+  if coalesce(array_length(ids, 1), 0) < 2 then raise exception 'Elegí al menos dos presupuestos'; end if;
+  for pr in select * from presupuestos where id = any(ids) order by id for update loop
+    if pr.une is not null then raise exception 'El Nº % ya es un presupuesto unificado', pr.id; end if;
+    if pr.unificado_en is not null then raise exception 'El Nº % ya está unificado en el Nº %', pr.id, pr.unificado_en; end if;
+    cli := coalesce(cli, pr.cliente);
+    for l in select * from jsonb_array_elements(coalesce(pr.lineas, '[]')) loop
+      continue when coalesce((l->>'anulado')::boolean, false);
+      k := null;
+      select i - 1 into k from jsonb_array_elements(lineas) with ordinality e(x, i)
+        where x->>'id' = l->>'id' and (x->>'precio')::numeric = (l->>'precio')::numeric limit 1;
+      if k is null then
+        lineas := lineas || jsonb_build_array(jsonb_build_object('id', (l->>'id')::bigint, 'codigo', l->'codigo', 'nombre', l->>'nombre',
+          'precio', (l->>'precio')::numeric, 'cantidad', coalesce((l->>'cantidad')::numeric, 0),
+          'disponible', coalesce((l->>'disponible')::numeric, (l->>'cantidad')::numeric, 0)));
+      else
+        lineas := jsonb_set(lineas, array[k::text], (lineas->k) || jsonb_build_object(
+          'cantidad', (lineas->k->>'cantidad')::numeric + coalesce((l->>'cantidad')::numeric, 0),
+          'disponible', (lineas->k->>'disponible')::numeric + coalesce((l->>'disponible')::numeric, (l->>'cantidad')::numeric, 0)));
+      end if;
+      t := t + coalesce((l->>'disponible')::numeric, (l->>'cantidad')::numeric, 0) * coalesce((l->>'precio')::numeric, 0);
+    end loop;
+  end loop;
+  if (select count(*) from presupuestos where id = any(ids)) <> array_length(ids, 1) then
+    raise exception 'Algún presupuesto elegido ya no existe'; end if;
+  insert into presupuestos(cliente, total, lineas, une) values (cli, t, lineas, ids) returning id into n;
+  update presupuestos set unificado_en = n where id = any(ids);
+  return jsonb_build_object('id', n, 'total', t, 'lineas', lineas, 'une', to_jsonb(ids), 'cliente', cli);
+end $$;
+revoke execute on function unificar_presupuestos(bigint[]) from public, anon;
+grant execute on function unificar_presupuestos(bigint[]) to authenticated;
+
+-- Deshace una unificación: borra el presupuesto final y los originales vuelven a quedar sueltos.
+create or replace function deshacer_unificacion(p_id bigint)
+returns void language plpgsql as $$
+begin
+  if not exists(select 1 from presupuestos where id = p_id and une is not null) then
+    raise exception 'El Nº % no es un presupuesto unificado', p_id; end if;
+  update presupuestos set unificado_en = null where unificado_en = p_id;
+  delete from presupuestos where id = p_id;
+end $$;
+revoke execute on function deshacer_unificacion(bigint) from public, anon;
+grant execute on function deshacer_unificacion(bigint) to authenticated;
 
 -- Importar Excel de cantidades: SUMA la cantidad al stock que ya tiene cada producto.
 -- Recibe [{id, cantidad}] (el panel ya reconoció cada fila). Los productos en la papelera se ignoran.
