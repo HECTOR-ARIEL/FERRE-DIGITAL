@@ -789,7 +789,7 @@ let lh=30;const selH=new Set();
 async function cargaHist(){const t=$('hq').value.trim().replace(/[,()%*]/g,' ').trim();
  let q=sb.from('presupuestos').select('*').order('id',{ascending:false}).limit(lh+1);
  if(t)q=/^\d+$/.test(t)?q.or(`id.eq.${t},cliente.ilike.*${t}*`):q.ilike('cliente',`%${t}%`);
- const{data,error}=await q;if(error)return alert(msg(error));H=data.slice(0,lh);$('hmas').hidden=data.length<=lh;pintaHist()}
+ const{data,error}=await q;if(error)return /load failed|fetch/i.test(msg(error))?null:alert(msg(error));H=data.slice(0,lh);$('hmas').hidden=data.length<=lh;pintaHist()}
 function pintaHist(){const t=$('hq').value.trim();
  $('hist').innerHTML=H.map((p,i)=>{const f=new Date(p.fecha),ls=p.lineas||[],sin=ls.some(falta),na=ls.filter(l=>l.anulado).length;
   return `<tr><td class="cc"><input type="checkbox" class="ck" ${selH.has(p.id)?'checked':''} onchange="this.checked?selH.add(${p.id}):selH.delete(${p.id});pintaHist()"><td class="cod">${p.id}<td>${f.toLocaleDateString('es')} <span class="m hide-sm">${f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span><td>${esc(p.cliente||'-')}${sin?' <span class="tag" style="color:var(--no)">Faltó stock</span>':''}${na&&na==ls.length?' <span class="tag" style="color:var(--no)">Anulado</span>':na?` <span class="tag">${na} anulado(s)</span>`:''}${p.une?` <span class="tag sec">Unifica Nº ${p.une.join(', ')}</span>`:''}${p.unificado_en?` <span class="tag">Unificado en Nº ${p.unificado_en}</span>`:''}<td class="n hide-sm">${ls.length-na}<td class="n"><b>${money(p.total)}</b><td class="n"><div class="acc" style="justify-content:flex-end;flex-wrap:nowrap">${p.une?`<button class="s" onclick="deshacerUnif(${i})">Deshacer</button>`:na<ls.length&&!p.unificado_en?`<button class="s" onclick="abrirAnular(${i})">Anular</button>`:''}<button class="s" onclick="descargar(H[${i}])">PDF</button></div></tr>`}).join('')
@@ -803,7 +803,9 @@ async function unificarHist(){const X=H.filter(p=>selH.has(p.id)).sort((a,b)=>a.
  if(!confirm(`¿Unificar ${X.length} presupuestos (Nº ${X.map(p=>p.id).join(', ')}) de ${X[0].cliente||'-'}?\n\nTotal: ${money(tot)}\n\nSe crea un presupuesto final con todo junto y se descarga su PDF. No cambia el stock ni la Caja.`))return;
  const b=$('bunif');b.disabled=true;const{data,error}=await sb.rpc('unificar_presupuestos',{p_ids:X.map(p=>p.id)});b.disabled=false;
  if(error)return alert(error.code=='PGRST202'?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
- ult={...data,une:data.une,fecha:new Date().toISOString()};selH.clear();descargar(ult);toast(`Presupuesto unificado Nº ${data.id} · ${money(data.total)}`);await cargaHist()}
+ ult={...data,une:data.une,fecha:new Date().toISOString()};selH.clear();toast(`Presupuesto unificado Nº ${data.id} · ${money(data.total)}`);
+ // primero se actualiza la lista y después se descarga el PDF: en el iPhone la descarga corta las consultas en curso
+ try{await cargaHist()}catch{}descargar(ult);setTimeout(()=>cargaHist().catch(()=>{}),2500)}
 async function deshacerUnif(i){const p=H[i];if(!confirm(`¿Deshacer el presupuesto unificado Nº ${p.id}?\n\nSe borra este presupuesto final y los Nº ${p.une.join(', ')} vuelven a quedar sueltos. No cambia el stock ni la Caja.`))return;
  const{error}=await sb.rpc('deshacer_unificacion',{p_id:p.id});if(error)return alert(msg(error));toast('Unificación deshecha');cargaHist()}
 // Anular productos de un presupuesto: la base devuelve al stock lo descontado y los saca del PDF y del pedido
