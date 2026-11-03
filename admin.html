@@ -135,7 +135,8 @@ dialog{overflow:auto}
  <div class="c w fija" style="padding:0"><table><thead><tr><th class="cc"><input type="checkbox" class="ck" id="hall" title="Seleccionar todos los mostrados" onchange="H.forEach(p=>this.checked?selH.add(p.id):selH.delete(p.id));pintaHist()"></th><th>Nº</th><th>Fecha</th><th>Cliente</th><th class="n hide-sm">Productos</th><th class="n">Total</th><th></th></tr></thead><tbody id="hist"></tbody></table></div>
  <p style="text-align:center"><button id="hmas" class="s" hidden onclick="lh+=30;cargaHist()">Ver más</button></p>
  <div id="hbar" class="selbar" hidden><span><b id="hsel">0</b> seleccionado(s)</span>
-  <button class="s" onclick="selH.clear();pintaHist()">Cancelar</button><button id="bhdel" class="danger" onclick="borrarHist()">Eliminar</button></div>
+  <button class="s" onclick="selH.clear();pintaHist()">Cancelar</button><button id="bunif" onclick="unificarHist()">Unificar en uno</button><button id="bhdel" class="danger" onclick="borrarHist()">Eliminar</button></div>
+ <p class="m"><b>Unificar</b>: busca al cliente, marca sus presupuestos y pulsa "Unificar en uno". Se crea un presupuesto final con todos los productos juntos (lo que faltó sigue en rojo) para mandarle un solo PDF. No cambia el stock, ni la Caja (la deuda ya está cargada), ni el pedido al proveedor. Los originales quedan marcados "Unificado en Nº…". Para cambiar algo, pulsa "Deshacer" en el final, corrige y vuelve a unificar.</p>
  <p class="m"><b>Anular</b>: si el cliente no se lleva algunos productos (o nada), elige cuáles. Lo descontado vuelve al stock, dejan de salir en el PDF y no se piden al proveedor. El presupuesto queda en el Historial.</p>
  <p class="m">Los presupuestos se guardan en tu base de datos de Supabase (solo los datos: cliente, productos, cantidades y precios). El PDF se vuelve a crear cada vez que pulsas "PDF", así que casi no ocupan espacio. Eliminar un presupuesto no devuelve el stock que descontó: si el cliente no compró, usa <b>Anular</b>. <b>Antes de eliminar presupuestos, marca el pedido como enviado</b> (pestaña Pedido): si no, sus ventas no se cuentan en el pedido. Por eso, si marcas presupuestos que todavía no se pidieron, el panel no los borra y te avisa cuáles son.</p>
 </section>
@@ -745,6 +746,7 @@ function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=
  if(p.lineas.every(l=>l.anulado)){y+=4;d.setFont('helvetica','bold');d.setFontSize(14);d.setTextColor(...ROJO);d.text('PRESUPUESTO ANULADO',X,y);d.setFont('helvetica','normal');y+=4}
  if(p.lineas.some(falta)){y+=3;d.setFontSize(8.5);d.setTextColor(...ROJO);
   d.text('Los productos marcados en rojo no tienen stock suficiente: solo se cobra la cantidad disponible.',X,y);y+=3}
+ if(p.une?.length){y+=4;d.setFontSize(8.5);d.setTextColor(...G);d.text(d.splitTextToSize('Este presupuesto reúne los presupuestos Nº '+p.une.join(', ')+'.',W-X),X,y);y+=3}
  // pie
  y+=8;d.setFontSize(7.5);d.setFont('helvetica','normal');d.setTextColor(...G);d.text('Documento generado electrónicamente — '+fecha,X,y);
  const marca=(CFG.NOMBRE||'').toUpperCase();d.setFont('helvetica','bold');d.setFontSize(7);const mw=d.getTextWidth(marca)+.6*(marca.length-1)+10;
@@ -790,9 +792,20 @@ async function cargaHist(){const t=$('hq').value.trim().replace(/[,()%*]/g,' ').
  const{data,error}=await q;if(error)return alert(msg(error));H=data.slice(0,lh);$('hmas').hidden=data.length<=lh;pintaHist()}
 function pintaHist(){const t=$('hq').value.trim();
  $('hist').innerHTML=H.map((p,i)=>{const f=new Date(p.fecha),ls=p.lineas||[],sin=ls.some(falta),na=ls.filter(l=>l.anulado).length;
-  return `<tr><td class="cc"><input type="checkbox" class="ck" ${selH.has(p.id)?'checked':''} onchange="this.checked?selH.add(${p.id}):selH.delete(${p.id});pintaHist()"><td class="cod">${p.id}<td>${f.toLocaleDateString('es')} <span class="m hide-sm">${f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span><td>${esc(p.cliente||'-')}${sin?' <span class="tag" style="color:var(--no)">Faltó stock</span>':''}${na&&na==ls.length?' <span class="tag" style="color:var(--no)">Anulado</span>':na?` <span class="tag">${na} anulado(s)</span>`:''}<td class="n hide-sm">${ls.length-na}<td class="n"><b>${money(p.total)}</b><td class="n"><div class="acc" style="justify-content:flex-end;flex-wrap:nowrap">${na<ls.length?`<button class="s" onclick="abrirAnular(${i})">Anular</button>`:''}<button class="s" onclick="descargar(H[${i}])">PDF</button></div></tr>`}).join('')
+  return `<tr><td class="cc"><input type="checkbox" class="ck" ${selH.has(p.id)?'checked':''} onchange="this.checked?selH.add(${p.id}):selH.delete(${p.id});pintaHist()"><td class="cod">${p.id}<td>${f.toLocaleDateString('es')} <span class="m hide-sm">${f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span><td>${esc(p.cliente||'-')}${sin?' <span class="tag" style="color:var(--no)">Faltó stock</span>':''}${na&&na==ls.length?' <span class="tag" style="color:var(--no)">Anulado</span>':na?` <span class="tag">${na} anulado(s)</span>`:''}${p.une?` <span class="tag sec">Unifica Nº ${p.une.join(', ')}</span>`:''}${p.unificado_en?` <span class="tag">Unificado en Nº ${p.unificado_en}</span>`:''}<td class="n hide-sm">${ls.length-na}<td class="n"><b>${money(p.total)}</b><td class="n"><div class="acc" style="justify-content:flex-end;flex-wrap:nowrap">${p.une?`<button class="s" onclick="deshacerUnif(${i})">Deshacer</button>`:na<ls.length&&!p.unificado_en?`<button class="s" onclick="abrirAnular(${i})">Anular</button>`:''}<button class="s" onclick="descargar(H[${i}])">PDF</button></div></tr>`}).join('')
   ||`<tr><td colspan="7" class="m">${t?'No hay presupuestos que coincidan.':'Todavía no hay presupuestos.'}</tr>`;
- $('hall').checked=H.length>0&&H.every(p=>selH.has(p.id));$('hbar').hidden=!selH.size;$('hsel').textContent=selH.size}
+ $('hall').checked=H.length>0&&H.every(p=>selH.has(p.id));$('hbar').hidden=!selH.size;$('hsel').textContent=selH.size;$('bunif').hidden=selH.size<2}
+// Junta los presupuestos marcados en uno final (mismo cliente). La base no toca stock, Caja ni pedido.
+async function unificarHist(){const X=H.filter(p=>selH.has(p.id)).sort((a,b)=>a.id-b.id);if(X.length<2)return alert('Marca al menos dos presupuestos.');
+ const ya=X.filter(p=>p.une||p.unificado_en);if(ya.length)return alert(`No se puede: ${ya.map(p=>'Nº '+p.id+(p.une?' ya es un unificado':' ya está unificado en el Nº '+p.unificado_en)).join(', ')}.\n\nDesmárcalos o pulsa "Deshacer" en el unificado.`);
+ const cls=[...new Set(X.map(p=>norm(p.cliente)))],tot=X.reduce((s,p)=>s+(+p.total||0),0);
+ if(cls.length>1&&!confirm(`Ojo: los presupuestos marcados son de clientes distintos (${[...new Set(X.map(p=>p.cliente||'-'))].join(', ')}).\n\n¿Unificarlos igual?`))return;
+ if(!confirm(`¿Unificar ${X.length} presupuestos (Nº ${X.map(p=>p.id).join(', ')}) de ${X[0].cliente||'-'}?\n\nTotal: ${money(tot)}\n\nSe crea un presupuesto final con todo junto y se descarga su PDF. No cambia el stock ni la Caja.`))return;
+ const b=$('bunif');b.disabled=true;const{data,error}=await sb.rpc('unificar_presupuestos',{p_ids:X.map(p=>p.id)});b.disabled=false;
+ if(error)return alert(error.code=='PGRST202'?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
+ ult={...data,une:data.une,fecha:new Date().toISOString()};selH.clear();descargar(ult);toast(`Presupuesto unificado Nº ${data.id} · ${money(data.total)}`);await cargaHist()}
+async function deshacerUnif(i){const p=H[i];if(!confirm(`¿Deshacer el presupuesto unificado Nº ${p.id}?\n\nSe borra este presupuesto final y los Nº ${p.une.join(', ')} vuelven a quedar sueltos. No cambia el stock ni la Caja.`))return;
+ const{error}=await sb.rpc('deshacer_unificacion',{p_id:p.id});if(error)return alert(msg(error));toast('Unificación deshecha');cargaHist()}
 // Anular productos de un presupuesto: la base devuelve al stock lo descontado y los saca del PDF y del pedido
 let ANU=null;
 async function abrirAnular(i){const p=H[i];ANU=p;$('anut').textContent=`Anular del presupuesto Nº ${p.id}${p.cliente?' · '+p.cliente:''}`;
@@ -818,8 +831,8 @@ async function borrarHist(){let ids=[...selH];if(!ids.length)return;
  const b=$('bhdel');b.disabled=true;
  try{const u=await sb.from('pedidos').select('hasta_presupuesto').order('id',{ascending:false}).limit(1);
   if(!u.error){const hasta=u.data[0]?.hasta_presupuesto||0,pend=[];
-   for(let i=0;i<ids.length;i+=200){const{data,error}=await sb.from('presupuestos').select('id,lineas').in('id',ids.slice(i,i+200)).gt('id',hasta);if(error)throw error;
-    for(const x of data)if((x.lineas||[]).some(sinPedir))pend.push(x.id)}
+   for(let i=0;i<ids.length;i+=200){const{data,error}=await sb.from('presupuestos').select('*').in('id',ids.slice(i,i+200)).gt('id',hasta);if(error)throw error;
+    for(const x of data)if(!x.une&&(x.lineas||[]).some(sinPedir))pend.push(x.id)}
    if(pend.length){pend.sort((a,c)=>a-c);const nums='Nº '+pend.slice(0,15).join(', ')+(pend.length>15?` y ${pend.length-15} más`:'');
     const av=`${pend.length} de los seleccionados todavía NO se pidieron al proveedor (${nums}).\n\nSi los borras, sus ventas desaparecen de la pestaña Pedido y no se van a pedir.\n\nPrimero haz el pedido y pulsa "Marcar pedido como enviado". Si el cliente no compró, usa "Anular".`;
     if(pend.length==ids.length)return alert('No se borró nada.\n\n'+av);
@@ -827,6 +840,8 @@ async function borrarHist(){let ids=[...selH];if(!ids.length)return;
     const no=new Set(pend);ids=ids.filter(id=>!no.has(id))}}
   const n=ids.length;
   if(!confirm(`¿Eliminar ${n} presupuesto(s) del historial?\n\nNo se puede deshacer. El stock que descontaron no se devuelve.`))return;
+// si se borra un unificado, sus originales vuelven a quedar sueltos
+  const fin=H.filter(p=>p.une&&ids.includes(p.id)).map(p=>p.id);if(fin.length){const{error}=await sb.from('presupuestos').update({unificado_en:null}).in('unificado_en',fin);if(error)throw error}
 for(let i=0;i<n;i+=200){const{error}=await sb.from('presupuestos').delete().in('id',ids.slice(i,i+200));if(error)throw error}
   ids.forEach(id=>selH.delete(id));toast(`${n} presupuesto(s) eliminado(s)`);await cargaHist()}
  catch(e){alert(msg(e))}finally{b.disabled=false}}
@@ -1232,7 +1247,7 @@ async function copiaSeguridad(){const b=$('bcopia');b.disabled=true;b.textConten
    'Costo':n(x.costo),'Ganancia %':n(x.ganancia),'Precio venta':n(x.precio),'Stock':n(x.stock),'Compra mínima':n(x.minimo),'Sector':nomSec[x.sector_id]||'',
    'En catálogo':x.activo?'Sí':'No','En papelera':x.borrado?'Sí':'No','Foto':x.imagen||'','Compra de a':n(x.compra_cant),'Avisar en':n(x.compra_aviso),'Vendido sin reponer':x.compra_cant?n(x.compra_vendido):''})),[7,10,45,45,14,12,10,12,9,12,18,11,11,30,11,10,12]);
   hoja('Historial',pres.flatMap(x=>(x.lineas||[]).map(l=>({'Nº':x.id,'Fecha':fh(x.fecha),'Cliente':x.cliente||'','Total presupuesto':n(x.total),'Código':l.codigo||'','Producto':l.nombre,
-   'Cantidad pedida':n(l.cantidad),'Descontado del stock':n(l.disponible??l.cantidad),'Precio':n(l.precio),'Subtotal':l.anulado?0:+(l.disponible??l.cantidad)*+l.precio,'Anulado':l.anulado?'Sí':''}))),[6,17,24,14,10,45,12,14,12,12,9]);
+   'Cantidad pedida':n(l.cantidad),'Descontado del stock':n(l.disponible??l.cantidad),'Precio':n(l.precio),'Subtotal':l.anulado?0:+(l.disponible??l.cantidad)*+l.precio,'Anulado':l.anulado?'Sí':'','Unificado':x.une?'Reúne Nº '+x.une.join(', '):x.unificado_en?'En Nº '+x.unificado_en:''}))),[6,17,24,14,10,45,12,14,12,12,9,18]);
   hoja('Pedidos web',sol&&sol.flatMap(x=>(x.lineas||[]).map(l=>({'Nº':x.id,'Fecha':fh(x.fecha),'Cliente':x.cliente,'Teléfono':x.telefono||'','Nota':x.nota||'','Estado':ESTW[x.estado]||x.estado,
    'Presupuesto Nº':x.presupuesto_id||'','Código':l.codigo||'','Producto':l.nombre,'Cantidad':n(l.cantidad),'Reservado':n(l.reservado),'Precio':n(l.precio)}))),[6,17,22,16,30,14,13,10,45,10,10,12]);
   hoja('Pedidos al proveedor',ped&&ped.flatMap(x=>(x.lineas||[]).map(l=>({'Nº':x.id,'Fecha':fh(x.fecha),'Hasta presupuesto Nº':x.hasta_presupuesto,'Producto':l.nombre,'Cantidad':n(l.cantidad)}))),[6,17,18,45,10]);
@@ -1326,7 +1341,7 @@ async function cargaPedido(){$('pedinfo').textContent='Cargando…';$('pedt').in
  const u=await sb.from('pedidos').select('hasta_presupuesto').order('id',{ascending:false}).limit(1);
  if(u.error)return $('pedinfo').textContent=/pedidos/.test(u.error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(u.error);
  const desde=u.data[0]?.hasta_presupuesto||0;let pres;
- try{pres=await todos(()=>sb.from('presupuestos').select('id,lineas').gt('id',desde).order('id'))}catch(e){return $('pedinfo').textContent=msg(e)}
+ try{pres=(await todos(()=>sb.from('presupuestos').select('*').gt('id',desde).order('id'))).map(x=>x.une?{...x,lineas:[]}:x)}catch(e){return $('pedinfo').textContent=msg(e)}
  const M=new Map();
  for(const pr of pres)for(const l of pr.lineas||[]){if(l.anulado)continue;const d=+(l.disponible??l.cantidad)||0,c=+l.cantidad||0,x=M.get(l.id)||{id:l.id,nombre:l.nombre,vendido:0,falto:0};
   x.vendido+=d;x.falto+=Math.max(0,c-d);M.set(l.id,x)}
