@@ -114,7 +114,7 @@ dialog{overflow:auto}
   <div class="w"><table><tbody id="bt"></tbody></table></div></div>
  <div class="c" id="paso2"><b>2. Revisa las cantidades</b><div class="w"><table><tbody id="lt"></tbody></table></div>
   <div class="tot" id="tt"></div>
-  <div class="acc"><button class="s" onclick="if(confirm('¿Vaciar el presupuesto?')){L=[];$('cl').value='';$('cltel').value='';SOL=null;guardaLS('sol','');pintaSol();rl();renderB()}">Vaciar</button><button id="bs" onclick="save()">Generar presupuesto (PDF)</button></div></div>
+  <div class="acc"><button class="s" onclick="(async()=>{if(await confirma('¿Vaciar el presupuesto?')){L=[];$('cl').value='';$('cltel').value='';SOL=null;guardaLS('sol','');pintaSol();rl();renderB()}})()">Vaciar</button><button id="bs" onclick="save()">Generar presupuesto (PDF)</button></div></div>
  <div id="pbar" class="selbar" hidden><span><b id="pn">0</b> producto(s) · <b id="ptot"></b></span>
   <button class="s" onclick="$('qb').scrollIntoView({block:'center',behavior:'smooth'});$('qb').focus({preventScroll:true})">Buscar</button>
   <button class="s" onclick="$('paso2').scrollIntoView({block:'start',behavior:'smooth'})">Ver lista</button>
@@ -229,6 +229,11 @@ dialog{overflow:auto}
 </div>
 </main>
 
+<dialog id="dmsg"><form method="dialog" onsubmit="return false">
+ <p id="msgt" style="margin:0;white-space:pre-line;font-size:15px"></p>
+ <input id="msgi" autocomplete="off" hidden>
+ <div class="acc"><button type="button" class="s" id="msgno">Cancelar</button><button type="button" id="msgsi">Aceptar</button></div>
+</form></dialog>
 <dialog id="dpw"><form onsubmit="nuevaClave(event)">
  <h2>Nueva contraseña</h2>
  <p class="m" style="margin:0;font-size:14px">Escribe la contraseña nueva para entrar al panel (mínimo 6 caracteres).</p>
@@ -335,6 +340,17 @@ dialog{overflow:auto}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// Carteles propios (avisos, "¿Seguro?" y preguntas). No usan los del navegador, que el celular puede bloquear sin avisar.
+let MSGQ=Promise.resolve();
+function msgDlg(t,modo,def){const r=MSGQ.then(()=>new Promise(ok=>{const d=$('dmsg'),i=$('msgi'),si=$('msgsi'),no=$('msgno');
+ $('msgt').textContent=t;i.hidden=modo!='pide';i.value=def??'';no.hidden=modo=='avisa';si.textContent=modo=='avisa'?'Entendido':'Aceptar';
+ const fin=v=>{si.onclick=no.onclick=i.onkeydown=d.oncancel=null;d.close();ok(v)};
+ si.onclick=()=>fin(modo=='pide'?i.value:true);no.onclick=()=>fin(modo=='pide'?null:false);d.oncancel=e=>{e.preventDefault();fin(modo=='pide'?null:modo=='avisa'?undefined:false)};
+ i.onkeydown=e=>{if(e.key=='Enter'){e.preventDefault();si.onclick()}};
+ d.showModal();(modo=='pide'?i:si).focus();if(modo=='pide')i.select()}));MSGQ=r.catch(()=>{});return r}
+const avisa=t=>{msgDlg(String(t??''),'avisa')},confirma=t=>msgDlg(String(t??''),'confirma'),pide=(t,d)=>msgDlg(String(t??''),'pide',d);
+</script>
 <script src="config.js"></script>
 <script>
 // El link del email de recuperación vuelve con "type=recovery" en la dirección (se mira antes de que Supabase la limpie)
@@ -369,7 +385,7 @@ const norm=s=>String(s??'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase()
 // Acepta 1234.5 · 1234,5 · 1.234,50 · 1,234.50 · $ 1.234
 const num=v=>{if(typeof v=='number')return v;let s=String(v??'').replace(/[^\d,.-]/g,'');if(!s)return null;
  if(s.includes(',')&&s.includes('.'))s=s.lastIndexOf(',')>s.lastIndexOf('.')?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
- else s=s.replace(',','.');const n=parseFloat(s);return isNaN(n)?null:n};
+ else if(/^-?\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');else s=s.replace(',','.');const n=parseFloat(s);return isNaN(n)?null:n};
 const thumb=u=>`<img class="th" loading="lazy" src="${u?esc(u):PH}" alt="">`;
 const tot=()=>L.reduce((s,l)=>s+disp(l)*l.precio,0);
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2500)}
@@ -387,29 +403,29 @@ function ancho(paso){const i=((+leeLS('ancho')||0)+(paso||0))%ANCHOS.length;guar
  document.querySelector('main').style.maxWidth=ANCHOS[i][1];$('anch').textContent='↔ '+ANCHOS[i][0]}
 async function init(){ancho();$('gn').value=leeLS('gn')??'30';$('cl').value=leeLS('cliente')||'';$('cltel').value=leeLS('cliente_tel')||'';pintaSol();const{data}=await sb.auth.getSession();show(!!data.session);
  // link de recuperación: ya entró con el link, falta poner la contraseña nueva; si el link venció, se avisa
- if(RECUP){if(data.session)pideClave();else alert('El link para cambiar la contraseña venció o ya se usó. Pide otro con "¿Olvidaste tu contraseña?".')}}
+ if(RECUP){if(data.session)pideClave();else avisa('El link para cambiar la contraseña venció o ya se usó. Pide otro con "¿Olvidaste tu contraseña?".')}}
 function show(ok){$('login').hidden=ok;$('app').hidden=!ok;$('out').hidden=!ok;if(ok){load();cuentaWeb()}else $('em').focus()}
 async function login(e){e.preventDefault();const b=e.submitter;b.disabled=true;
  const{error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});b.disabled=false;
- if(error)return alert(error.message=='Invalid login credentials'?'Email o contraseña incorrectos.':error.message);$('pw').value='';show(true)}
+ if(error)return avisa(error.message=='Invalid login credentials'?'Email o contraseña incorrectos.':error.message);$('pw').value='';show(true)}
 async function salir(){await sb.auth.signOut();show(false)}
 // Recuperar contraseña: Supabase manda al email un link que vuelve a esta página para poner una nueva
 async function olvide(){const em=$('em').value.trim();
- if(!em){alert('Escribe tu email en la casilla de arriba y vuelve a tocar "¿Olvidaste tu contraseña?".');return $('em').focus()}
- if(!confirm(`¿Enviar a ${em} un link para cambiar la contraseña?`))return;
+ if(!em){avisa('Escribe tu email en la casilla de arriba y vuelve a tocar "¿Olvidaste tu contraseña?".');return $('em').focus()}
+ if(!await confirma(`¿Enviar a ${em} un link para cambiar la contraseña?`))return;
  const{error}=await sb.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname});
- if(error)return alert(/rate|seconds|security/i.test(error.message)?'Ya se envió un email hace poco. Espera unos minutos y vuelve a intentar.':error.message);
- alert(`Listo. Si ${em} es el email del administrador, en unos minutos te llega un link (revisa también Spam o Promociones).\n\nTócalo y la página te pedirá la contraseña nueva.`)}
+ if(error)return avisa(/rate|seconds|security/i.test(error.message)?'Ya se envió un email hace poco. Espera unos minutos y vuelve a intentar.':error.message);
+ avisa(`Listo. Si ${em} es el email del administrador, en unos minutos te llega un link (revisa también Spam o Promociones).\n\nTócalo y la página te pedirá la contraseña nueva.`)}
 function pideClave(){if(!$('dpw').open){$('dpw').showModal();$('pw1').focus()}}
 sb.auth.onAuthStateChange(e=>{if(e=='PASSWORD_RECOVERY')pideClave()});
-async function nuevaClave(e){e.preventDefault();const a=$('pw1').value;if(a!==$('pw2').value)return alert('Las dos contraseñas no coinciden.');
+async function nuevaClave(e){e.preventDefault();const a=$('pw1').value;if(a!==$('pw2').value)return avisa('Las dos contraseñas no coinciden.');
  const b=e.submitter;b.disabled=true;const{error}=await sb.auth.updateUser({password:a});b.disabled=false;
- if(error)return alert(/different|same/i.test(error.message)?'La contraseña nueva tiene que ser distinta de la anterior.':/session|expired|invalid/i.test(error.message)?'El link venció. Pide otro con "¿Olvidaste tu contraseña?".':error.message);
+ if(error)return avisa(/different|same/i.test(error.message)?'La contraseña nueva tiene que ser distinta de la anterior.':/session|expired|invalid/i.test(error.message)?'El link venció. Pide otro con "¿Olvidaste tu contraseña?".':error.message);
  $('dpw').close();$('pw1').value=$('pw2').value='';history.replaceState(null,'',location.pathname);toast('Contraseña cambiada. Ya estás dentro del panel.')}
 function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';$('t-ped').hidden=t!='ped';$('t-web').hidden=t!='web';$('t-mos').hidden=t!='mos';$('t-rec').hidden=t!='rec';$('t-caja').hidden=t!='caja';if(t=='caja')cargaCaja();if(t=='mos')abrirMq();if(t=='web')cargaWeb();if(t=='hist')cargaHist();if(t=='ped')cargaPedido()}
 
 /* ---------- productos ---------- */
-async function load(silencio){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){if(silencio)throw e;return alert(msg(e))}
+async function load(silencio){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){if(silencio)throw e;return avisa(msg(e))}
  MIN_OK=!P.length||'minimo'in P[0];  // false si todavía no se ejecutó el SQL de compra mínima
  COD_OK=!P.length||'cod_prov'in P[0];  // false si todavía no se ejecutó el SQL de renombrados
  COMP_OK=!!P.length&&'compra_cant'in P[0];  // false si todavía no se ejecutó el SQL de compra por cantidad
@@ -436,22 +452,22 @@ function renderP(){pintaCapital();const F=lista(),np=P.filter(p=>p.borrado).leng
  $('bsel').textContent=enPap?'Restaurar':'Eliminar';$('bsel').className=enPap?'':'danger';$('bdef').hidden=!enPap;$('ssec').hidden=enPap||!S.ok;$('smin').hidden=enPap||!MIN_OK}
 // Cambia la ganancia desde la tabla, sin abrir el producto
 async function cambiaGan(id,el){const p=P.find(x=>x.id==id),g=num(el.value);
- if(g===null){el.value=fmtIn(p.ganancia);return alert('Escribe un porcentaje válido.')}
+ if(g===null){el.value=fmtIn(p.ganancia);return avisa('Escribe un porcentaje válido.')}
  el.disabled=true;const{error}=await sb.from('productos').update({ganancia:g}).eq('id',id);el.disabled=false;
- if(error){el.value=fmtIn(p.ganancia);return alert(msg(error))}
+ if(error){el.value=fmtIn(p.ganancia);return avisa(msg(error))}
  p.ganancia=g;p.precio=red(p.costo*(1+g/100),2);el.value=fmtIn(g);$('pv'+id).textContent=money(p.precio);toast('Ganancia guardada: '+fmt(g)+' %')}
 function marca(id,v=!sel.has(id)){v?sel.add(id):sel.delete(id);renderP()}
 function marcaTodos(v){for(const p of lista())v?sel.add(p.id):sel.delete(p.id);renderP()}
 // Eliminar = mandar a la papelera (borrado=true). Así el Excel no los vuelve a crear.
 async function moverPapelera(ids,v){for(let i=0;i<ids.length;i+=200){const{error}=await sb.from('productos').update({borrado:v}).in('id',ids.slice(i,i+200));if(error)throw error}}
 async function accionSel(){const ids=[...sel],n=ids.length;if(!n)return;
- if(!enPap&&!confirm(`¿Eliminar ${n} producto(s)?\n\nDejarán de salir en el catálogo y el Excel no los volverá a crear.\nPodrás recuperarlos desde la Papelera.`))return;
+ if(!enPap&&!await confirma(`¿Eliminar ${n} producto(s)?\n\nDejarán de salir en el catálogo y el Excel no los volverá a crear.\nPodrás recuperarlos desde la Papelera.`))return;
  const b=$('bsel');b.disabled=true;
  try{await moverPapelera(ids,!enPap);sel.clear();toast(enPap?`${n} producto(s) restaurado(s)`:`${n} producto(s) enviados a la papelera`);await load()}
- catch(e){alert(msg(e))}finally{b.disabled=false}}
+ catch(e){avisa(msg(e))}finally{b.disabled=false}}
 // Borra de verdad los productos de la papelera (y sus imágenes): su código queda libre
 async function borrarDefinitivo(){const ids=[...sel].filter(id=>P.find(p=>p.id==id)?.borrado),n=ids.length;if(!enPap||!n)return;
- if(!confirm(`¿Eliminar definitivamente ${n} producto(s)?
+ if(!await confirma(`¿Eliminar definitivamente ${n} producto(s)?
 
 Se borran por completo y NO se pueden recuperar. Su código queda libre para usarlo en otro producto.
 Si vuelven a venir en el Excel, se crearán como productos nuevos.`))return;
@@ -459,7 +475,7 @@ Si vuelven a venir en el Excel, se crearán como productos nuevos.`))return;
  try{const imgs=P.filter(p=>sel.has(p.id)&&p.imagen&&!P.some(q=>!sel.has(q.id)&&q.imagen==p.imagen)).map(p=>p.imagen);
   for(let i=0;i<n;i+=200){const{error}=await sb.from('productos').delete().in('id',ids.slice(i,i+200));if(error)throw error}
   imgs.forEach(borrarImg);sel.clear();toast(`${n} producto(s) eliminado(s) definitivamente`);await load()}
- catch(e){alert(msg(e))}finally{b.disabled=false}}
+ catch(e){avisa(msg(e))}finally{b.disabled=false}}
 /* ---------- sectores ---------- */
 // S.lista: [{id,nombre}] · S.nom: id → nombre · S.ok: false si todavía no se ejecutó el SQL de sectores
 const S={lista:[],nom:{},ok:false};
@@ -472,33 +488,33 @@ function pintaSectores(){const n={};for(const p of P)if(!p.borrado)n[p.sector_id
  $('fsec').innerHTML='<option value="">Sin sector</option>'+S.lista.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('');
  $('ssec').innerHTML='<option value="">Mover a sector…</option>'+S.lista.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('')+'<option value="0">Quitar sector</option>';
  $('secl').innerHTML=S.lista.map(x=>`<div class="r"><input value="${esc(x.nombre)}" onchange="renombrarSector(${x.id},this)"><span class="m">${n[x.id]||0} prod.</span><button type="button" class="danger" onclick="borrarSector(${x.id})">Borrar</button></div>`).join('')||'<p class="m" style="margin:0">Todavía no hay sectores.</p>'}
-function abrirSectores(){if(!S.ok)return alert('Para usar sectores, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).');pintaSectores();$('dsec').showModal()}
+function abrirSectores(){if(!S.ok)return avisa('Para usar sectores, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).');pintaSectores();$('dsec').showModal()}
 const errSec=e=>e.code=='23505'?'Ya existe un sector con ese nombre.':msg(e);
 async function nuevoSector(){const n=$('snuevo').value.trim().replace(/\s+/g,' ');if(!n)return $('snuevo').focus();
- const{error}=await sb.from('sectores').insert({nombre:n});if(error)return alert(errSec(error));$('snuevo').value='';toast('Sector creado: '+n);await cargaSectores();renderP()}
+ const{error}=await sb.from('sectores').insert({nombre:n});if(error)return avisa(errSec(error));$('snuevo').value='';toast('Sector creado: '+n);await cargaSectores();renderP()}
 async function renombrarSector(id,el){const n=el.value.trim().replace(/\s+/g,' ');if(!n||n==S.nom[id]){el.value=S.nom[id];return}
- const{error}=await sb.from('sectores').update({nombre:n}).eq('id',id);if(error){el.value=S.nom[id];return alert(errSec(error))}toast('Sector renombrado');await cargaSectores();renderP()}
+ const{error}=await sb.from('sectores').update({nombre:n}).eq('id',id);if(error){el.value=S.nom[id];return avisa(errSec(error))}toast('Sector renombrado');await cargaSectores();renderP()}
 async function borrarSector(id){const c=P.filter(p=>p.sector_id==id).length;
- if(!confirm(`¿Borrar el sector "${S.nom[id]}"?`+(c?`\n\nSus ${c} producto(s) quedan "sin sector". Los productos NO se borran.`:'')))return;
- const{error}=await sb.from('sectores').delete().eq('id',id);if(error)return alert(msg(error));
+ if(!await confirma(`¿Borrar el sector "${S.nom[id]}"?`+(c?`\n\nSus ${c} producto(s) quedan "sin sector". Los productos NO se borran.`:'')))return;
+ const{error}=await sb.from('sectores').delete().eq('id',id);if(error)return avisa(msg(error));
  for(const p of P)if(p.sector_id==id)p.sector_id=null;if($('fs').value==id)$('fs').value='';toast('Sector borrado');await cargaSectores();renderP()}
 // Pone el sector elegido a todos los productos seleccionados (0 = quitar sector)
 async function asignarSector(v){if(v==='')return;const ids=[...sel],n=ids.length,id=+v||null;if(!n)return;
- if(!confirm(id?`¿Poner ${n} producto(s) en el sector "${S.nom[id]}"?`:`¿Quitar el sector a ${n} producto(s)?`))return;
- for(let i=0;i<n;i+=200){const{error}=await sb.from('productos').update({sector_id:id}).in('id',ids.slice(i,i+200));if(error)return alert(msg(error))}
+ if(!await confirma(id?`¿Poner ${n} producto(s) en el sector "${S.nom[id]}"?`:`¿Quitar el sector a ${n} producto(s)?`))return;
+ for(let i=0;i<n;i+=200){const{error}=await sb.from('productos').update({sector_id:id}).in('id',ids.slice(i,i+200));if(error)return avisa(msg(error))}
  sel.clear();toast(id?`${n} producto(s) movidos a ${S.nom[id]}`:'Sector quitado');load()}
 // Compra mínima de los seleccionados: "d" = el número que dice la descripción del proveedor (MINIMO 12…), "0" = por unidad
 let MIN_OK=false,COD_OK=false;
 async function asignarMinimo(v){if(v==='')return;const L2=P.filter(p=>sel.has(p.id));if(!L2.length)return;const g=new Map();let sin=0;
  for(const p of L2){const m=v=='d'?minDesc(p.clave||p.nombre):0;if(v=='d'&&!m){sin++;continue}const k=m>1?m:null;g.set(k,[...(g.get(k)||[]),p.id])}
- const n=L2.length-sin;if(!n)return alert('Ninguno de los productos seleccionados dice "MINIMO" ni "CAJA CERRADA" en la descripción. Pon la compra mínima a mano en la ficha de cada producto.');
- if(!confirm(v=='d'?`¿Poner compra mínima según la descripción a ${n} producto(s)?`+(sin?`\n\n${sin} no dicen "MINIMO" ni "CAJA CERRADA" y se dejan como están.`:''):`¿Vender por unidad ${n} producto(s)? (sin compra mínima)`))return;
- for(const[k,ids]of g)for(let i=0;i<ids.length;i+=200){const{error}=await sb.from('productos').update({minimo:k}).in('id',ids.slice(i,i+200));if(error)return alert(msg(error))}
+ const n=L2.length-sin;if(!n)return avisa('Ninguno de los productos seleccionados dice "MINIMO" ni "CAJA CERRADA" en la descripción. Pon la compra mínima a mano en la ficha de cada producto.');
+ if(!await confirma(v=='d'?`¿Poner compra mínima según la descripción a ${n} producto(s)?`+(sin?`\n\n${sin} no dicen "MINIMO" ni "CAJA CERRADA" y se dejan como están.`:''):`¿Vender por unidad ${n} producto(s)? (sin compra mínima)`))return;
+ for(const[k,ids]of g)for(let i=0;i<ids.length;i+=200){const{error}=await sb.from('productos').update({minimo:k}).in('id',ids.slice(i,i+200));if(error)return avisa(msg(error))}
  sel.clear();toast(v=='d'?`Compra mínima puesta a ${n} producto(s)`:`${n} producto(s) por unidad`);load()}
-async function aplicarGanancia(){const g=num($('gb').value);if(g===null)return alert('Escribe el porcentaje de ganancia.');
+async function aplicarGanancia(){const g=num($('gb').value);if(g===null)return avisa('Escribe el porcentaje de ganancia.');
  const ids=lista().map(p=>p.id);if(!ids.length)return;
- if(!confirm(`¿Poner ${fmt(g)} % de ganancia a ${ids.length} producto(s)?`))return;
- for(let i=0;i<ids.length;i+=200){const{error}=await sb.from('productos').update({ganancia:g}).in('id',ids.slice(i,i+200));if(error)return alert(msg(error))}
+ if(!await confirma(`¿Poner ${fmt(g)} % de ganancia a ${ids.length} producto(s)?`))return;
+ for(let i=0;i<ids.length;i+=200){const{error}=await sb.from('productos').update({ganancia:g}).in('id',ids.slice(i,i+200));if(error)return avisa(msg(error))}
  toast('Ganancia actualizada');load()}
 
 // Último código cargado: el número más alto del tipo de código (letras de adelante) del producto con código más reciente; y el que seguiría
@@ -518,7 +534,7 @@ const fmtIn=n=>String(red(Number(n)||0,4)).replace('.',',');
 function verImg(u){$('fimg').src=u||PH;$('fqi').hidden=!u}
 function deCosto(){const c=num($('fcos').value)||0,g=num($('fgan').value)||0;$('fven').value=dos(red(c*(1+g/100),2))}
 function deVenta(){const c=num($('fcos').value)||0,v=num($('fven').value);if(c>0&&v!==null)$('fgan').value=fmtIn(red((v/c-1)*100,4))}
-async function elegirImg(f){$('fi').value='';$('fc2').value='';if(!f)return;try{nuevaImg=await reducir(f);quitarImg=false;verImg(URL.createObjectURL(nuevaImg))}catch(e){alert(e.message)}}
+async function elegirImg(f){$('fi').value='';$('fc2').value='';if(!f)return;try{nuevaImg=await reducir(f);quitarImg=false;verImg(URL.createObjectURL(nuevaImg))}catch(e){avisa(e.message)}}
 function quitarImagen(){nuevaImg=null;quitarImg=true;verImg(null)}
 // Reduce la foto (máx. 1000 px, JPEG) para que ocupe poco espacio y cargue rápido
 function reducir(f,max=1000){return new Promise((ok,ko)=>{const i=new Image();
@@ -531,8 +547,8 @@ function borrarImg(u){const r=rutaImg(u);if(r)sb.storage.from('imagenes').remove
 async function guardarProd(e){e.preventDefault();
  const o={codigo:$('fcod').value.trim()||null,nombre:$('fdes').value.trim().replace(/\s+/g,' '),costo:num($('fcos').value)??0,ganancia:num($('fgan').value)??0,stock:num($('fsto').value)??0,activo:$('fact').checked};if(S.ok)o.sector_id=+$('fsec').value||null;
  if(MIN_OK){const m=num($('fmin').value);o.minimo=m>1?m:null}
- if(!o.nombre)return alert('La descripción es obligatoria.');
- if(COMP_OK){const on=$('fcomp').checked,ca=num($('fcca').value),av=num($('fcav').value);if(on&&!(ca>0))return alert('Escribe de a cuántas unidades se compra este producto.');
+ if(!o.nombre)return avisa('La descripción es obligatoria.');
+ if(COMP_OK){const on=$('fcomp').checked,ca=num($('fcca').value),av=num($('fcav').value);if(on&&!(ca>0))return avisa('Escribe de a cuántas unidades se compra este producto.');
   o.compra_cant=on?ca:null;o.compra_aviso=on?Math.max(0,av??0):null;if(!on){o.compra_vendido=0;o.compra_pendiente=false}}
  const b=$('fsave');b.disabled=true;
  try{const vieja=ed.imagen;
@@ -544,10 +560,10 @@ async function guardarProd(e){e.preventDefault();
   if(error){if(o.imagen)borrarImg(o.imagen);throw error}
   if(vieja&&'imagen'in o)borrarImg(vieja);
   $('dlg').close();toast('Producto guardado');load()}
- catch(err){alert(msg(err))}finally{b.disabled=false}}
+ catch(err){avisa(msg(err))}finally{b.disabled=false}}
 async function eliminar(){
- if(!confirm(`¿Eliminar "${ed.nombre}"?\n\nDejará de salir en el catálogo y el Excel no lo volverá a crear.\nPodrás recuperarlo desde la Papelera.`))return;
- try{await moverPapelera([ed.id],true)}catch(e){return alert(msg(e))}
+ if(!await confirma(`¿Eliminar "${ed.nombre}"?\n\nDejará de salir en el catálogo y el Excel no lo volverá a crear.\nPodrás recuperarlo desde la Papelera.`))return;
+ try{await moverPapelera([ed.id],true)}catch(e){return avisa(msg(e))}
  $('dlg').close();toast('Producto enviado a la papelera');load()}
 
 /* ---------- importar Excel de cantidades ---------- */
@@ -555,14 +571,14 @@ async function eliminar(){
 // Cada fila se reconoce por su descripción (la original del Excel de precios o la que tiene en el panel);
 // si no coincide ninguna y el Excel trae una columna "Código", se busca por tu código.
 async function impCant(f){$('fq').value='';if(!f)return;
- let filas;try{const wb=XLSX.read(await f.arrayBuffer());filas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''})}catch{return alert('No se pudo leer el archivo.')}
+ let filas;try{const wb=XLSX.read(await f.arrayBuffer());filas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''})}catch{return avisa('No se pudo leer el archivo.')}
  const t=c=>norm(c).replace(/[.:]/g,'').replace(/\s+/g,' ');let h=-1,cd,cq,cc;
  for(let i=0;i<Math.min(filas.length,60)&&h<0;i++){const H=filas[i].map(t);
   cd=H.findIndex(x=>['producto','productos','descripcion','nombre','detalle','articulo'].includes(x));
   cq=H.findIndex(x=>['cantidad','cantidades','cant','unidades','stock'].includes(x));
   if(cq>=0&&cd>=0){h=i;cc=H.findIndex(x=>['codigo','cod'].includes(x))}
   else if(cq>=0&&(cc=H.findIndex(x=>['codigo','cod'].includes(x)))>=0){h=i;cd=-1}}
- if(h<0)return alert('No encontré la fila de títulos.\n\nEl Excel necesita una columna "Cantidad" y otra "Producto" (o "Descripción") o "Código".');
+ if(h<0)return avisa('No encontré la fila de títulos.\n\nEl Excel necesita una columna "Cantidad" y otra "Producto" (o "Descripción") o "Código".');
  const k=x=>norm(x).replace(/\s+/g,' '),porDes=new Map(),porCod=new Map();
  for(const p of P){if(p.borrado)continue;if(p.clave)porDes.set(k(p.clave),p);porDes.set(k(p.nombre),p);if(p.codigo)porCod.set(k(p.codigo),p)}
  const suma=new Map(),noEnc=[];let filasOk=0,xCod=0,vacias=0;
@@ -571,9 +587,9 @@ async function impCant(f){$('fq').value='';if(!f)return;
   let p=d&&porDes.get(k(d));if(!p&&c){p=porCod.get(k(c));if(p)xCod++}
   if(!p){noEnc.push(d||c);continue}
   suma.set(p.id,(suma.get(p.id)||0)+q);filasOk++}
- if(!suma.size)return alert(`No reconocí ningún producto de "${f.name}".`+(noEnc.length?`\n\nPor ejemplo: ${noEnc.slice(0,5).join(' · ')}`:''));
+ if(!suma.size)return avisa(`No reconocí ningún producto de "${f.name}".`+(noEnc.length?`\n\nPor ejemplo: ${noEnc.slice(0,5).join(' · ')}`:''));
  const tot=[...suma.values()].reduce((a,b)=>a+b,0);
- if(!confirm(`Leí "${f.name}" (títulos en la fila ${h+1}).\n\n`+
+ if(!await confirma(`Leí "${f.name}" (títulos en la fila ${h+1}).\n\n`+
   `· ${suma.size} productos reconocidos → se SUMA la cantidad a su stock actual (total ${fmt(tot)} unidades).\n`+
   (xCod?`  (${xCod} de ellos se reconocieron por el código)\n`:'')+
   (noEnc.length?`· ${noEnc.length} filas no coinciden con ningún producto → se ignoran.\n  Ej.: ${noEnc.slice(0,5).join(' · ')}${noEnc.length>5?'…':''}\n`:'')+
@@ -582,16 +598,16 @@ async function impCant(f){$('fq').value='';if(!f)return;
  const b=$('bcant'),L2=[...suma].map(([id,cantidad])=>({id,cantidad}));b.disabled=true;let n=0;
  try{for(let i=0;i<L2.length;i+=500){b.textContent=`Sumando… ${Math.round(i/L2.length*100)} %`;
    const{data,error}=await sb.rpc('sumar_stock',{p_filas:L2.slice(i,i+500)});
-   if(error){alert(error.code=='PGRST202'||/sumar_stock/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run) y vuelve a intentarlo.':msg(error));break}n+=data}}
+   if(error){avisa(error.code=='PGRST202'||/sumar_stock/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run) y vuelve a intentarlo.':msg(error));break}n+=data}}
  finally{b.disabled=false;b.textContent='Importar cantidades'}
- if(n){alert(`Listo: se sumó stock a ${n} producto(s).`+(noEnc.length?`\n\n${noEnc.length} filas no se reconocieron:\n${noEnc.slice(0,15).join('\n')}${noEnc.length>15?'\n…':''}`:''));load()}}
+ if(n){avisa(`Listo: se sumó stock a ${n} producto(s).`+(noEnc.length?`\n\n${noEnc.length} filas no se reconocieron:\n${noEnc.slice(0,15).join('\n')}${noEnc.length>15?'\n…':''}`:''));load()}}
 
 /* ---------- importar Excel ---------- */
 // De las filas sin precio, las que son productos tuyos: siguen con su costo anterior (puede estar viejo)
 function avisoSinP(F){const M=new Map(P.filter(p=>p.clave&&!p.borrado).map(p=>[p.clave,p])),Q=F.map(d=>M.get(d.toLowerCase())).filter(Boolean);if(!Q.length)return'';
  return`\nOjo: ${Q.length} de esas filas son productos que ya tienes. No se tocan y siguen con su costo anterior:\n${Q.slice(0,15).map(p=>'• '+p.nombre+' ('+money(p.costo)+')').join('\n')}${Q.length>15?`\n… y ${Q.length-15} más`:''}\n`}
 async function imp(f){$('f').value='';if(!f)return;
- let filas;try{const wb=XLSX.read(await f.arrayBuffer());filas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''})}catch{return alert('No se pudo leer el archivo.')}
+ let filas;try{const wb=XLSX.read(await f.arrayBuffer());filas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''})}catch{return avisa('No se pudo leer el archivo.')}
  // La fila de títulos puede no ser la primera (la nota de pedido la tiene en la fila 12):
  // buscamos la que tenga una columna de producto/descripción y otra de precio.
  // El código del Excel es el del proveedor: se guarda aparte (cod_prov) y nunca reemplaza tu código.
@@ -600,14 +616,14 @@ async function imp(f){$('f').value='';if(!f)return;
   cd=H.findIndex(x=>['producto','productos','descripcion','nombre','detalle','articulo'].includes(x));
   cp=H.findIndex(x=>x.startsWith('precio')||x=='costo');
   if(cd>=0&&cp>=0){h=i;cs=H.indexOf('stock');cc=H.findIndex(x=>['cod','codigo','cod.'].includes(x))}}
- if(h<0)return alert('No encontré la fila de títulos con las columnas "Producto" (o "Descripción") y "Precio".');
+ if(h<0)return avisa('No encontré la fila de títulos con las columnas "Producto" (o "Descripción") y "Precio".');
  // Si trae columna "Cantidad" es la nota de pedido del proveedor: se guarda para completar el pedido con ella
  const esNota=/\.xlsx$/i.test(f.name)&&filas[h].map(t).some(x=>x.startsWith('cantidad')||x=='cant');
  const out=[],sinP=[];let sinPrecio=0;
  for(const r of filas.slice(h+1)){const d=String(r[cd]??'').trim().replace(/\s+/g,' '),c=num(r[cp]);
   if(!d)continue;if(c===null||c<=0){sinPrecio++;sinP.push(d);continue}
   const o={descripcion:d,costo:red(c,2)};if(cs>=0)o.stock=num(r[cs])??0;if(cc>=0)o.cod=String(r[cc]??'').trim();out.push(o)}
- if(!out.length)return alert('El Excel no tiene productos con precio.');
+ if(!out.length)return avisa('El Excel no tiene productos con precio.');
  // Vista previa: cuántos existen, cuántos son nuevos y cuántos están en la papelera
  const M=new Map(P.filter(p=>p.clave).map(p=>[p.clave,p])),vistos=new Set(),nuevas=[];let ex=0,pa=0;
  for(const o of out){const k=o.descripcion.toLowerCase(),p=M.get(k);if(p)p.borrado?pa++:ex++;else if(!vistos.has(k))nuevas.push(o);vistos.add(k)}
@@ -623,10 +639,10 @@ async function imp(f){$('f').value='';if(!f)return;
  let n=0,a=0,o=0,rz=0,ok=true,nota='';
  try{for(let i=0;i<out.length;i+=500){b.textContent=`Importando… ${Math.round(i/out.length*100)} %`;
    const{data,error}=await sb.rpc('importar_productos',{p_filas:out.slice(i,i+500),p_ganancia:g});
-   if(error){alert(msg(error));ok=false;break}n+=data.nuevos;a+=data.actualizados;o+=data.omitidos||0;rz+=data.reemplazados||0}
+   if(error){avisa(msg(error));ok=false;break}n+=data.nuevos;a+=data.actualizados;o+=data.omitidos||0;rz+=data.reemplazados||0}
   if(ok&&esNota){b.textContent='Guardando la nota…';nota=await guardaNota(f)?`\n\nEsta nota quedó guardada: el pedido se completará con "${f.name}".`:'\n\nOjo: no se pudo guardar la nota para el pedido. Ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run) y vuelve a importarla.'}}
  finally{b.disabled=false;b.textContent='Importar Excel'}
- alert(`Importación terminada: ${n} nuevos, ${a} actualizados${rz?`, ${rz} renombrados (se reemplazó la descripción)`:''}${o?`, ${o} ignorados (están en la papelera)`:''}.`+nota);load()}
+ avisa(`Importación terminada: ${n} nuevos, ${a} actualizados${rz?`, ${rz} renombrados (se reemplazó la descripción)`:''}${o?`, ${o} ignorados (están en la papelera)`:''}.`+nota);load()}
 // Productos que el proveedor renombró: descripciones nuevas del Excel que se parecen a un producto
 // cuya descripción ya no viene en el Excel. Si ese producto tiene guardado el código del proveedor,
 // tiene que ser el mismo código (si es otro, no se sugiere). Vienen marcados los casi iguales
@@ -760,18 +776,18 @@ async function compartir(){const f=new File([pdfDoc(ult).output('blob')],nomPdf(
  if(navigator.canShare?.({files:[f]}))try{await navigator.share({files:[f],title:'Presupuesto Nº '+ult.id})}catch{}
  else descargar()}
 async function save(){const tel0=$('cltel').value.trim()||W.find(x=>x.id==SOL)?.telefono||'',cl=cliFinal($('cl').value.trim(),tel0);if(cl!=$('cl').value.trim())$('cl').value=cl;
- if(!L.length)return alert('Añade productos al presupuesto.');
- if(L.some(l=>!(l.cantidad>=0)))return alert('Revisa las cantidades: hay alguna que no es válida.');
- const cero=L.filter(l=>l.cantidad>0&&!(+l.precio>0));if(cero.length)return alert(`No se generó el presupuesto: estos productos están a $ 0.\n\n• ${cero.map(l=>l.nombre).join('\n• ')}\n\nCárgales el costo en Productos, o quítalos del presupuesto.`);
+ if(!L.length)return avisa('Añade productos al presupuesto.');
+ if(L.some(l=>!(l.cantidad>=0)))return avisa('Revisa las cantidades: hay alguna que no es válida.');
+ const cero=L.filter(l=>l.cantidad>0&&!(+l.precio>0));if(cero.length)return avisa(`No se generó el presupuesto: estos productos están a $ 0.\n\n• ${cero.map(l=>l.nombre).join('\n• ')}\n\nCárgales el costo en Productos, o quítalos del presupuesto.`);
  const sinS=L.filter(l=>disp(l)<=0||disp(l)<l.cantidad).length;
- if(!confirm(`¿Generar el presupuesto${cl?' para '+cl:''}?\n\nSe descontará del stock la cantidad disponible de cada producto.`+(sinS?`\n${sinS} producto(s) sin stock suficiente saldrán en rojo en el PDF.`:'')))return;
+ if(!await confirma(`¿Generar el presupuesto${cl?' para '+cl:''}?\n\nSe descontará del stock la cantidad disponible de cada producto.`+(sinS?`\n${sinS} producto(s) sin stock suficiente saldrán en rojo en el PDF.`:'')))return;
  const b=$('bs');b.disabled=true;
  // Si viene de un pedido web, la base devuelve lo reservado y descuenta lo del presupuesto (sin descontar dos veces)
  const arg={p_cliente:cl,p_lineas:L.map(l=>({id:l.id,nombre:l.nombre,cantidad:l.cantidad}))},sol=SOL;if(sol)arg.p_solicitud=sol;
  const{data,error}=await sb.rpc('crear_presupuesto',arg);b.disabled=false;
- if(error&&sol&&error.code=='PGRST202')return alert('Para pasar pedidos web a presupuesto, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).');
- if(error)return alert(/Cantidad no válida/.test(error.message)?'Para poder usar cantidad 0, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
- if(typeof data!='object')return alert('Falta actualizar la base de datos: ejecuta de nuevo supabase.sql en Supabase.');
+ if(error&&sol&&error.code=='PGRST202')return avisa('Para pasar pedidos web a presupuesto, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).');
+ if(error)return avisa(/Cantidad no válida/.test(error.message)?'Para poder usar cantidad 0, primero ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
+ if(typeof data!='object')return avisa('Falta actualizar la base de datos: ejecuta de nuevo supabase.sql en Supabase.');
  // El presupuesto ya está guardado y el stock descontado. La pantalla se actualiza con el stock que
  // devolvió la base (sin otra consulta): en el iPhone, la descarga del PDF puede cortar las consultas en curso.
  const res=sol?Object.fromEntries(L.map(l=>[l.id,+l.res||0])):{};
@@ -789,25 +805,25 @@ let lh=30;const selH=new Set();
 async function cargaHist(){const t=$('hq').value.trim().replace(/[,()%*]/g,' ').trim();
  let q=sb.from('presupuestos').select('*').order('id',{ascending:false}).limit(lh+1);
  if(t)q=/^\d+$/.test(t)?q.or(`id.eq.${t},cliente.ilike.*${t}*`):q.ilike('cliente',`%${t}%`);
- const{data,error}=await q;if(error)return /load failed|fetch/i.test(msg(error))?null:alert(msg(error));H=data.slice(0,lh);$('hmas').hidden=data.length<=lh;pintaHist()}
+ const{data,error}=await q;if(error)return /load failed|fetch/i.test(msg(error))?null:avisa(msg(error));H=data.slice(0,lh);$('hmas').hidden=data.length<=lh;pintaHist()}
 function pintaHist(){const t=$('hq').value.trim();
  $('hist').innerHTML=H.map((p,i)=>{const f=new Date(p.fecha),ls=p.lineas||[],sin=ls.some(falta),na=ls.filter(l=>l.anulado).length;
   return `<tr><td class="cc"><input type="checkbox" class="ck" ${selH.has(p.id)?'checked':''} onchange="this.checked?selH.add(${p.id}):selH.delete(${p.id});pintaHist()"><td class="cod">${p.id}<td>${f.toLocaleDateString('es')} <span class="m hide-sm">${f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span><td>${esc(p.cliente||'-')}${sin?' <span class="tag" style="color:var(--no)">Faltó stock</span>':''}${na&&na==ls.length?' <span class="tag" style="color:var(--no)">Anulado</span>':na?` <span class="tag">${na} anulado(s)</span>`:''}${p.une?` <span class="tag sec">Unifica Nº ${p.une.join(', ')}</span>`:''}${p.unificado_en?` <span class="tag">Unificado en Nº ${p.unificado_en}</span>`:''}<td class="n hide-sm">${ls.length-na}<td class="n"><b>${money(p.total)}</b><td class="n"><div class="acc" style="justify-content:flex-end;flex-wrap:nowrap">${p.une?`<button class="s" onclick="deshacerUnif(${i})">Deshacer</button>`:na<ls.length&&!p.unificado_en?`<button class="s" onclick="abrirAnular(${i})">Anular</button>`:''}<button class="s" onclick="descargar(H[${i}])">PDF</button></div></tr>`}).join('')
   ||`<tr><td colspan="7" class="m">${t?'No hay presupuestos que coincidan.':'Todavía no hay presupuestos.'}</tr>`;
  $('hall').checked=H.length>0&&H.every(p=>selH.has(p.id));$('hbar').hidden=!selH.size;$('hsel').textContent=selH.size;$('bunif').hidden=selH.size<2}
 // Junta los presupuestos marcados en uno final (mismo cliente). La base no toca stock, Caja ni pedido.
-async function unificarHist(){const X=H.filter(p=>selH.has(p.id)).sort((a,b)=>a.id-b.id);if(X.length<2)return alert('Marca al menos dos presupuestos.');
- const ya=X.filter(p=>p.une||p.unificado_en);if(ya.length)return alert(`No se puede: ${ya.map(p=>'Nº '+p.id+(p.une?' ya es un unificado':' ya está unificado en el Nº '+p.unificado_en)).join(', ')}.\n\nDesmárcalos o pulsa "Deshacer" en el unificado.`);
+async function unificarHist(){const X=H.filter(p=>selH.has(p.id)).sort((a,b)=>a.id-b.id);if(X.length<2)return avisa('Marca al menos dos presupuestos.');
+ const ya=X.filter(p=>p.une||p.unificado_en);if(ya.length)return avisa(`No se puede: ${ya.map(p=>'Nº '+p.id+(p.une?' ya es un unificado':' ya está unificado en el Nº '+p.unificado_en)).join(', ')}.\n\nDesmárcalos o pulsa "Deshacer" en el unificado.`);
  const cls=[...new Set(X.map(p=>norm(p.cliente)))],tot=X.reduce((s,p)=>s+(+p.total||0),0);
- if(cls.length>1&&!confirm(`Ojo: los presupuestos marcados son de clientes distintos (${[...new Set(X.map(p=>p.cliente||'-'))].join(', ')}).\n\n¿Unificarlos igual?`))return;
- if(!confirm(`¿Unificar ${X.length} presupuestos (Nº ${X.map(p=>p.id).join(', ')}) de ${X[0].cliente||'-'}?\n\nTotal: ${money(tot)}\n\nSe crea un presupuesto final con todo junto y se descarga su PDF. No cambia el stock ni la Caja.`))return;
+ if(cls.length>1&&!await confirma(`Ojo: los presupuestos marcados son de clientes distintos (${[...new Set(X.map(p=>p.cliente||'-'))].join(', ')}).\n\n¿Unificarlos igual?`))return;
+ if(!await confirma(`¿Unificar ${X.length} presupuestos (Nº ${X.map(p=>p.id).join(', ')}) de ${X[0].cliente||'-'}?\n\nTotal: ${money(tot)}\n\nSe crea un presupuesto final con todo junto y se descarga su PDF. No cambia el stock ni la Caja.`))return;
  const b=$('bunif');b.disabled=true;const{data,error}=await sb.rpc('unificar_presupuestos',{p_ids:X.map(p=>p.id)});b.disabled=false;
- if(error)return alert(error.code=='PGRST202'?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
+ if(error)return avisa(error.code=='PGRST202'?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
  ult={...data,une:data.une,fecha:new Date().toISOString()};selH.clear();toast(`Presupuesto unificado Nº ${data.id} · ${money(data.total)}`);
  // primero se actualiza la lista y después se descarga el PDF: en el iPhone la descarga corta las consultas en curso
  try{await cargaHist()}catch{}descargar(ult);setTimeout(()=>cargaHist().catch(()=>{}),2500)}
-async function deshacerUnif(i){const p=H[i];if(!confirm(`¿Deshacer el presupuesto unificado Nº ${p.id}?\n\nSe borra este presupuesto final y los Nº ${p.une.join(', ')} vuelven a quedar sueltos. No cambia el stock ni la Caja.`))return;
- const{error}=await sb.rpc('deshacer_unificacion',{p_id:p.id});if(error)return alert(msg(error));toast('Unificación deshecha');cargaHist()}
+async function deshacerUnif(i){const p=H[i];if(!await confirma(`¿Deshacer el presupuesto unificado Nº ${p.id}?\n\nSe borra este presupuesto final y los Nº ${p.une.join(', ')} vuelven a quedar sueltos. No cambia el stock ni la Caja.`))return;
+ const{error}=await sb.rpc('deshacer_unificacion',{p_id:p.id});if(error)return avisa(msg(error));toast('Unificación deshecha');cargaHist()}
 // Anular productos de un presupuesto: la base devuelve al stock lo descontado y los saca del PDF y del pedido
 let ANU=null;
 async function abrirAnular(i){const p=H[i];ANU=p;$('anut').textContent=`Anular del presupuesto Nº ${p.id}${p.cliente?' · '+p.cliente:''}`;
@@ -821,9 +837,9 @@ function pintaAnu(){const n=document.querySelectorAll('#anul .ck:checked').lengt
  $('anutodo').checked=t>0&&n==t;$('banu').disabled=!n;$('banu').textContent=n?`Anular ${n} producto(s)`:'Anular'}
 async function anular(){const p=ANU,js=[...document.querySelectorAll('#anul .ck:checked')].map(c=>+c.dataset.j);if(!p||!js.length)return;
  const todo=js.length==(p.lineas||[]).filter(l=>!l.anulado).length;
- if(!confirm((todo?`¿Anular todo el presupuesto Nº ${p.id}?`:`¿Anular ${js.length} producto(s) del presupuesto Nº ${p.id}?`)+'\n\nLo descontado vuelve al stock. No se puede deshacer.'))return;
+ if(!await confirma((todo?`¿Anular todo el presupuesto Nº ${p.id}?`:`¿Anular ${js.length} producto(s) del presupuesto Nº ${p.id}?`)+'\n\nLo descontado vuelve al stock. No se puede deshacer.'))return;
  const b=$('banu');b.disabled=true;const{data,error}=await sb.rpc('anular_presupuesto',{p_id:p.id,p_lineas:js});b.disabled=false;
- if(error)return alert(error.code=='PGRST202'?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
+ if(error)return avisa(error.code=='PGRST202'?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
  p.lineas=data.lineas;p.total=data.total;for(const x of data.stock||[]){const q=P.find(y=>y.id==x.id);if(q)q.stock=+x.stock}
  $('danu').close();pintaHist();renderP();toast((todo?`Presupuesto Nº ${p.id} anulado`:`${js.length} producto(s) anulado(s)`)+(+data.baja_deuda>0?` · se le descontaron ${money(data.baja_deuda)} a ${data.cliente} en la Caja`:''));if(+data.baja_deuda>0&&CJ.ok)cargaCaja()}
 // Un presupuesto "sin pedir" es posterior al último pedido enviado y tiene algo vendido (no anulado):
@@ -837,16 +853,16 @@ async function borrarHist(){let ids=[...selH];if(!ids.length)return;
     for(const x of data)if(!x.une&&(x.lineas||[]).some(sinPedir))pend.push(x.id)}
    if(pend.length){pend.sort((a,c)=>a-c);const nums='Nº '+pend.slice(0,15).join(', ')+(pend.length>15?` y ${pend.length-15} más`:'');
     const av=`${pend.length} de los seleccionados todavía NO se pidieron al proveedor (${nums}).\n\nSi los borras, sus ventas desaparecen de la pestaña Pedido y no se van a pedir.\n\nPrimero haz el pedido y pulsa "Marcar pedido como enviado". Si el cliente no compró, usa "Anular".`;
-    if(pend.length==ids.length)return alert('No se borró nada.\n\n'+av);
-    if(!confirm(av+`\n\n¿Borrar solo los otros ${ids.length-pend.length}, que ya se pidieron?`))return;
+    if(pend.length==ids.length)return avisa('No se borró nada.\n\n'+av);
+    if(!await confirma(av+`\n\n¿Borrar solo los otros ${ids.length-pend.length}, que ya se pidieron?`))return;
     const no=new Set(pend);ids=ids.filter(id=>!no.has(id))}}
   const n=ids.length;
-  if(!confirm(`¿Eliminar ${n} presupuesto(s) del historial?\n\nNo se puede deshacer. El stock que descontaron no se devuelve.`))return;
+  if(!await confirma(`¿Eliminar ${n} presupuesto(s) del historial?\n\nNo se puede deshacer. El stock que descontaron no se devuelve.`))return;
 // si se borra un unificado, sus originales vuelven a quedar sueltos
   const fin=H.filter(p=>p.une&&ids.includes(p.id)).map(p=>p.id);if(fin.length){const{error}=await sb.from('presupuestos').update({unificado_en:null}).in('unificado_en',fin);if(error)throw error}
 for(let i=0;i<n;i+=200){const{error}=await sb.from('presupuestos').delete().in('id',ids.slice(i,i+200));if(error)throw error}
   ids.forEach(id=>selH.delete(id));toast(`${n} presupuesto(s) eliminado(s)`);await cargaHist()}
- catch(e){alert(msg(e))}finally{b.disabled=false}}
+ catch(e){avisa(msg(e))}finally{b.disabled=false}}
 
 /* ---------- mosquiteros ---------- */
 // Cotizador de mosquiteros corredizos de una hoja (cubren media ventana). Precios en la tabla mosq_config.
@@ -878,9 +894,9 @@ function abrirPreciosMq(){const v=k=>CM?.[k]!=null?fmtIn(CM[k]):k.includes('_')&
  $('mqcfg').innerHTML=`<div style="grid-column:1/-1"><b style="font-size:14px">Barras de 6 m (precio por color)</b><table><thead><tr><th></th>${MQCOL.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead>
   <tbody>${Object.entries(MQPER).map(([p,n])=>`<tr><td style="text-transform:capitalize">${n}</td>${MQCOL.map(([c])=>`<td><input id="mq_${p}_${c}" inputmode="decimal" value="${v(p+'_'+c)}" style="min-width:0"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`
   +MQC.filter(([k])=>!k.includes('_')||k.startsWith('tornillo_')||k.startsWith('patin_')).map(([k,t,u])=>`<label>${t} (${u})<input id="mq_${k}" inputmode="decimal" value="${v(k)}"></label>`).join('');$('dmq').showModal()}
-async function guardaPreciosMq(){const d={};for(const[k]of MQC){const v=num($('mq_'+k).value);if(v==null||v<0)return alert('Revisa el valor de: '+MQC.find(x=>x[0]==k)[1]);d[k]=v}
+async function guardaPreciosMq(){const d={};for(const[k]of MQC){const v=num($('mq_'+k).value);if(v==null||v<0)return avisa('Revisa el valor de: '+MQC.find(x=>x[0]==k)[1]);d[k]=v}
  const{error}=await sb.from('mosq_config').upsert({id:1,datos:d});
- if(error)return alert(/mosq_config/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
+ if(error)return avisa(/mosq_config/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
  CM=d;$('dmq').close();$('mqav').hidden=true;toast('Precios guardados');pintaMq();pintaListaMq()}
 // Mosquitero del formulario (sin validar)
 // Las medidas se cargan en milímetros (1500). Un número hasta 10 se toma en metros (1,50). Adentro se guardan en metros.
@@ -964,7 +980,7 @@ function dibujaMq(f){if(f.ti=='tope'){const h=f.al,[,cn,K]=colMq(f.co);if(!(h>0)
  s+=`<text x="${x+w/2}" y="${y+hh+20}" text-anchor="middle" font-size="12" fill="${C}">${mtr(a)} m</text><text x="${x+w+(nto>1||reb?20:6)}" y="${y+14}" font-size="12" fill="${C}">${mtr(h)} m</text>`;
  $('mdib').innerHTML=s;$('mdibt').textContent=reb?`${cn} · rebatible de ${mtr(a)} × ${mtr(h)} m · ${f.mo=='comp'?'marco en C':'lateral'} + ${f.nb} bisagras`:f.fi?`${cn} · fijo de ${mtr(a)} × ${mtr(h)} m`:`${cn} · hoja de ${mtr(a)} × ${mtr(h)} m · ventana ${mtr(f.an)} × ${mtr(h)} m`+(supMq()?` · se cotiza con ${Math.round((h+supMq())*1000)} mm de alto`:'')}
 function agregaMq(){const f=formMq(),lista=MQE<0?[...MQ.items,f]:MQ.items.map((x,i)=>i==MQE?f:x),R=calcMq(lista),it=R.items[MQE<0?lista.length-1:MQE];
- if(it.err||R.err)return alert(it.err||R.err);
+ if(it.err||R.err)return avisa(it.err||R.err);
  if(MQE<0)MQ.items.push(f);else MQ.items[MQE]=f;guardaMq();limpiaFormMq();pintaListaMq()}
 function limpiaFormMq(){MQE=-1;for(const i of['mub','man','mal','mtra'])$(i).value='';$('mca').value=1;$('mtrc').checked=false;$('mtr').value=1;$('mfi').checked=false;$('mti').value='';$('mab').value='';$('mmo').value='lat';$('mbi').value=4;$('mpa').checked=false;$('mton').value=1;$('mto').checked=$('mli').value!='Herrero';
  $('mag').textContent='Agregar a la lista';$('mcan').hidden=true;pintaMq()}
@@ -972,7 +988,7 @@ function editaMq(i){const x=MQ.items[i];MQE=i;$('mti').value=x.ti||'';$('mab').v
  $('mtrc').checked=ntrMq(x)>0;$('mtr').value=ntrMq(x)||1;$('mtra').value=(Array.isArray(x.tra)?x.tra:x.tra?[x.tra]:[]).map(t=>Math.round(t*1000)).join(' ');$('mto').checked=ntoMq(x)>0;$('mton').value=ntoMq(x)||1;$('mag').textContent='Guardar cambios';$('mcan').hidden=false;
  pintaMq();$('t-mos').scrollIntoView({behavior:'smooth'})}
 function quitaMq(i){MQ.items.splice(i,1);if(MQE==i)limpiaFormMq();else if(MQE>i)MQE--;guardaMq();pintaListaMq();pintaMq()}
-function nuevoMq(){if(cambiosMq()&&!confirm('El presupuesto actual tiene cambios sin guardar. ¿Empezar uno nuevo igual?'))return;
+async function nuevoMq(){if(cambiosMq()&&!await confirma('El presupuesto actual tiene cambios sin guardar. ¿Empezar uno nuevo igual?'))return;
  MQ={id:null,cliente:'',tel:'',dir:'',colocacion:0,items:[]};guardaMq();$('mmed').checked=true;for(const i of['mcl','mtel','mdir','mcol'])$(i).value='';limpiaFormMq();pintaListaMq();pintaHistMq()}
 const descMq=x=>x.ti=='tope'?`Tope de mosquitero línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — alto ${mtr(x.al)} m`:`Mosquitero ${x.ab=='pvr'?'rebatible ':x.fi?'fijo ':''}línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — ${x.fi||x.ab=='pvr'?'medida':'ventana'} ${mtr(x.an)} × ${mtr(x.al)} m`,extraMq=x=>[x.ub,x.ab=='pvr'&&(x.mo=='comp'?'marco en C':'lateral')+` + ${x.nb} bisagras`,x.ab=='pvr'&&x.pa&&'con pasador',ntrMq(x)==1&&'con travesaño',ntrMq(x)>1&&`con ${ntrMq(x)} travesaños`,ntoMq(x)==1&&'con tope',ntoMq(x)>1&&`con ${ntoMq(x)} topes`].filter(Boolean).join(' · ');
 // Código de cada renglón: V1, V2… (ventanas), PV1… (puerta-ventanas), T1… (topes de repuesto)
@@ -1021,7 +1037,7 @@ function dibPdfMq(d,x,bx,by,bw,bh){const K=colMq(x.co)[2].match(/\w\w/g).map(h=>
  cota(ox,oy+hh+2.5,ox+w,oy+hh+2.5,mmTxt(a));cota(ox+w+dx,oy,ox+w+dx,oy+hh,mmTxt(h),true)}
 // PDF para el cliente: un recuadro por mosquitero con dibujo, detalle y precio, sin costos ni ganancia
 async function pdfMq(prev){const R=calcMq(MQ.items);
- if(prev){if(!R.items.length)return alert('Agrega al menos un mosquitero.');const mal=R.items.find(x=>x.err);if(mal||R.err)return alert(mal?.err||R.err)}
+ if(prev){if(!R.items.length)return avisa('Agrega al menos un mosquitero.');const mal=R.items.find(x=>x.err);if(mal||R.err)return avisa(mal?.err||R.err)}
  else{if(!await guardaHistMq(true))return;Object.assign(R,calcMq(MQ.items))}
  const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=[13,13,13],G=[120,120,120],CL=[226,226,226],W=196,X=14,col=+MQ.colocacion||0;
  const f=new Date(),fecha=f.toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'numeric'});
@@ -1084,18 +1100,18 @@ async function pdfMq(prev){const R=calcMq(MQ.items);
  const marca=(CFG.NOMBRE||'').toUpperCase();d.setFont('helvetica','bold');d.setFontSize(7);const mw=d.getTextWidth(marca)+.6*(marca.length-1)+10;
  d.setFillColor(...NEG);d.roundedRect(W-mw,y-4,mw,6,3,3,'F');d.setTextColor(255);esp(marca,W-5,y,.6,true);
  const np=d.getNumberOfPages();for(let k=1;k<=np;k++){d.setPage(k);d.setFont('helvetica','normal');d.setFontSize(7.5);d.setTextColor(...G);d.text(`Página ${k} de ${np}`,W,290,{align:'right'})}
- if(prev){const w=open(URL.createObjectURL(d.output('blob')),'_blank');if(!w)alert('El navegador bloqueó la ventana de la vista previa. Permite las ventanas emergentes para esta página y vuelve a intentar.');return}
+ if(prev){const w=open(URL.createObjectURL(d.output('blob')),'_blank');if(!w)avisa('El navegador bloqueó la ventana de la vista previa. Permite las ventanas emergentes para esta página y vuelve a intentar.');return}
  const nom=('mosquiteros-'+MQ.id+(MQ.cliente?'-'+MQ.cliente:'')+'-'+f.toISOString().slice(0,10)).normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\w-]+/g,'-').toLowerCase()+'.pdf';
  const file=new File([d.output('blob')],nom,{type:'application/pdf'});
  if(matchMedia('(pointer:coarse)').matches&&navigator.canShare?.({files:[file]}))navigator.share({files:[file],title:'Presupuesto de mosquiteros'}).catch(e=>{if(e.name!='AbortError')d.save(nom)});else d.save(nom)}
 // Guarda el presupuesto en el historial de mosquiteros (nuevo o reemplazando el abierto)
-async function guardaHistMq(silencio){const R=calcMq(MQ.items);if(!R.items.length){alert('Agrega al menos un mosquitero.');return false}
- const mal=R.items.find(x=>x.err);if(mal||R.err){alert(mal?.err||R.err);return false}
- if(!(MQ.cliente||'').trim()){alert('Escribe el nombre del cliente para guardar el presupuesto.');$('mcl').focus();return false}
+async function guardaHistMq(silencio){const R=calcMq(MQ.items);if(!R.items.length){avisa('Agrega al menos un mosquitero.');return false}
+ const mal=R.items.find(x=>x.err);if(mal||R.err){avisa(mal?.err||R.err);return false}
+ if(!(MQ.cliente||'').trim()){avisa('Escribe el nombre del cliente para guardar el presupuesto.');$('mcl').focus();return false}
  const o={cliente:MQ.cliente.trim(),telefono:(MQ.tel||'').trim()||null,direccion:(MQ.dir||'').trim()||null,total:R.total,colocacion:+MQ.colocacion||0,
   items:R.items.map(x=>({ti:x.ti||'',ab:x.ab||'',mo:x.mo||'',nb:x.nb||0,pa:!!x.pa,ub:x.ub,li:x.li,co:x.co,fi:!!x.fi,an:x.an,al:x.al,ca:x.ca,tr:x.tr,tra:x.tra,to:x.to,precio:x.precio,sm:!!MQ.sm}))};
  const{data,error}=await(MQ.id?sb.from('mosq_presupuestos').update(o).eq('id',MQ.id):sb.from('mosq_presupuestos').insert(o)).select('id');
- if(error){alert(/mosq_presupuestos/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':'No se pudo guardar: '+msg(error));return false}
+ if(error){avisa(/mosq_presupuestos/.test(error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':'No se pudo guardar: '+msg(error));return false}
  if(!data.length){MQ.id=null;return guardaHistMq(silencio)}  // lo habían borrado: se guarda como nuevo
  MQ.id=data[0].id;MQ.firma=firmaMq();guardaMq();cargaHistMq();if(!silencio)toast(`Presupuesto Nº ${MQ.id} guardado`);return true}
 async function cargaHistMq(){const{data,error}=await sb.from('mosq_presupuestos').select('*').order('id',{ascending:false}).limit(300);
@@ -1108,14 +1124,14 @@ function pintaHistMq(){const b=norm($('mhb').value.trim()),L=HMQ.filter(x=>!b||n
   <td class="n"><div class="acc" style="flex-wrap:nowrap"><button class="s" onclick="abreHistMq(${x.id})">Abrir</button><button class="s" title="Borrar" onclick="borraHistMq(${x.id})">✕</button></div></td></tr>`).join('')
   ||`<tr><td colspan="4" class="m">${HMQ.length?'Ningún presupuesto coincide con la búsqueda.':'Todavía no guardaste presupuestos de mosquiteros.'}</td></tr>`}
 // Abre un presupuesto guardado para verlo, cambiarlo o volver a sacar el PDF (se recalcula con los precios de hoy)
-function abreHistMq(id){const x=HMQ.find(h=>h.id==id);if(!x)return;
- if(cambiosMq()&&MQ.id!=id&&!confirm('El presupuesto que estás armando tiene cambios sin guardar y se va a reemplazar. ¿Continuar?'))return;
+async function abreHistMq(id){const x=HMQ.find(h=>h.id==id);if(!x)return;
+ if(cambiosMq()&&MQ.id!=id&&!await confirma('El presupuesto que estás armando tiene cambios sin guardar y se va a reemplazar. ¿Continuar?'))return;
  MQ={id:x.id,cliente:x.cliente||'',tel:x.telefono||'',dir:x.direccion||'',colocacion:+x.colocacion||0,sm:!!x.items?.[0]?.sm,items:(x.items||[]).map(({precio,sm,...i})=>i)};MQ.firma=firmaMq();guardaMq();$('mmed').checked=!MQ.sm;
  $('mcl').value=MQ.cliente;$('mtel').value=MQ.tel;$('mdir').value=MQ.dir;$('mcol').value=MQ.colocacion?fmtIn(MQ.colocacion):'';limpiaFormMq();pintaListaMq();pintaHistMq();
- const R=calcMq(MQ.items);if(Math.round(R.total)!=Math.round(+x.total))alert(`Ojo: los precios cambiaron desde que se guardó este presupuesto.\n\nCuando se guardó daba ${money(x.total)} y con los precios de hoy da ${money(R.total)}.\n\nSi lo guardas otra vez o generas el PDF, queda con los precios de hoy.`);
+ const R=calcMq(MQ.items);if(Math.round(R.total)!=Math.round(+x.total))avisa(`Ojo: los precios cambiaron desde que se guardó este presupuesto.\n\nCuando se guardó daba ${money(x.total)} y con los precios de hoy da ${money(R.total)}.\n\nSi lo guardas otra vez o generas el PDF, queda con los precios de hoy.`);
  $('t-mos').scrollIntoView({behavior:'smooth'})}
-async function borraHistMq(id){const x=HMQ.find(h=>h.id==id);if(!confirm(`¿Borrar el presupuesto de mosquiteros Nº ${id} (${x?.cliente||'-'})?\n\nNo se puede deshacer.`))return;
- const{error}=await sb.from('mosq_presupuestos').delete().eq('id',id);if(error)return alert(msg(error));
+async function borraHistMq(id){const x=HMQ.find(h=>h.id==id);if(!await confirma(`¿Borrar el presupuesto de mosquiteros Nº ${id} (${x?.cliente||'-'})?\n\nNo se puede deshacer.`))return;
+ const{error}=await sb.from('mosq_presupuestos').delete().eq('id',id);if(error)return avisa(msg(error));
  if(MQ.id==id){MQ.id=null;guardaMq()}toast(`Presupuesto Nº ${id} borrado`);cargaHistMq()}
 
 /* ---------- clientes ---------- */
@@ -1160,10 +1176,10 @@ document.addEventListener('keydown',e=>{if(e.key=='Escape')cierraLCl()});
 function abrePago(id,cl,total,tel){if(!CLI_OK||!(total>0))return;PAGO={id,cl,total,tel};
  $('pgt').textContent=`Presupuesto Nº ${id}${cl?' · '+cl:''} · Total ${money(total)}`;$('pgcli').hidden=!cl;$('pgm').value='';$('dpago').showModal()}
 async function pagoCaja(k){const{id,cl,total,tel}=PAGO,m=k=='todo'?total:k=='debe'?0:num($('pgm').value)||0;
- if(k=='parte'&&!(m>0&&m<total))return alert(`Escribe cuánto pagó: menos de ${money(total)}.`);
+ if(k=='parte'&&!(m>0&&m<total))return avisa(`Escribe cuánto pagó: menos de ${money(total)}.`);
  const{data:cf}=await sb.from('caja_config').select('divisor').eq('id',1).maybeSingle(),c=m/(+cf?.divisor||1.3),det='Presupuesto Nº '+id;
  const o=m>0?{tipo:'cobro',cliente:cl||null,detalle:det,monto:m,capital:c,ganancia:m-c,deuda:total-m}:{tipo:'fiado',cliente:cl,detalle:det,monto:total,deuda:total};
- await asegCli(cl,tel);const{error}=await sb.from('caja_mov').insert(o);if(error)return alert(msg(error));$('dpago').close();toast('Cargado en la Caja')}
+ await asegCli(cl,tel);const{error}=await sb.from('caja_mov').insert(o);if(error)return avisa(msg(error));$('dpago').close();toast('Cargado en la Caja')}
 
 /* ---------- caja ---------- */
 // Saldos: la suma de los movimientos. Lo que entra se divide en capital y ganancia; las compras salen del capital y los gastos de la ganancia.
@@ -1196,7 +1212,7 @@ function pintaCaja(){const cap=sumaCj('capital'),gan=sumaCj('ganancia'),D=saldos
  $('cjmov').innerHTML=N.map(m=>`<tr><td><div class="nom">${esc(CJNOM[m.tipo]||m.tipo)}${m.cliente?' · '+esc(m.cliente):''}${m.detalle?' · '+esc(m.detalle):''}${m.bulto?' · bulto':''}</div><div class="m" style="font-size:12px">${new Date(m.fecha).toLocaleDateString('es',{day:'2-digit',month:'2-digit'})} · ${efe(m)||money(m.monto)}</div></td><td class="n"><button class="s" title="Borrar movimiento" onclick="borraCaja(${m.id})">✕</button></td></tr>`).join('')
   ||'<tr><td class="m">Todavía no hay movimientos.</td></tr>';
  $('cjdiv').value=fmtIn(CJ.cfg.divisor)}
-function abreCaja(t){if(!CJ.ok)return alert('La Caja todavía no está lista. Revisa el aviso de arriba.');CJT=t;$('cjt').textContent=CJTIT[t];
+function abreCaja(t){if(!CJ.ok)return avisa('La Caja todavía no está lista. Revisa el aviso de arriba.');CJT=t;$('cjt').textContent=CJTIT[t];
  const ver=(i,v)=>$(i).hidden=!v;ver('cjlcl',t=='cobro'||t=='deuda');ver('cjlte',t=='deuda');ver('cjlpr',t=='compra');ver('cjlga',t=='gasto');ver('cjlde',['compra','gasto'].includes(t));ver('cjlg2',t=='inicial');ver('cjlpd',t=='cobro');ver('cjlnv',t=='cobro');ver('cjlbu',t=='compra');
  $('cjmt').textContent=t=='inicial'?'Capital inicial':t=='cobro'?'Plata que entró':t=='deuda'?'Cuánto debe':'Monto';
  for(const i of['cjcl','cjte','cjde','cjm','cjm2','cjnv'])$(i).value='';$('cjpd').checked=$('cjbu').checked=false;$('cjpr').selectedIndex=$('cjga').selectedIndex=0;avisaCaja();$('dcaja').showModal()}
@@ -1206,19 +1222,19 @@ function avisaCaja(){let t='';const m=num($('cjm').value)||0,div=+CJ.cfg.divisor
   const sal=saldosCaja().find(x=>norm(x.nombre)==norm($('cjcl').value.trim()));if(sal)t+=(t?'. ':'')+`Debe ${money(sal.saldo)}.`}
  $('cjav2').textContent=t}
 async function guardaCaja(e){e.preventDefault();const t=CJT,m=num($('cjm').value)||0,cl=(t=='deuda'?cliFinal($('cjcl').value.trim(),$('cjte').value):$('cjcl').value.trim())||null,div=+CJ.cfg.divisor||1.3;let o;
- if(t=='cobro'){const nv=num($('cjnv').value)||0,pd=$('cjpd').checked;if(!(m>0)&&!(nv>0))return alert('Escribe cuánta plata entró.');if((nv>0||pd)&&!cl)return alert('Escribe el nombre del cliente para llevar su deuda.');
-  const sal=saldosCaja().find(x=>norm(x.nombre)==norm(cl||''))?.saldo||0;if(pd&&m>sal+.009&&!confirm(`${cl} debe ${money(sal)} y estás cargando ${money(m)}. ¿Guardar igual?`))return;
+ if(t=='cobro'){const nv=num($('cjnv').value)||0,pd=$('cjpd').checked;if(!(m>0)&&!(nv>0))return avisa('Escribe cuánta plata entró.');if((nv>0||pd)&&!cl)return avisa('Escribe el nombre del cliente para llevar su deuda.');
+  const sal=saldosCaja().find(x=>norm(x.nombre)==norm(cl||''))?.saldo||0;if(pd&&m>sal+.009&&!await confirma(`${cl} debe ${money(sal)} y estás cargando ${money(m)}. ¿Guardar igual?`))return;
   const c=m/div;o=m>0?{tipo:'cobro',cliente:cl,monto:m,capital:c,ganancia:m-c,deuda:nv-(pd?m:0)}:{tipo:'fiado',cliente:cl,monto:nv,deuda:nv}}
- else if(t=='deuda'){if(!cl||!(m>0))return alert('Escribe el cliente y cuánto debe.');const ya=saldosCaja().find(x=>norm(x.nombre)==norm(cl))?.saldo||0;if(ya&&!confirm(`${cl} ya tiene saldo: ${saldoTxt(ya)}.
+ else if(t=='deuda'){if(!cl||!(m>0))return avisa('Escribe el cliente y cuánto debe.');const ya=saldosCaja().find(x=>norm(x.nombre)==norm(cl))?.saldo||0;if(ya&&!await confirma(`${cl} ya tiene saldo: ${saldoTxt(ya)}.
 
 Se le va a sumar ${money(m)}. Para poner otro saldo, usa "Corregir saldo" en su ficha. ¿Sumar igual?`))return;o={tipo:'fiado',cliente:cl,detalle:'Deuda inicial',monto:m,deuda:m}}
- else if(t=='inicial'){const g=num($('cjm2').value)||0;if(!m&&!g)return alert('Escribe el capital o la ganancia inicial.');o={tipo:'inicial',monto:m+g,capital:m,ganancia:g}}
- else{if(!(m>0))return alert('Escribe el monto.');const de=$('cjde').value.trim();
+ else if(t=='inicial'){const g=num($('cjm2').value)||0;if(!m&&!g)return avisa('Escribe el capital o la ganancia inicial.');o={tipo:'inicial',monto:m+g,capital:m,ganancia:g}}
+ else{if(!(m>0))return avisa('Escribe el monto.');const de=$('cjde').value.trim();
   if(t=='gasto')o={tipo:'gasto',detalle:$('cjga').value+(de?': '+de:''),monto:m,ganancia:-m};
-  else if(t=='retiro'){const gan=sumaCj('ganancia');if(m>gan&&!confirm(`Hay ${money(gan)} de ganancia y vas a retirar ${money(m)}. ¿Guardar igual?`))return;o={tipo:'retiro',detalle:de||null,monto:m,ganancia:-m}}
-  else{const cap=sumaCj('capital');if(m>cap&&!confirm(`No alcanza el capital: hay ${money(cap)} y la compra es de ${money(m)}.\n\nLa ganancia no se toca: el capital va a quedar en ${money(cap-m)}. ¿Guardar igual?`))return;
+  else if(t=='retiro'){const gan=sumaCj('ganancia');if(m>gan&&!await confirma(`Hay ${money(gan)} de ganancia y vas a retirar ${money(m)}. ¿Guardar igual?`))return;o={tipo:'retiro',detalle:de||null,monto:m,ganancia:-m}}
+  else{const cap=sumaCj('capital');if(m>cap&&!await confirma(`No alcanza el capital: hay ${money(cap)} y la compra es de ${money(m)}.\n\nLa ganancia no se toca: el capital va a quedar en ${money(cap-m)}. ¿Guardar igual?`))return;
    o={tipo:'compra',detalle:$('cjpr').value+(de?': '+de:''),monto:m,capital:-m,bulto:$('cjbu').checked}}}
- await asegCli(cl,t=='deuda'?$('cjte').value.trim():null);const b=$('cjok');b.disabled=true;const{error}=await sb.from('caja_mov').insert(o);b.disabled=false;if(error)return alert(msg(error));$('dcaja').close();toast('Guardado');cargaCaja()}
+ await asegCli(cl,t=='deuda'?$('cjte').value.trim():null);const b=$('cjok');b.disabled=true;const{error}=await sb.from('caja_mov').insert(o);b.disabled=false;if(error)return avisa(msg(error));$('dcaja').close();toast('Guardado');cargaCaja()}
 // Ficha del cliente: lo que se le lleva suma a su saldo y lo que paga lo baja (y entra a la caja)
 let CJC='';
 const saldoCli=()=>(saldosCaja().find(x=>norm(x.nombre)==norm(CJC))?.saldo)||0;
@@ -1230,17 +1246,17 @@ function pintaCli(){const sal=saldoCli(),le=num($('clle').value)||0,pa=num($('cl
   return`<tr><td>${new Date(m.fecha).toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'2-digit'})}</td><td>${q}${m.detalle&&!/^(Deuda inicial|Ajuste de saldo)$/.test(m.detalle)?`<div class="m" style="font-size:12px">${esc(m.detalle)}</div>`:''}</td><td class="n">${saldoTxt(acu)}</td></tr>`}).reverse();
  $('clmov').innerHTML=F.join('')||'<tr><td colspan="3" class="m">Sin movimientos.</td></tr>'}
 // Guarda o cambia el teléfono del cliente (si todavía no estaba en la lista de clientes, lo agrega)
-async function guardaTelCli(){if(!CLI_OK)return alert('Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase.');
+async function guardaTelCli(){if(!CLI_OK)return avisa('Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase.');
  const tel=$('clte').value.trim()||null,x=CLI.find(c=>norm(c.nombre)==norm(CJC)),otro=cliDeTel(tel);
- if(otro&&otro!==x)return alert(`Ese teléfono ya es de ${otro.nombre}. Si son la misma persona, avisá para juntar las cuentas.`);
- if(x){const{error}=await sb.from('clientes').update({telefono:tel}).eq('id',x.id);if(error)return alert(msg(error));x.telefono=tel}
- else{const{data,error}=await sb.from('clientes').insert({nombre:CJC,telefono:tel}).select().single();if(error)return alert(msg(error));CLI.push(data);CLI.sort((a,b)=>a.nombre.localeCompare(b.nombre));pintaLisCli()}
+ if(otro&&otro!==x)return avisa(`Ese teléfono ya es de ${otro.nombre}. Si son la misma persona, avisá para juntar las cuentas.`);
+ if(x){const{error}=await sb.from('clientes').update({telefono:tel}).eq('id',x.id);if(error)return avisa(msg(error));x.telefono=tel}
+ else{const{data,error}=await sb.from('clientes').insert({nombre:CJC,telefono:tel}).select().single();if(error)return avisa(msg(error));CLI.push(data);CLI.sort((a,b)=>a.nombre.localeCompare(b.nombre));pintaLisCli()}
  toast('Teléfono guardado')}
 // Cambia el nombre del cliente en la Caja, la lista de clientes y el Historial. Si el nombre nuevo ya es de otro cliente, junta las cuentas.
-async function renombraCli(viejo){if(!CJ.ok)return;const nv=(prompt(`Nuevo nombre para ${viejo}:`,viejo)||'').trim().replace(/\s+/g,' ');
+async function renombraCli(viejo){if(!CJ.ok)return;const nv=(await pide(`Nuevo nombre para ${viejo}:`,viejo)||'').trim().replace(/\s+/g,' ');
  if(!nv||nv==viejo)return;const k=norm(viejo),x=CLI.find(c=>norm(c.nombre)==k);
  const otro=norm(nv)!=k&&(CLI.find(c=>norm(c.nombre)==norm(nv))||saldosCaja().find(c=>norm(c.nombre)==norm(nv)));const fin=otro?otro.nombre:nv;
- if(otro&&!confirm(`Ya hay un cliente llamado ${otro.nombre}.\n\n¿Es la misma persona? Si aceptas, las cuentas de los dos se juntan en una sola, a nombre de ${otro.nombre}. No se puede deshacer.`))return;
+ if(otro&&!await confirma(`Ya hay un cliente llamado ${otro.nombre}.\n\n¿Es la misma persona? Si aceptas, las cuentas de los dos se juntan en una sola, a nombre de ${otro.nombre}. No se puede deshacer.`))return;
  const ids=CJ.mov.filter(m=>m.cliente&&norm(m.cliente)==k).map(m=>m.id),esp=[...new Set([viejo,...CJ.mov.filter(m=>m.cliente&&norm(m.cliente)==k).map(m=>m.cliente)])];
  try{if(ids.length){const{error}=await sb.from('caja_mov').update({cliente:fin}).in('id',ids);if(error)throw error}
   for(const e of esp){const{error}=await sb.from('presupuestos').update({cliente:fin}).ilike('cliente',e.replace(/[\\%_]/g,'\\$&'));if(error)throw error}
@@ -1249,31 +1265,31 @@ async function renombraCli(viejo){if(!CJ.ok)return;const nv=(prompt(`Nuevo nombr
     const{error}=await sb.from('clientes').delete().eq('id',x.id);if(error)throw error;CLI=CLI.filter(c=>c!==x)}
    else{const{error}=await sb.from('clientes').update({nombre:fin}).eq('id',x.id);if(error)throw error;x.nombre=fin}
    CLI.sort((a,b)=>a.nombre.localeCompare(b.nombre));pintaLisCli()}}
- catch(e){alert('No se pudo cambiar el nombre: '+msg(e));return cargaCaja()}
+ catch(e){avisa('No se pudo cambiar el nombre: '+msg(e));return cargaCaja()}
  if(norm(CJC)==k){CJC=fin;$('clt').textContent=fin}toast(otro?`Cuentas juntadas en ${fin}`:'Nombre cambiado');await cargaCaja();if($('dcli').open)pintaCli()}
 // Corrige el saldo sin mover la caja: lo que entró de verdad se carga con Pagó
-async function ajustaCli(){const v=num($('claj').value),sal=saldoCli();if(v==null||!(v>=0))return alert('Escribe cuánto debe en realidad (0 si está al día).');const d=v-sal;
- if(Math.abs(d)<.01)return alert('Ese ya es su saldo.');if(!confirm(`El saldo de ${CJC} pasa de ${saldoTxt(sal)} a ${saldoTxt(v)}.\n\nNo cambia la plata de la caja. ¿Corregir?`))return;
- const{error}=await sb.from('caja_mov').insert({tipo:'fiado',cliente:CJC,detalle:'Ajuste de saldo',monto:Math.abs(d),deuda:d});if(error)return alert(msg(error));
+async function ajustaCli(){const v=num($('claj').value),sal=saldoCli();if(v==null||!(v>=0))return avisa('Escribe cuánto debe en realidad (0 si está al día).');const d=v-sal;
+ if(Math.abs(d)<.01)return avisa('Ese ya es su saldo.');if(!await confirma(`El saldo de ${CJC} pasa de ${saldoTxt(sal)} a ${saldoTxt(v)}.\n\nNo cambia la plata de la caja. ¿Corregir?`))return;
+ const{error}=await sb.from('caja_mov').insert({tipo:'fiado',cliente:CJC,detalle:'Ajuste de saldo',monto:Math.abs(d),deuda:d});if(error)return avisa(msg(error));
  $('claj').value='';toast('Saldo corregido');await cargaCaja();pintaCli()}
 // Elimina al cliente y su deuda. Lo que pagó es plata real: queda en la Caja, sin cliente.
 async function borraCli(){const sal=saldoCli(),M=CJ.mov.filter(m=>m.cliente&&norm(m.cliente)==norm(CJC)),cob=M.filter(m=>m.tipo=='cobro').map(m=>m.id),deu=M.filter(m=>m.tipo!='cobro').map(m=>m.id),c=CLI.find(x=>norm(x.nombre)==norm(CJC));
- if(!confirm(`¿Eliminar a ${CJC}?\n\nSe borra su cuenta${sal>.009?` y su deuda de ${money(sal)}`:''}. No se puede deshacer.`+(cob.length?`\n\nLo que ya pagó sigue en la Caja, sin el nombre del cliente.`:'')))return;
+ if(!await confirma(`¿Eliminar a ${CJC}?\n\nSe borra su cuenta${sal>.009?` y su deuda de ${money(sal)}`:''}. No se puede deshacer.`+(cob.length?`\n\nLo que ya pagó sigue en la Caja, sin el nombre del cliente.`:'')))return;
  try{if(cob.length){const{error}=await sb.from('caja_mov').update({cliente:null,deuda:0}).in('id',cob);if(error)throw error}
   if(deu.length){const{error}=await sb.from('caja_mov').delete().in('id',deu);if(error)throw error}
   if(c){const{error}=await sb.from('clientes').delete().eq('id',c.id);if(error)throw error;CLI=CLI.filter(x=>x!==c);pintaLisCli()}}
- catch(e){alert('No se pudo eliminar: '+msg(e));return cargaCaja()}
+ catch(e){avisa('No se pudo eliminar: '+msg(e));return cargaCaja()}
  $('dcli').close();toast('Cliente eliminado');cargaCaja()}
 async function guardaCli(e){e.preventDefault();const le=num($('clle').value)||0,pa=num($('clpa').value)||0,div=+CJ.cfg.divisor||1.3,sal=saldoCli(),de=$('clde').value.trim()||null;
- if(!(le>0)&&!(pa>0))return alert('Escribe cuánto le llevaron o cuánto pagó.');
- if(pa>sal+le+.009&&!confirm(`Está pagando más de lo que debe: le quedaría a favor ${money(pa-sal-le)}. ¿Guardar igual?`))return;
+ if(!(le>0)&&!(pa>0))return avisa('Escribe cuánto le llevaron o cuánto pagó.');
+ if(pa>sal+le+.009&&!await confirma(`Está pagando más de lo que debe: le quedaría a favor ${money(pa-sal-le)}. ¿Guardar igual?`))return;
  const c=pa/div,o=pa>0?{tipo:'cobro',cliente:CJC,detalle:de,monto:pa,capital:c,ganancia:pa-c,deuda:le-pa}:{tipo:'fiado',cliente:CJC,detalle:de,monto:le,deuda:le};
- const b=$('clok');b.disabled=true;const{error}=await sb.from('caja_mov').insert(o);b.disabled=false;if(error)return alert(msg(error));
+ const b=$('clok');b.disabled=true;const{error}=await sb.from('caja_mov').insert(o);b.disabled=false;if(error)return avisa(msg(error));
  for(const k of['clle','clpa','clde'])$(k).value='';toast('Guardado');await cargaCaja();pintaCli()}
-async function borraCaja(id){const m=CJ.mov.find(x=>x.id==id);if(!m||!confirm(`¿Borrar este movimiento de ${money(m.monto)}?\n\nLos saldos se recalculan.`))return;
- const{error}=await sb.from('caja_mov').delete().eq('id',id);if(error)return alert(msg(error));toast('Movimiento borrado');cargaCaja()}
-async function guardaDivisor(){const d=num($('cjdiv').value);if(!(d>=1))return alert('Escribe un número como 1,3.');
- const{error}=await sb.from('caja_config').update({divisor:d}).eq('id',1);if(error)return alert(msg(error));CJ.cfg.divisor=d;toast('Guardado. Se aplica desde ahora; lo ya cargado no cambia.')}
+async function borraCaja(id){const m=CJ.mov.find(x=>x.id==id);if(!m||!await confirma(`¿Borrar este movimiento de ${money(m.monto)}?\n\nLos saldos se recalculan.`))return;
+ const{error}=await sb.from('caja_mov').delete().eq('id',id);if(error)return avisa(msg(error));toast('Movimiento borrado');cargaCaja()}
+async function guardaDivisor(){const d=num($('cjdiv').value);if(!(d>=1))return avisa('Escribe un número como 1,3.');
+ const{error}=await sb.from('caja_config').update({divisor:d}).eq('id',1);if(error)return avisa(msg(error));CJ.cfg.divisor=d;toast('Guardado. Se aplica desde ahora; lo ya cargado no cambia.')}
 
 /* ---------- copia de seguridad ---------- */
 // Descarga un Excel con todo lo guardado en Supabase, una hoja por tabla.
@@ -1298,7 +1314,7 @@ async function copiaSeguridad(){const b=$('bcopia');b.disabled=true;b.textConten
   const hoy=new Date(),f=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
   XLSX.writeFile(wb,`copia-${(CFG.NOMBRE||'negocio').normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\w]+/g,'-')}-${f}.xlsx`);
   toast(`Copia descargada: ${pr.length} productos y ${pres.length} presupuestos`)}
- catch(e){alert('No se pudo hacer la copia: '+msg(e))}
+ catch(e){avisa('No se pudo hacer la copia: '+msg(e))}
  finally{b.disabled=false;b.textContent='Copia de seguridad'}}
 
 /* ---------- pedidos web (carrito del catálogo) ---------- */
@@ -1324,43 +1340,43 @@ function pintaWeb(){$('web').innerHTML=W.map((s,i)=>{const tel=s.telefono?`<a hr
  $('wbar').hidden=!selW.size;$('wsel').textContent=selW.size}
 // Cambiar la cantidad de un producto de un pedido web nuevo (0 = quitarlo). La base ajusta el stock reservado.
 async function cantWeb(i,pid,v){const s=W[i],l=(s.lineas||[]).find(x=>x.id==pid),n=num(v);if(!l)return;
- if(n==null||n<0){pintaWeb();return alert('Cantidad no válida.')}if(n==+l.cantidad)return;
- if(n==0&&!confirm(`¿Quitar "${l.nombre}" del pedido de ${s.cliente}?\n\nLo reservado vuelve al stock.`))return pintaWeb();
+ if(n==null||n<0){pintaWeb();return avisa('Cantidad no válida.')}if(n==+l.cantidad)return;
+ if(n==0&&!await confirma(`¿Quitar "${l.nombre}" del pedido de ${s.cliente}?\n\nLo reservado vuelve al stock.`))return pintaWeb();
  const{data,error}=await sb.rpc('cantidad_solicitud',{p_id:s.id,p_producto:pid,p_cantidad:n});
- if(error){pintaWeb();return alert(error.code=='PGRST202'?'Falta actualizar la base: ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run).':msg(error))}
+ if(error){pintaWeb();return avisa(error.code=='PGRST202'?'Falta actualizar la base: ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run).':msg(error))}
  s.lineas=data.lineas;s.total=data.total;const p=P.find(x=>x.id==pid);if(p&&data.stock!=null)p.stock=+data.stock;
  pintaWeb();const nl=s.lineas.find(x=>x.id==pid);
  toast(!nl?'Producto quitado del pedido':+nl.reservado<n?`Cantidad ${fmt(n)} · solo hay ${fmt(+nl.reservado)} en stock para reservar`:`Cantidad cambiada a ${fmt(n)}`)}
 // Borra los pedidos web ya presupuestados y los descartados (los nuevos tienen stock reservado: no se tocan).
 // Los presupuestos del Historial no se borran: guardan sus propios productos y cantidades.
 async function limpiarWeb(){const c=async e=>(await sb.from('solicitudes').select('id',{count:'exact',head:true}).eq('estado',e)).count||0;
- const np=await c('presupuestado'),nd=await c('descartado');if(!np&&!nd)return alert('No hay pedidos web presupuestados ni descartados para eliminar.');
- if(!confirm(`¿Eliminar ${np} pedido(s) web ya presupuestado(s) y ${nd} descartado(s)?
+ const np=await c('presupuestado'),nd=await c('descartado');if(!np&&!nd)return avisa('No hay pedidos web presupuestados ni descartados para eliminar.');
+ if(!await confirma(`¿Eliminar ${np} pedido(s) web ya presupuestado(s) y ${nd} descartado(s)?
 
 No se puede deshacer. Los pedidos nuevos no se tocan, y los presupuestos del Historial y el stock quedan como están.`))return;
  const{error}=await sb.from('solicitudes').delete().in('estado',['presupuestado','descartado']);
- if(error)return alert(msg(error));alert(`Listo: se eliminaron ${np+nd} pedido(s) web.`);cargaWeb()}
+ if(error)return avisa(msg(error));avisa(`Listo: se eliminaron ${np+nd} pedido(s) web.`);cargaWeb()}
 // Borra los pedidos web marcados (solo presupuestados o descartados)
 async function borrarWeb(){const ids=[...selW],n=ids.length;if(!n)return;
- if(!confirm(`¿Eliminar ${n} pedido(s) web seleccionado(s)?
+ if(!await confirma(`¿Eliminar ${n} pedido(s) web seleccionado(s)?
 
 No se puede deshacer. Los presupuestos del Historial y el stock quedan como están.`))return;
  const{error}=await sb.from('solicitudes').delete().in('id',ids).neq('estado','nuevo');
- if(error)return alert(msg(error));selW.clear();cargaWeb()}
-async function estadoWeb(i,e){const s=W[i];if(e=='descartado'&&!confirm(`¿Descartar el pedido Nº ${s.id} de ${s.cliente}?`))return;
+ if(error)return avisa(msg(error));selW.clear();cargaWeb()}
+async function estadoWeb(i,e){const s=W[i];if(e=='descartado'&&!await confirma(`¿Descartar el pedido Nº ${s.id} de ${s.cliente}?`))return;
  // descartar devuelve al stock lo reservado; recuperar lo vuelve a reservar (según el stock de ahora)
  const{error}=await sb.rpc('estado_solicitud',{p_id:s.id,p_estado:e});
- if(error)return alert(error.code=='PGRST202'?'Falta actualizar la base: ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run).':'No se pudo cambiar el pedido: '+msg(error));
+ if(error)return avisa(error.code=='PGRST202'?'Falta actualizar la base: ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run).':'No se pudo cambiar el pedido: '+msg(error));
  load();
  if(SOL==s.id){SOL=null;guardaLS('sol','');pintaSol()}toast(e=='nuevo'?'Pedido recuperado':'Pedido descartado');cargaWeb()}
 // Carga el pedido en "Nuevo presupuesto" con los precios de hoy; los productos eliminados se avisan y se saltean
-function pasarWeb(i){const s=W[i];if(L.length&&!confirm(`Ya hay un presupuesto a medio armar.\n¿Reemplazarlo por el pedido de ${s.cliente}?`))return;
+async function pasarWeb(i){const s=W[i];if(L.length&&!await confirma(`Ya hay un presupuesto a medio armar.\n¿Reemplazarlo por el pedido de ${s.cliente}?`))return;
  const no=[];L=[];for(const l of s.lineas||[]){const p=P.find(x=>x.id==l.id);if(!p||p.borrado){no.push(l.nombre);continue}
   L.push({id:p.id,codigo:p.codigo,nombre:p.nombre,precio:+p.precio,cantidad:+l.cantidad,res:+l.reservado||0})}
  $('cl').value=cliDeTel(s.telefono)?.nombre||s.cliente;$('cltel').value=s.telefono||'';SOL=s.id;guardaLS('sol',SOL);guardaBorrador();$('qb').value='';rl();renderB();pintaSol();pintaClH();tab('pres');window.scrollTo(0,0);
- if(no.length)alert('Estos productos ya no existen y no se cargaron:\n\n• '+no.join('\n• '))}
+ if(no.length)avisa('Estos productos ya no existen y no se cargaron:\n\n• '+no.join('\n• '))}
 function pintaSol(){const s=W.find(x=>x.id==SOL);$('solav').hidden=!SOL;
- $('solav').innerHTML=SOL?`<span style="flex:1;min-width:200px">Armando el <b>pedido web Nº ${SOL}</b>${s?.telefono?` · ${esc(s.cliente)} · <a href="https://wa.me/${waNum(s.telefono)}" target="_blank" rel="noopener">${esc(s.telefono)}</a>`:''}. Su stock ya está reservado: al generar el PDF se confirma (no se descuenta dos veces) y queda como presupuestado.</span><button class="s" onclick="if(confirm('¿Desvincular? El pedido web seguirá pendiente con su stock reservado, y este presupuesto descontará stock aparte.')){SOL=null;guardaLS('sol','');pintaSol();rl()}">Desvincular</button>`:''}
+ $('solav').innerHTML=SOL?`<span style="flex:1;min-width:200px">Armando el <b>pedido web Nº ${SOL}</b>${s?.telefono?` · ${esc(s.cliente)} · <a href="https://wa.me/${waNum(s.telefono)}" target="_blank" rel="noopener">${esc(s.telefono)}</a>`:''}. Su stock ya está reservado: al generar el PDF se confirma (no se descuenta dos veces) y queda como presupuestado.</span><button class="s" onclick="(async()=>{if(await confirma('¿Desvincular? El pedido web seguirá pendiente con su stock reservado, y este presupuesto descontará stock aparte.')){SOL=null;guardaLS('sol','');pintaSol();rl()}})()">Desvincular</button>`:''}
 // Número de pedidos nuevos en la pestaña. Se revisa cada 30 s y avisa cuando llega uno.
 async function cuentaWeb(){if($('app').hidden)return;const{count,error}=await sb.from('solicitudes').select('id',{count:'exact',head:true}).eq('estado','nuevo');
  if(error)return;if(nWeb!==null&&count>nWeb){toast(count-nWeb>1?`Llegaron ${count-nWeb} pedidos web nuevos`:'Llegó un pedido web nuevo');if(!$('t-web').hidden)cargaWeb()}
@@ -1399,13 +1415,13 @@ async function pintaNota(){NOTA=await ultimaNota();
 async function notaGuardada(){const b=$('bnota');b.disabled=true;b.textContent='Buscando la nota…';let buf;
  try{NOTA=await ultimaNota();
   if(NOTA){const{data,error}=await sb.storage.from('notas').download(NOTA.ruta);if(error)throw error;buf=await data.arrayBuffer()}}
- catch(e){alert('No se pudo descargar la nota guardada: '+msg(e)+'\n\nPuedes elegirla a mano con "Usar otro archivo…".')}
+ catch(e){avisa('No se pudo descargar la nota guardada: '+msg(e)+'\n\nPuedes elegirla a mano con "Usar otro archivo…".')}
  finally{b.disabled=false;b.textContent='Completar nota de pedido (Excel)'}
- if(!NOTA)return alert('Todavía no hay ninguna nota guardada.\n\nImporta la nota del proveedor en Productos > "Importar Excel" (queda guardada para el pedido), o elige el archivo con "Usar otro archivo…".\n\nSi ya la importaste, ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run) y vuelve a importarla.');
+ if(!NOTA)return avisa('Todavía no hay ninguna nota guardada.\n\nImporta la nota del proveedor en Productos > "Importar Excel" (queda guardada para el pedido), o elige el archivo con "Usar otro archivo…".\n\nSi ya la importaste, ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run) y vuelve a importarla.');
  if(buf)usarNota(buf,NOTA.nombre)}
 // Elegida a mano: si no es la última importada, puede tener precios viejos
 async function completarNota(f){$('fp').value='';if(!f)return;
- if(NOTA&&norm(f.name).replace(/_/g,' ')!=norm(NOTA.nombre)&&!confirm(`La última nota que importaste con los precios es "${NOTA.nombre}".\n\n"${f.name}" es otro archivo y puede tener precios o descripciones viejas.\n\n¿Usarlo igual?`))return;
+ if(NOTA&&norm(f.name).replace(/_/g,' ')!=norm(NOTA.nombre)&&!await confirma(`La última nota que importaste con los precios es "${NOTA.nombre}".\n\n"${f.name}" es otro archivo y puede tener precios o descripciones viejas.\n\n¿Usarlo igual?`))return;
  usarNota(await f.arrayBuffer(),f.name)}
 // Los pedidos web pendientes todavía no son ventas: no entran en este pedido (entran en el siguiente al pasarlos a presupuesto)
 async function avisoWebPedido(){const{count}=await sb.from('solicitudes').select('id',{count:'exact',head:true}).eq('estado','nuevo');PED.web=count||0;
@@ -1438,30 +1454,30 @@ function pintaSep(){const Q=P.filter(p=>+p.compra_cant>0&&!p.borrado).sort((a,b)
    ${pend?'<p class="m" style="margin:6px 0 0;font-size:13px">Ya comprado: falta sumar el stock con "Importar cantidades".</p>':baja?`<div class="r" style="justify-content:space-between;margin-top:8px"><span class="falta">Hay que pedir ${fmt(+p.compra_cant)}${tot>j?` · faltan ${money(tot-j)}`:''}</span><button class="s" onclick="compreSep(${p.id})">Ya lo compré</button></div>`:v?`<div class="acc" style="margin-top:6px"><button class="s" onclick="compreSep(${p.id})">Ya lo compré</button></div>`:''}</div>`}).join('')}
 // Comprado por el otro Excel: la cuenta vuelve a cero (el stock se suma con "Importar cantidades")
 async function compreSep(id){const p=P.find(x=>x.id==id);if(!p)return;const j=(+p.compra_vendido||0)*(+p.costo||0);
- if(!confirm(`¿Ya compraste ${p.nombre}?\n\nLa plata a separar de este producto (${money(j)}) vuelve a cero.`))return;
- const{error}=await sb.from('productos').update({compra_vendido:0,compra_pendiente:true}).eq('id',id);if(error)return alert(msg(error));
+ if(!await confirma(`¿Ya compraste ${p.nombre}?\n\nLa plata a separar de este producto (${money(j)}) vuelve a cero.`))return;
+ const{error}=await sb.from('productos').update({compra_vendido:0,compra_pendiente:true}).eq('id',id);if(error)return avisa(msg(error));
  p.compra_vendido=0;p.compra_pendiente=true;toast('Compra registrada');pintaSep()}
 // Escribe las cantidades en la nota de pedido del proveedor y descarga una copia (el original no se toca)
 async function usarNota(buf,nombre){
- let ws,filas;try{const wb=XLSX.read(buf);ws=wb.Sheets[wb.SheetNames[0]];filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',blankrows:true})}catch{return alert('No se pudo leer el archivo. Tiene que ser la nota de pedido en formato .xlsx.')}
+ let ws,filas;try{const wb=XLSX.read(buf);ws=wb.Sheets[wb.SheetNames[0]];filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',blankrows:true})}catch{return avisa('No se pudo leer el archivo. Tiene que ser la nota de pedido en formato .xlsx.')}
  const R=XLSX.utils.decode_range(ws['!ref']),t=c=>norm(c).replace(/[.:]/g,'').replace(/\s+/g,' ');let h=-1,cd,cq;
  for(let i=0;i<Math.min(filas.length,60)&&h<0;i++){const H=filas[i].map(t);
   cd=H.findIndex(x=>['producto','productos','descripcion','nombre','detalle','articulo'].includes(x));cq=H.findIndex(x=>x.startsWith('cantidad')||x=='cant');if(cd>=0&&cq>=0)h=i}
- if(h<0)return alert('No encontré la fila de títulos con las columnas "Producto" y "Cantidad".');
+ if(h<0)return avisa('No encontré la fila de títulos con las columnas "Producto" y "Cantidad".');
  // cada producto se reconoce por su descripción original del proveedor (la misma clave que al importar precios)
  const Q=PED.lineas.filter(l=>l.pedir>0),porClave=new Map(Q.filter(l=>l.clave).map(l=>[l.clave,l])),poner=new Map(),hay=new Set();let previas=0;
  for(let i=h+1;i<filas.length;i++){const d=String(filas[i][cd]??'').trim().replace(/\s+/g,' ').toLowerCase();if(!d)continue;
   const l=porClave.get(d);if(num(filas[i][cq])&&!l)previas++;
   if(l&&!hay.has(l.clave)){hay.add(l.clave);poner.set(XLSX.utils.encode_cell({r:R.s.r+i,c:R.s.c+cq}),l.pedir)}}
  const noEnc=Q.filter(l=>!hay.has(l.clave));
- if(!poner.size)return alert(`Ninguno de los productos a pedir aparece en "${nombre}".`);
- if(!confirm(`Se van a escribir ${poner.size} cantidades en la columna "Cantidad" de "${nombre}" y se descargará una copia completa.\n`+
+ if(!poner.size)return avisa(`Ninguno de los productos a pedir aparece en "${nombre}".`);
+ if(!await confirma(`Se van a escribir ${poner.size} cantidades en la columna "Cantidad" de "${nombre}" y se descargará una copia completa.\n`+
   (previas?`\nOjo: el archivo ya tenía ${previas} cantidades de otros productos; se dejan como están.\n`:'')+
   '\n¿Continuar?'))return;
  const b=$('bnota');b.disabled=true;b.textContent='Completando…';
  try{const blob=await escribirCantidades(buf,poner),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download=nombre.replace(/\.xlsx$/i,'')+' - completa.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000)}
- catch(e){return alert('No se pudo completar la nota: '+e.message)}finally{b.disabled=false;b.textContent='Completar nota de pedido (Excel)'}
+ catch(e){return avisa('No se pudo completar la nota: '+e.message)}finally{b.disabled=false;b.textContent='Completar nota de pedido (Excel)'}
  $('pedres').innerHTML=`<b>Listo:</b> se descargó la nota con ${poner.size} producto(s) cargados. Revísala, mándasela al proveedor y luego pulsa "Marcar pedido como enviado".`+
   (noEnc.length?` Los otros ${noEnc.length} producto(s) vendidos no están en esta nota (son de otro proveedor) y se dejaron afuera.`:'');$('pedres').hidden=false}
 // Cambia solo las casillas de cantidad dentro del archivo: colores, fórmulas y comentarios quedan igual
@@ -1484,10 +1500,10 @@ async function escribirCantidades(buf,poner){const z=await JSZip.loadAsync(buf),
  cp.setAttribute('fullCalcOnLoad','1');z.file('xl/workbook.xml',S.serializeToString(wbx),{createFolders:false});
  return z.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
 async function marcarEnviado(){if(!PED.n)return;
- if(!confirm(`¿Marcar el pedido como enviado?\n\nLas ventas de estos ${PED.n} presupuesto(s) ya no se contarán en el próximo pedido.`+(PED.web?`\n\nOjo: hay ${PED.web} pedido(s) web sin pasar a presupuesto. No están en este pedido; se contarán en el próximo cuando los pases.`:'')))return;
+ if(!await confirma(`¿Marcar el pedido como enviado?\n\nLas ventas de estos ${PED.n} presupuesto(s) ya no se contarán en el próximo pedido.`+(PED.web?`\n\nOjo: hay ${PED.web} pedido(s) web sin pasar a presupuesto. No están en este pedido; se contarán en el próximo cuando los pases.`:'')))return;
  const b=$('benv');b.disabled=true;
  const{error}=await sb.from('pedidos').insert({hasta_presupuesto:PED.hasta,lineas:PED.lineas.filter(l=>l.pedir>0).map(l=>({id:l.id,nombre:l.clave||l.nombre,cantidad:l.pedir}))});
- b.disabled=false;if(error)return alert(msg(error));toast('Pedido marcado como enviado');cargaPedido()}
+ b.disabled=false;if(error)return avisa(msg(error));toast('Pedido marcado como enviado');cargaPedido()}
 
 /* ---------- recepción: comparar lo pedido con lo que llegó ---------- */
 // Se eligen dos Excel (lo pedido y lo que llegó) y se comparan en el momento. No se guarda nada.
@@ -1503,7 +1519,7 @@ async function leeCantRec(f){const wb=XLSX.read(await f.arrayBuffer()),ws=wb.She
   const x=M.get(k)||{nombre:d,codigo:cc>=0?String(r[cc]??'').trim():'',precio:cp>=0?num(r[cp])||0:0,cant:0};x.cant+=q;M.set(k,x)}
  return M}
 async function leeRec(n,f){if(!f)return;$('recinfo').textContent='Leyendo…';
- try{RECX[n]={nombre:f.name,M:await leeCantRec(f)}}catch(e){RECX[n]=null;$(n?'recB':'recA').value='';$('recinfo').textContent='';return alert(`No se pudo leer "${f.name}": ${e.message}.`)}
+ try{RECX[n]={nombre:f.name,M:await leeCantRec(f)}}catch(e){RECX[n]=null;$(n?'recB':'recA').value='';$('recinfo').textContent='';return avisa(`No se pudo leer "${f.name}": ${e.message}.`)}
  pintaRec()}
 function pintaRec(){const[A,B]=RECX,cnt=x=>[...x.M.values()].filter(y=>y.cant>0).length;
  $('recinfo').innerHTML=[A&&`Pedimos: <b>${esc(A.nombre)}</b> (${cnt(A)} productos con cantidad)`,B&&`Llegó: <b>${esc(B.nombre)}</b> (${cnt(B)} productos con cantidad)`].filter(Boolean).join('<br>')+(A&&B?'':'<br>Falta elegir el '+(A?'segundo':'primer')+' Excel.');
@@ -1528,7 +1544,7 @@ function pintaRec(){const[A,B]=RECX,cnt=x=>[...x.M.values()].filter(y=>y.cant>0)
   <td class="n">${fmt(x.pedimos)}<td class="n">${fmt(x.lleg)}<td class="n">${x.falta?`<span class="falta">${fmt(x.falta)}</span>`:'✓'}<td class="n hide-sm">${x.falta&&x.precio?money(x.falta*x.precio):'-'}</tr>`).join('')
   ||'<tr><td colspan="5" class="m">No faltó nada.</tr>'}
 const textoFalRec=()=>`Faltantes del pedido (${CFG.NOMBRE||''}):\n`+RECX.F.map(x=>`- ${x.nombre.toUpperCase()}: pedimos ${fmt(x.pedimos)}, llegaron ${fmt(x.lleg)} (faltan ${fmt(x.falta)})`).join('\n');
-async function copiaFalRec(){try{await navigator.clipboard.writeText(textoFalRec());toast('Lista de faltantes copiada')}catch{prompt('Copia la lista:',textoFalRec())}}
+async function copiaFalRec(){try{await navigator.clipboard.writeText(textoFalRec());toast('Lista de faltantes copiada')}catch{await pide('Copia la lista:',textoFalRec())}}
 function waFalRec(){open('https://wa.me/?text='+encodeURIComponent(textoFalRec()),'_blank')}
 
 init();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
