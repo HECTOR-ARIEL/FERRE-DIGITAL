@@ -109,12 +109,12 @@ dialog{overflow:auto}
   <p class="m" style="margin:6px 0 10px">El PDF ya se descargó y el presupuesto quedó guardado en el <b>Historial</b>. Puedes enviarlo al cliente o volver a descargarlo.</p>
   <div class="r"><button class="s" onclick="descargar()">Descargar PDF</button><button id="bcomp" onclick="compartir()">Compartir (WhatsApp, correo…)</button><button class="s" onclick="$('res').hidden=true">Cerrar</button></div></div>
  <div class="c aviso r" id="solav" hidden></div>
- <div class="c"><label>Cliente<input id="cl" list="cllis" autocomplete="off" placeholder="Busca o escribe el cliente" oninput="guardaBorrador();pintaClH()"></label><datalist id="cllis"></datalist><p class="m" id="clh" style="margin:6px 0 0;font-size:13px" hidden></p></div>
+ <div class="c"><div class="r" style="align-items:flex-end"><label style="flex:2;min-width:180px">Cliente<input id="cl" list="cllis" autocomplete="off" placeholder="Busca o escribe el cliente" oninput="telDeCli();guardaBorrador();pintaClH()"></label><label style="flex:1;min-width:140px">Teléfono (opcional)<input id="cltel" inputmode="tel" autocomplete="off" placeholder="351…" oninput="cliDeTelIn();guardaBorrador();pintaClH()"></label></div><datalist id="cllis"></datalist><p class="m" id="clh" style="margin:6px 0 0;font-size:13px" hidden></p></div>
  <div class="c"><b>1. Agrega productos</b><input id="qb" type="search" placeholder="Buscar por descripción o código" oninput="renderB()" style="margin-top:8px">
   <div class="w"><table><tbody id="bt"></tbody></table></div></div>
  <div class="c" id="paso2"><b>2. Revisa las cantidades</b><div class="w"><table><tbody id="lt"></tbody></table></div>
   <div class="tot" id="tt"></div>
-  <div class="acc"><button class="s" onclick="if(confirm('¿Vaciar el presupuesto?')){L=[];$('cl').value='';SOL=null;guardaLS('sol','');pintaSol();rl();renderB()}">Vaciar</button><button id="bs" onclick="save()">Generar presupuesto (PDF)</button></div></div>
+  <div class="acc"><button class="s" onclick="if(confirm('¿Vaciar el presupuesto?')){L=[];$('cl').value='';$('cltel').value='';SOL=null;guardaLS('sol','');pintaSol();rl();renderB()}">Vaciar</button><button id="bs" onclick="save()">Generar presupuesto (PDF)</button></div></div>
  <div id="pbar" class="selbar" hidden><span><b id="pn">0</b> producto(s) · <b id="ptot"></b></span>
   <button class="s" onclick="$('qb').scrollIntoView({block:'center',behavior:'smooth'});$('qb').focus({preventScroll:true})">Buscar</button>
   <button class="s" onclick="$('paso2').scrollIntoView({block:'start',behavior:'smooth'})">Ver lista</button>
@@ -385,7 +385,7 @@ const filtra=(q,enPap=false)=>{const w=norm(q).split(/\s+/).filter(Boolean);retu
 const ANCHOS=[['Normal','1100px'],['Ancho','1500px'],['Completo','none']];
 function ancho(paso){const i=((+leeLS('ancho')||0)+(paso||0))%ANCHOS.length;guardaLS('ancho',i);
  document.querySelector('main').style.maxWidth=ANCHOS[i][1];$('anch').textContent='↔ '+ANCHOS[i][0]}
-async function init(){ancho();$('gn').value=leeLS('gn')??'30';$('cl').value=leeLS('cliente')||'';pintaSol();const{data}=await sb.auth.getSession();show(!!data.session);
+async function init(){ancho();$('gn').value=leeLS('gn')??'30';$('cl').value=leeLS('cliente')||'';$('cltel').value=leeLS('cliente_tel')||'';pintaSol();const{data}=await sb.auth.getSession();show(!!data.session);
  // link de recuperación: ya entró con el link, falta poner la contraseña nueva; si el link venció, se avisa
  if(RECUP){if(data.session)pideClave();else alert('El link para cambiar la contraseña venció o ya se usó. Pide otro con "¿Olvidaste tu contraseña?".')}}
 function show(ok){$('login').hidden=ok;$('app').hidden=!ok;$('out').hidden=!ok;if(ok){load();cuentaWeb()}else $('em').focus()}
@@ -681,7 +681,7 @@ function add(id){const p=P.find(x=>x.id==id);let l=L.find(x=>x.id==id);
  const tr=$('b'+id),q=tr?.querySelector('.qty');if(tr)tr.classList.add('flash');
  // con mouse queda lista la casilla para escribir la cantidad; en el teléfono no se abre el teclado
  if(q&&matchMedia('(pointer:fine)').matches){q.focus({preventScroll:true});q.select()}}
-function guardaBorrador(){guardaLS('borrador',JSON.stringify(L));guardaLS('cliente',$('cl').value)}
+function guardaBorrador(){guardaLS('borrador',JSON.stringify(L));guardaLS('cliente',$('cl').value);guardaLS('cliente_tel',$('cltel').value)}
 function rl(){$('lt').innerHTML=L.map((l,i)=>{const s=stockL(l),nota=s<=0?'Sin stock: saldrá en rojo en el PDF y no se cobra':s<l.cantidad?`Solo hay ${fmt(s)} en stock: se presupuestan ${fmt(s)}`:'';
   return `<tr><td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span><br>`:''}${esc(l.nombre)}${nota?`<div class="falta">${nota}</div>`:`<div class="m" style="font-size:12px">Stock ${fmt(s)}</div>`}
   <td><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" onfocus="this.select()" onchange="setCant(${l.id},this.value)">
@@ -759,7 +759,7 @@ function descargar(p=ult){pdfDoc(p).save(nomPdf(p))}
 async function compartir(){const f=new File([pdfDoc(ult).output('blob')],nomPdf(ult),{type:'application/pdf'});
  if(navigator.canShare?.({files:[f]}))try{await navigator.share({files:[f],title:'Presupuesto Nº '+ult.id})}catch{}
  else descargar()}
-async function save(){const cl=$('cl').value.trim();
+async function save(){const tel0=$('cltel').value.trim()||W.find(x=>x.id==SOL)?.telefono||'',cl=cliFinal($('cl').value.trim(),tel0);if(cl!=$('cl').value.trim())$('cl').value=cl;
  if(!L.length)return alert('Añade productos al presupuesto.');
  if(L.some(l=>!(l.cantidad>=0)))return alert('Revisa las cantidades: hay alguna que no es válida.');
  const cero=L.filter(l=>l.cantidad>0&&!(+l.precio>0));if(cero.length)return alert(`No se generó el presupuesto: estos productos están a $ 0.\n\n• ${cero.map(l=>l.nombre).join('\n• ')}\n\nCárgales el costo en Productos, o quítalos del presupuesto.`);
@@ -779,7 +779,7 @@ async function save(){const cl=$('cl').value.trim();
  ult={...data,cliente:cl,fecha:new Date().toISOString()};
  // Si venía de un pedido web, la base ya lo marcó como presupuestado con este número
  if(sol){SOL=null;guardaLS('sol','');pintaSol();cuentaWeb()}
- const tel=W.find(x=>x.id==sol)?.telefono;L=[];$('cl').value='';$('qb').value='';guardaBorrador();pintaClH();renderB();rl();renderP();
+ const tel=tel0;L=[];$('cl').value='';$('cltel').value='';$('qb').value='';guardaBorrador();pintaClH();renderB();rl();renderP();
  $('resT').textContent=`Presupuesto Nº ${data.id}${cl?' · '+cl:''} · Total ${money(data.total)}`;$('res').hidden=false;window.scrollTo(0,0);
  descargar();setTimeout(refrescar,2000);abrePago(data.id,cl,+data.total,tel)}
 // Recarga productos e historial en segundo plano; si la conexión falla, reintenta sin mostrar errores
@@ -1125,13 +1125,19 @@ const telK=t=>String(t||'').replace(/\D/g,'').slice(-7);  // los últimos 7 núm
 const cliDeTel=t=>telK(t).length==7?CLI.find(c=>telK(c.telefono)==telK(t)):null;
 const pintaLisCli=()=>$('cllis').innerHTML=CLI.map(c=>`<option value="${esc(c.nombre)}">`).join('');
 async function cargaCli(){const{data,error}=await sb.from('clientes').select('*').order('nombre');CLI_OK=!error;CLI=data||[];pintaLisCli();pintaClH()}
+// El teléfono identifica al cliente: si ya está cargado, se usa su nombre de siempre aunque escriban otro
+const cliFinal=(nombre,tel)=>cliDeTel(tel)?.nombre||nombre;
+// Al escribir el teléfono, si es de un cliente conocido se pone su nombre; al elegir un cliente, se pone su teléfono
+function cliDeTelIn(){const c=cliDeTel($('cltel').value);if(c)$('cl').value=c.nombre}
+function telDeCli(){const c=CLI.find(x=>norm(x.nombre)==norm($('cl').value));if(c?.telefono&&!$('cltel').value.trim())$('cltel').value=c.telefono}
 // Agrega el cliente si no está, y guarda su teléfono si todavía no lo tenía
-async function asegCli(nombre,tel){if(!CLI_OK||!nombre)return;const x=CLI.find(c=>norm(c.nombre)==norm(nombre));
+async function asegCli(nombre,tel){if(!CLI_OK||!nombre)return;nombre=cliFinal(nombre,tel);const x=CLI.find(c=>norm(c.nombre)==norm(nombre));
  if(x){if(tel&&!x.telefono){const{error}=await sb.from('clientes').update({telefono:tel}).eq('id',x.id);if(!error)x.telefono=tel}return}
  const{data,error}=await sb.from('clientes').insert({nombre,telefono:tel||null}).select().single();if(error)return;CLI.push(data);CLI.sort((a,b)=>a.nombre.localeCompare(b.nombre));pintaLisCli()}
-function pintaClH(){const n=$('cl').value.trim(),s=W.find(x=>x.id==SOL),d=[];
+function pintaClH(){const n=$('cl').value.trim(),s=W.find(x=>x.id==SOL),d=[],ct=cliDeTel($('cltel').value);
+ if(ct&&norm(ct.nombre)!=norm(n))d.push(`Ese teléfono es de ${ct.nombre}: el presupuesto queda a su nombre.`);
  if(s){const c=cliDeTel(s.telefono);d.push(`Pedido web a nombre de ${s.cliente}${s.telefono?' · tel. '+s.telefono:''}.`);if(c)d.push(`Ese teléfono es de ${c.nombre}.`);else d.push('Elige el cliente que corresponde.')}
- if(CLI_OK&&n&&!CLI.some(c=>norm(c.nombre)==norm(n)))d.push('Cliente nuevo: se agrega a la lista.');
+ if(CLI_OK&&n&&!ct&&!CLI.some(c=>norm(c.nombre)==norm(n)))d.push('Cliente nuevo: se agrega a la lista.');
  $('clh').hidden=!d.length;$('clh').textContent=d.join(' ')}
 // Después de generar el presupuesto: la venta pasa a la Caja y a la ficha del cliente
 function abrePago(id,cl,total,tel){if(!CLI_OK||!(total>0))return;PAGO={id,cl,total,tel};
@@ -1182,7 +1188,7 @@ function avisaCaja(){let t='';const m=num($('cjm').value)||0,div=+CJ.cfg.divisor
  if(CJT=='cobro'){if(m>0)t=`Capital ${money(m/div)} · Ganancia ${money(m-m/div)}`;
   const sal=saldosCaja().find(x=>norm(x.nombre)==norm($('cjcl').value.trim()));if(sal)t+=(t?'. ':'')+`Debe ${money(sal.saldo)}.`}
  $('cjav2').textContent=t}
-async function guardaCaja(e){e.preventDefault();const t=CJT,m=num($('cjm').value)||0,cl=$('cjcl').value.trim()||null,div=+CJ.cfg.divisor||1.3;let o;
+async function guardaCaja(e){e.preventDefault();const t=CJT,m=num($('cjm').value)||0,cl=(t=='deuda'?cliFinal($('cjcl').value.trim(),$('cjte').value):$('cjcl').value.trim())||null,div=+CJ.cfg.divisor||1.3;let o;
  if(t=='cobro'){const nv=num($('cjnv').value)||0,pd=$('cjpd').checked;if(!(m>0)&&!(nv>0))return alert('Escribe cuánta plata entró.');if((nv>0||pd)&&!cl)return alert('Escribe el nombre del cliente para llevar su deuda.');
   const sal=saldosCaja().find(x=>norm(x.nombre)==norm(cl||''))?.saldo||0;if(pd&&m>sal+.009&&!confirm(`${cl} debe ${money(sal)} y estás cargando ${money(m)}. ¿Guardar igual?`))return;
   const c=m/div;o=m>0?{tipo:'cobro',cliente:cl,monto:m,capital:c,ganancia:m-c,deuda:nv-(pd?m:0)}:{tipo:'fiado',cliente:cl,monto:nv,deuda:nv}}
@@ -1208,7 +1214,8 @@ function pintaCli(){const sal=saldoCli(),le=num($('clle').value)||0,pa=num($('cl
  $('clmov').innerHTML=F.join('')||'<tr><td colspan="3" class="m">Sin movimientos.</td></tr>'}
 // Guarda o cambia el teléfono del cliente (si todavía no estaba en la lista de clientes, lo agrega)
 async function guardaTelCli(){if(!CLI_OK)return alert('Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase.');
- const tel=$('clte').value.trim()||null,x=CLI.find(c=>norm(c.nombre)==norm(CJC));
+ const tel=$('clte').value.trim()||null,x=CLI.find(c=>norm(c.nombre)==norm(CJC)),otro=cliDeTel(tel);
+ if(otro&&otro!==x)return alert(`Ese teléfono ya es de ${otro.nombre}. Si son la misma persona, avisá para juntar las cuentas.`);
  if(x){const{error}=await sb.from('clientes').update({telefono:tel}).eq('id',x.id);if(error)return alert(msg(error));x.telefono=tel}
  else{const{data,error}=await sb.from('clientes').insert({nombre:CJC,telefono:tel}).select().single();if(error)return alert(msg(error));CLI.push(data);CLI.sort((a,b)=>a.nombre.localeCompare(b.nombre));pintaLisCli()}
  toast('Teléfono guardado')}
@@ -1318,7 +1325,7 @@ async function estadoWeb(i,e){const s=W[i];if(e=='descartado'&&!confirm(`¿Desca
 function pasarWeb(i){const s=W[i];if(L.length&&!confirm(`Ya hay un presupuesto a medio armar.\n¿Reemplazarlo por el pedido de ${s.cliente}?`))return;
  const no=[];L=[];for(const l of s.lineas||[]){const p=P.find(x=>x.id==l.id);if(!p||p.borrado){no.push(l.nombre);continue}
   L.push({id:p.id,codigo:p.codigo,nombre:p.nombre,precio:+p.precio,cantidad:+l.cantidad,res:+l.reservado||0})}
- $('cl').value=cliDeTel(s.telefono)?.nombre||s.cliente;SOL=s.id;guardaLS('sol',SOL);guardaBorrador();$('qb').value='';rl();renderB();pintaSol();pintaClH();tab('pres');window.scrollTo(0,0);
+ $('cl').value=cliDeTel(s.telefono)?.nombre||s.cliente;$('cltel').value=s.telefono||'';SOL=s.id;guardaLS('sol',SOL);guardaBorrador();$('qb').value='';rl();renderB();pintaSol();pintaClH();tab('pres');window.scrollTo(0,0);
  if(no.length)alert('Estos productos ya no existen y no se cargaron:\n\n• '+no.join('\n• '))}
 function pintaSol(){const s=W.find(x=>x.id==SOL);$('solav').hidden=!SOL;
  $('solav').innerHTML=SOL?`<span style="flex:1;min-width:200px">Armando el <b>pedido web Nº ${SOL}</b>${s?.telefono?` · ${esc(s.cliente)} · <a href="https://wa.me/${waNum(s.telefono)}" target="_blank" rel="noopener">${esc(s.telefono)}</a>`:''}. Su stock ya está reservado: al generar el PDF se confirma (no se descuenta dos veces) y queda como presupuestado.</span><button class="s" onclick="if(confirm('¿Desvincular? El pedido web seguirá pendiente con su stock reservado, y este presupuesto descontará stock aparte.')){SOL=null;guardaLS('sol','');pintaSol();rl()}">Desvincular</button>`:''}
