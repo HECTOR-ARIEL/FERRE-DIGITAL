@@ -190,7 +190,8 @@ dialog{overflow:auto}
  <div class="c aviso r" id="pedweb" hidden></div>
  <div class="c"><b>Ventas desde el último pedido</b><p class="m" id="pedinfo" style="margin:6px 0 0"></p></div>
  <div class="c" id="psep" hidden></div>
- <div class="c w fija" style="padding:0"><table><thead><tr><th>Producto</th><th class="n hide-sm">Vendido</th><th class="n hide-sm">Faltó</th><th class="n hide-sm">Stock</th><th class="n hide-sm">Costo</th><th class="n">Pedir</th><th class="n hide-sm">Subtotal</th></tr></thead><tbody id="pedt"></tbody></table></div>
+ <div class="c"><div class="bus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="pedq" type="search" autocomplete="off" placeholder="Buscar un producto para pedir" oninput="pintaPedido()"><button type="button" id="pedqx" hidden title="Borrar búsqueda" onclick="$('pedq').value='';pintaPedido();$('pedq').focus()">×</button></div><div id="pedmas"></div></div>
+<div class="c w fija" style="padding:0"><table><thead><tr><th>Producto</th><th class="n hide-sm">Vendido</th><th class="n hide-sm">Faltó</th><th class="n hide-sm">Stock</th><th class="n hide-sm">Costo</th><th class="n">Pedir</th><th class="n hide-sm">Subtotal</th></tr></thead><tbody id="pedt"></tbody></table></div>
  <div class="c r" id="pedtot" hidden style="justify-content:space-between"><span class="m" id="pedtotn"></span><span style="font-size:18px">Total a pedir (a costo): <b id="pedtotv"></b></span></div>
  <div class="c aviso" id="pedres" hidden></div>
  <div class="c acc"><span class="m" id="notainfo" style="margin-right:auto;align-self:center"></span><button class="s" id="benv" onclick="marcarEnviado()">Marcar pedido como enviado</button><button class="s" id="botra" onclick="$('fp').click()">Usar otro archivo…</button><button id="bnota" onclick="notaGuardada()">Completar nota de pedido (Excel)</button>
@@ -1396,7 +1397,7 @@ const minDesc=s=>bultoDe(s)||+(String(s||'').match(/\bCAJA\s+CERRADA\s*(?:DE\s*|
 const limiteDe=b=>b>=20?b/2:5;
 let PED={lineas:[],hasta:0,n:0};
 // Suma lo vendido en los presupuestos posteriores al último pedido enviado
-async function cargaPedido(){$('pedinfo').textContent='Cargando…';$('pedt').innerHTML='';$('pedres').hidden=true;PED={lineas:[],hasta:0,n:0};pintaPedido(true);
+async function cargaPedido(){const MANO=(PED?.lineas||[]).filter(l=>l.mano);$('pedinfo').textContent='Cargando…';$('pedt').innerHTML='';$('pedres').hidden=true;PED={lineas:[],hasta:0,n:0};pintaPedido(true);
  // datos al día de los productos con compra por cantidad (las ventas pueden venir de otro equipo)
  await frescoComp();
  const u=await sb.from('pedidos').select('hasta_presupuesto').order('id',{ascending:false}).limit(1);
@@ -1410,7 +1411,8 @@ async function cargaPedido(){$('pedinfo').textContent='Cargando…';$('pedt').in
    b=bultoDe(p?.clave||p?.nombre||x.nombre),total=x.vendido;let pedir=total,nota='';
    if(+p?.compra_cant>0){pedir=0;nota=`Compra de a ${fmt(p.compra_cant)}: va en Plata a separar`}else
    if(b){if(st!=null&&st>=limiteDe(b)){pedir=0;nota=`Bulto x${b} · quedan ${fmt(st)}, no se pide`}else{pedir=Math.max(1,Math.ceil(total/b))*b;nota=`Bulto x${b}`}}
-   return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',stock:st,costo:p?+p.costo||0:null,bulto:b,pedir,nota}}).sort((a,b)=>b.vendido-a.vendido||b.falto-a.falto||a.nombre.localeCompare(b.nombre))};
+   return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',codigo:p?.codigo||'',stock:st,costo:p?+p.costo||0:null,bulto:b,pedir,nota}}).sort((a,b)=>b.vendido-a.vendido||b.falto-a.falto||a.nombre.localeCompare(b.nombre))};
+ for(const m of MANO)if(!PED.lineas.some(l=>l.id==m.id))PED.lineas.unshift(m);
  pintaPedido();avisoWebPedido();pintaNota()}
 // Qué nota se va a usar: la última importada con los precios
 let NOTA=null;
@@ -1430,19 +1432,27 @@ async function completarNota(f){$('fp').value='';if(!f)return;
 // Los pedidos web pendientes todavía no son ventas: no entran en este pedido (entran en el siguiente al pasarlos a presupuesto)
 async function avisoWebPedido(){const{count}=await sb.from('solicitudes').select('id',{count:'exact',head:true}).eq('estado','nuevo');PED.web=count||0;
  $('pedweb').hidden=!count;$('pedweb').innerHTML=count?`<span style="flex:1;min-width:200px"><b>Hay ${count} pedido(s) web sin pasar a presupuesto.</b> Su stock está reservado, pero todavía no cuentan como venta, así que no están en este pedido. Pásalos a presupuesto (o descártalos) antes de completar la nota si quieres incluirlos.</span><button class="s" onclick="tab('web')">Ver pedidos web</button>`:''}
+// Lupa del Pedido: filtra la lista y deja sumar productos que no se vendieron (por si hay que pedirlos igual)
+function pintaPedMas(bq){const el=$('pedmas');if(!bq){el.innerHTML='';return}
+ const ya=new Set(PED.lineas.map(l=>l.id)),R=P.filter(p=>!p.borrado&&!ya.has(p.id)&&norm([p.nombre,p.clave,p.codigo].join(' ')).includes(bq)).slice(0,8);
+ el.innerHTML=R.length?`<p class="m" style="margin:10px 0 4px;font-size:13px">No están en este pedido. Tócalos para sumarlos:</p>`+R.map(p=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;border-top:1px solid var(--b);padding:7px 0"><span style="min-width:0"><span class="nom">${esc(p.nombre)}</span><span class="m" style="font-size:12px;display:block">Stock ${fmt(Math.max(0,+p.stock||0))}${+p.costo?' · Costo '+money(p.costo):''}</span></span><button type="button" class="s" style="flex:none" onclick="sumaPed(${p.id})">+ Pedir</button></div>`).join(''):''}
+function sumaPed(id){const p=P.find(q=>q.id==id);if(!p)return;const b=bultoDe(p.clave||p.nombre);
+ PED.lineas.unshift({id:p.id,nombre:p.nombre,clave:p.clave||'',codigo:p.codigo||'',vendido:0,falto:0,stock:Math.max(0,+p.stock||0),costo:+p.costo||0,bulto:b,pedir:b||1,nota:b?`Bulto x${b}`:'',mano:true});
+ pintaPedido();toast('Agregado al pedido: '+p.nombre)}
 function pintaPedido(cargando){const n=PED.lineas.filter(l=>l.pedir>0).length;
  if(!cargando)$('pedinfo').textContent=PED.n?`${PED.n} presupuesto(s) desde el último pedido (hasta el Nº ${PED.hasta}) · ${n} producto(s) para pedir.`:'No hay presupuestos nuevos desde el último pedido.';
- $('pedt').innerHTML=PED.lineas.map((l,i)=>`<tr${l.pedir>0?'':' class="off"'}><td><div class="nom">${esc(l.nombre)}</div>${l.clave&&norm(l.clave)!=norm(l.nombre)?`<div class="m" style="font-size:12px">Proveedor: ${esc(l.clave.toUpperCase())}</div>`:''}  <div class="tags">${l.nota?`<span class="tag">${esc(l.nota)}</span>`:''}<span class="tag sub">Vendido ${fmt(l.vendido)}</span>${l.falto?`<span class="tag sub" style="color:var(--no)">Faltó ${fmt(l.falto)}</span>`:''}<span class="tag sub">Stock ${l.stock==null?'-':fmt(l.stock)}</span>${l.costo?`<span class="tag sub">Costo ${money(l.costo)}${l.pedir>0?' · '+money(l.costo*l.pedir):''}</span>`:''}</div>
+ const bq=norm($('pedq').value.trim()),ok=l=>!bq||norm([l.nombre,l.clave,l.codigo].join(' ')).includes(bq);$('pedqx').hidden=!bq;pintaPedMas(bq);
+ $('pedt').innerHTML=PED.lineas.map((l,i)=>!ok(l)?'':`<tr${l.pedir>0?'':' class="off"'}><td><div class="nom">${esc(l.nombre)}</div>${l.clave&&norm(l.clave)!=norm(l.nombre)?`<div class="m" style="font-size:12px">Proveedor: ${esc(l.clave.toUpperCase())}</div>`:''}  <div class="tags">${l.mano?'<span class="tag">Agregado a mano</span>':''}${l.nota?`<span class="tag">${esc(l.nota)}</span>`:''}<span class="tag sub">Vendido ${fmt(l.vendido)}</span>${l.falto?`<span class="tag sub" style="color:var(--no)">Faltó ${fmt(l.falto)}</span>`:''}<span class="tag sub">Stock ${l.stock==null?'-':fmt(l.stock)}</span>${l.costo?`<span class="tag sub">Costo ${money(l.costo)}${l.pedir>0?' · '+money(l.costo*l.pedir):''}</span>`:''}</div>
   <td class="n hide-sm">${fmt(l.vendido)}<td class="n hide-sm">${l.falto?`<span class="falta">${fmt(l.falto)}</span>`:'-'}<td class="n hide-sm">${l.stock==null?'-':fmt(l.stock)}
   <td class="n hide-sm">${l.costo?money(l.costo):'-'}
   <td class="n"><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.pedir}" onfocus="this.select()" onchange="PED.lineas[${i}].pedir=Math.max(0,num(this.value)||0);pintaPedido()">
   <td class="n hide-sm">${l.pedir>0&&l.costo?`<b>${money(l.costo*l.pedir)}</b>`:'-'}</tr>`).join('')
-  ||(cargando?'':'<tr><td class="m">Nada para pedir por ahora.</tr>');
+  ||(cargando?'':bq?`<tr><td class="m">Ningún producto de este pedido coincide con "${esc($('pedq').value.trim())}".</tr>`:'<tr><td class="m">Nada para pedir por ahora.</tr>');
  // Total a costo de lo que se va a pedir (los productos sin costo cargado no suman y se avisa)
  const Q=PED.lineas.filter(l=>l.pedir>0),sinC=Q.filter(l=>!l.costo).length;$('pedtot').hidden=cargando||!Q.length;
  $('pedtotv').textContent=money(Q.reduce((s,l)=>s+(l.costo||0)*l.pedir,0));
  $('pedtotn').textContent=`${Q.length} producto(s) · ${fmt(Q.reduce((s,l)=>s+l.pedir,0))} unidades`+(sinC?` · ${sinC} sin costo cargado (no suman)`:'');
- $('bnota').disabled=$('botra').disabled=!n;$('benv').disabled=!PED.n;pintaSep()}
+ $('bnota').disabled=$('botra').disabled=!n;$('benv').disabled=!PED.n&&!PED.lineas.some(l=>l.mano&&l.pedir>0);pintaSep()}
 // Plata a separar: lo vendido de los productos con compra por cantidad, a costo actual, desde la última compra
 function pintaSep(){const Q=P.filter(p=>+p.compra_cant>0&&!p.borrado).sort((a,b)=>(+a.stock<=+a.compra_aviso?0:1)-(+b.stock<=+b.compra_aviso?0:1)||a.nombre.localeCompare(b.nombre));
  $('psep').hidden=!Q.length;if(!Q.length)return;
@@ -1503,11 +1513,11 @@ async function escribirCantidades(buf,poner){const z=await JSZip.loadAsync(buf),
  if(!cp){cp=wbx.createElementNS(wbx.documentElement.namespaceURI,'calcPr');wbx.documentElement.insertBefore(cp,wbx.getElementsByTagName('extLst')[0]||null)}
  cp.setAttribute('fullCalcOnLoad','1');z.file('xl/workbook.xml',S.serializeToString(wbx),{createFolders:false});
  return z.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
-async function marcarEnviado(){if(!PED.n)return;
+async function marcarEnviado(){if(!PED.n&&!PED.lineas.some(l=>l.mano&&l.pedir>0))return;
  if(!await confirma(`¿Marcar el pedido como enviado?\n\nLas ventas de estos ${PED.n} presupuesto(s) ya no se contarán en el próximo pedido.`+(PED.web?`\n\nOjo: hay ${PED.web} pedido(s) web sin pasar a presupuesto. No están en este pedido; se contarán en el próximo cuando los pases.`:'')))return;
  const b=$('benv');b.disabled=true;
  const{error}=await sb.from('pedidos').insert({hasta_presupuesto:PED.hasta,lineas:PED.lineas.filter(l=>l.pedir>0).map(l=>({id:l.id,nombre:l.clave||l.nombre,cantidad:l.pedir}))});
- b.disabled=false;if(error)return avisa(msg(error));toast('Pedido marcado como enviado');cargaPedido()}
+ b.disabled=false;if(error)return avisa(msg(error));toast('Pedido marcado como enviado');PED.lineas=[];$('pedq').value='';cargaPedido()}
 
 /* ---------- recepción: comparar lo pedido con lo que llegó ---------- */
 // Se eligen dos Excel (lo pedido y lo que llegó) y se comparan en el momento. No se guarda nada.
