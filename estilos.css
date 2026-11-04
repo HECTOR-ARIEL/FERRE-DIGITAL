@@ -58,3 +58,7 @@ button:disabled{opacity:.6;cursor:wait}
 .lcli:last-child{border-bottom:0}.lcli:hover,.lcli:focus{background:rgba(189,23,23,.08)}
 .lcli .lnom{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lcli b{white-space:nowrap}.lcli b.deb{color:var(--no)}
 .lcli.nuevo{flex-direction:column;align-items:flex-start;gap:2px}.lcli.nuevo b{color:var(--a)}
+/* Filtro de movimientos de la Caja */
+.seg{display:flex;gap:4px;margin:10px 0 4px;padding:3px;background:var(--bg);border:1px solid var(--b);border-radius:9px}
+.seg button{flex:1;min-width:0;padding:8px 4px;border:0;border-radius:7px;background:transparent;color:var(--m);font-weight:600;cursor:pointer}
+.seg button.on{background:var(--c);color:var(--t);box-shadow:0 1px 3px rgba(0,0,0,.15)}

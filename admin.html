@@ -207,6 +207,7 @@ dialog{overflow:auto}
  <div class="c r"><button style="flex:1" onclick="abreCaja('cobro')">Entró plata</button><button style="flex:1" onclick="abreCaja('compra')">Compré mercadería</button><button style="flex:1" onclick="abreCaja('gasto')">Gasto</button><button style="flex:1" onclick="abreCaja('retiro')">Retiro</button></div>
  <div class="c"><div class="r" style="justify-content:space-between;align-items:center"><b>Clientes</b><button class="s" onclick="abreCaja('deuda')">+ Cliente con deuda</button></div><div id="cjdeu"></div></div>
  <div class="c"><div class="r" style="justify-content:space-between;align-items:center"><b>Movimientos</b><select id="cjver" onchange="pintaCaja()" style="width:auto" title="Qué movimientos mostrar"><option value="sem">Esta semana</option><option value="">Todos</option></select></div>
+  <div class="seg" id="cjfil" role="tablist"><button type="button" data-f="" class="on" onclick="filCaja(this)">Todos</button><button type="button" data-f="cobro" onclick="filCaja(this)">Pagos</button><button type="button" data-f="compra" onclick="filCaja(this)">Compras</button><button type="button" data-f="fiado" onclick="filCaja(this)">Saldos</button></div>
   <p class="m" id="cjsem" style="font-size:13px;margin:6px 0"></p><div class="w"><table><tbody id="cjmov"></tbody></table></div></div>
  <div class="c r" style="align-items:center"><span class="m" style="flex:1;min-width:200px">Lo que entra se divide por <input id="cjdiv" inputmode="decimal" style="width:70px;display:inline-block" onchange="guardaDivisor()"> para separar capital y ganancia.</span><button class="s" onclick="abreCaja('inicial')">Cargar saldo inicial</button></div>
  <p class="m"><b>Cómo funciona:</b> todo lo que entra se divide: una parte va al capital (solo para comprar mercadería) y el resto a la ganancia (de ahí salen gastos y retiros). El costo de lo vendido se cuenta solo desde los presupuestos; lo que tenga compra por cantidad va en Plata a separar. Si cargaste algo mal, bórralo con ✕ y se corrige todo. La cuenta es una estimación porque el porcentaje real cambia en cada producto.</p>
@@ -1183,6 +1184,8 @@ async function pagoCaja(k){const{id,cl,total,tel}=PAGO,m=k=='todo'?total:k=='deb
 
 /* ---------- caja ---------- */
 // Saldos: la suma de los movimientos. Lo que entra se divide en capital y ganancia; las compras salen del capital y los gastos de la ganancia.
+let CJF='';
+function filCaja(b){CJF=b.dataset.f;document.querySelectorAll('#cjfil button').forEach(x=>x.classList.toggle('on',x==b));pintaCaja()}
 let CJ={mov:[],cfg:{divisor:1.3,costo_vendido:0},ok:false},CJT='';
 const CJTIT={cobro:'Entró plata',compra:'Compré mercadería',gasto:'Gasto',retiro:'Retiro',inicial:'Saldo inicial',deuda:'Cliente con deuda'};
 const CJNOM={cobro:'Entró plata',fiado:'Deuda',compra:'Compra',gasto:'Gasto',retiro:'Retiro',inicial:'Saldo inicial'};
@@ -1206,11 +1209,12 @@ function pintaCaja(){const cap=sumaCj('capital'),gan=sumaCj('ganancia'),D=saldos
   +fila(1,'Mercadería vendida sin reponer',pend,pend>0)+fila(2,'Plata a separar para bultos',bul)+(lib<0?`<p class="falta" style="margin:6px 0 0">Faltan ${money(-lib)} de capital para cubrir todo esto.</p>`:fila(3,'Capital libre, de reserva',lib));
  $('cjlis').innerHTML=CLI.map(c=>`<option value="${esc(c.nombre)}">`).join('');
  CJ.cli=D;$('cjdeu').innerHTML=D.map((x,i)=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;border-top:1px solid var(--b);padding:7px 0;margin-top:4px"><span class="nom">${esc(x.nombre)}</span><span class="r" style="flex-wrap:nowrap;gap:10px"><b style="white-space:nowrap">${saldoTxt(x.saldo)}</b><button class="s" title="Editar nombre" onclick="renombraCli(CJ.cli[${i}].nombre)">✎</button><button class="s" onclick="abreCli(${i})">Ver</button></span></div>`).join('')||'<p class="m" style="margin:6px 0 0">Todavía no hay clientes con cuenta.</p>';
- const ini=iniSemana(),sem=$('cjver').value=='sem',V=sem?CJ.mov.filter(m=>new Date(m.fecha)>=ini):CJ.mov,N=V.slice(0,300),s=t=>V.filter(m=>m.tipo==t).reduce((a,m)=>a+(+m.monto||0),0);
- $('cjsem').textContent=`Entró ${money(s('cobro'))} · Compras ${money(s('compra'))} · Gastos ${money(s('gasto'))} · Retiros ${money(s('retiro'))}`;
+ const ini=iniSemana(),sem=$('cjver').value=='sem',VS=sem?CJ.mov.filter(m=>new Date(m.fecha)>=ini):CJ.mov,V=CJF?VS.filter(m=>m.tipo==CJF):VS,N=V.slice(0,300),s=t=>VS.filter(m=>m.tipo==t).reduce((a,m)=>a+(+m.monto||0),0),cu=n=>n==1?'1 movimiento':n+' movimientos';
+ const fi=VS.filter(m=>m.tipo=='fiado'),sube=fi.reduce((a,m)=>a+Math.max(0,+m.deuda),0),baja=fi.reduce((a,m)=>a+Math.max(0,-m.deuda),0);
+ $('cjsem').textContent=CJF=='cobro'?`Entraron ${money(s('cobro'))} · ${cu(V.length)}`:CJF=='compra'?`Compras de mercadería: ${money(s('compra'))} · ${cu(V.length)}`:CJF=='fiado'?`Fiado ${money(sube)}${baja>.009?` · Anulado o corregido ${money(baja)}`:''} · Hoy te deben ${money(deben)}`:`Entró ${money(s('cobro'))} · Compras ${money(s('compra'))} · Gastos ${money(s('gasto'))} · Retiros ${money(s('retiro'))}`;
  const efe=m=>[+m.capital?`Capital ${+m.capital>0?'+':'−'} ${money(Math.abs(m.capital))}`:'',+m.ganancia?`Ganancia ${+m.ganancia>0?'+':'−'} ${money(Math.abs(m.ganancia))}`:'',+m.deuda?`Deuda ${+m.deuda>0?'+':'−'} ${money(Math.abs(m.deuda))}`:''].filter(Boolean).join(' · ');
  $('cjmov').innerHTML=N.map(m=>`<tr><td><div class="nom">${esc(CJNOM[m.tipo]||m.tipo)}${m.cliente?' · '+esc(m.cliente):''}${m.detalle?' · '+esc(m.detalle):''}${m.bulto?' · bulto':''}</div><div class="m" style="font-size:12px">${new Date(m.fecha).toLocaleDateString('es',{day:'2-digit',month:'2-digit'})} · ${efe(m)||money(m.monto)}</div></td><td class="n"><button class="s" title="Borrar movimiento" onclick="borraCaja(${m.id})">✕</button></td></tr>`).join('')
-  ||'<tr><td class="m">Todavía no hay movimientos.</td></tr>';
+  ||`<tr><td class="m">${CJF||sem?'No hay movimientos de este tipo'+(sem?' esta semana.':'.'):'Todavía no hay movimientos.'}</td></tr>`;
  $('cjdiv').value=fmtIn(CJ.cfg.divisor)}
 function abreCaja(t){if(!CJ.ok)return avisa('La Caja todavía no está lista. Revisa el aviso de arriba.');CJT=t;$('cjt').textContent=CJTIT[t];
  const ver=(i,v)=>$(i).hidden=!v;ver('cjlcl',t=='cobro'||t=='deuda');ver('cjlte',t=='deuda');ver('cjlpr',t=='compra');ver('cjlga',t=='gasto');ver('cjlde',['compra','gasto'].includes(t));ver('cjlg2',t=='inicial');ver('cjlpd',t=='cobro');ver('cjlnv',t=='cobro');ver('cjlbu',t=='compra');
