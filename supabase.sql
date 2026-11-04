@@ -331,9 +331,11 @@ end $$;
 -- Anular productos de un presupuesto (o todos): devuelve al stock lo que se había descontado
 -- ("disponible", no lo pedido) y la línea queda marcada "anulado": no sale en el PDF ni se pide al proveedor.
 -- p_lineas son las posiciones de las líneas (0, 1, 2…). Una línea ya anulada no se devuelve dos veces.
+-- Si el presupuesto se cargó en la Caja, lo anulado se le descuenta al cliente de su deuda
+-- (si ya lo había pagado, le queda a favor). La plata de la caja no cambia.
 create or replace function anular_presupuesto(p_id bigint, p_lineas int[])
 returns jsonb language plpgsql as $$
-declare pr record; l jsonb; i int := 0; d numeric; nuevas jsonb := '[]'; t numeric := 0; st jsonb := '[]'; v numeric;
+declare pr record; l jsonb; i int := 0; d numeric; nuevas jsonb := '[]'; t numeric := 0; st jsonb := '[]'; v numeric; cli text; baja numeric := 0;
 begin
   select * into pr from presupuestos where id = p_id for update;
   if not found then raise exception 'No existe el presupuesto Nº %', p_id; end if;
@@ -359,7 +361,14 @@ begin
     i := i + 1;
   end loop;
   update presupuestos set lineas = nuevas, total = t where id = p_id;
-  return jsonb_build_object('lineas', nuevas, 'total', t, 'stock', st);
+  select cliente into cli from caja_mov where detalle = 'Presupuesto Nº ' || p_id and cliente is not null order by id limit 1;
+  baja := round(coalesce(pr.total, 0) - t, 2);
+  if cli is not null and baja > 0 then
+    insert into caja_mov(tipo, cliente, detalle, monto, deuda)
+      values ('fiado', cli, 'Anulación del presupuesto Nº ' || p_id, baja, -baja);
+  else baja := 0;
+  end if;
+  return jsonb_build_object('lineas', nuevas, 'total', t, 'stock', st, 'cliente', cli, 'baja_deuda', baja);
 end $$;
 revoke execute on function anular_presupuesto(bigint, int[]) from public, anon;
 grant execute on function anular_presupuesto(bigint, int[]) to authenticated;
