@@ -65,6 +65,8 @@ create table if not exists presupuestos(
 -- y el final guarda qué presupuestos junta (une). El final no descuenta stock ni cuenta para el pedido.
 alter table presupuestos add column if not exists unificado_en bigint;
 alter table presupuestos add column if not exists une bigint[];
+-- Entregas: fecha en que se entregó el presupuesto al cliente (vacío = sin entregar)
+alter table presupuestos add column if not exists entregado timestamptz;
 
 -- ===================== PEDIDOS AL PROVEEDOR =====================
 -- Cada pedido enviado recuerda hasta qué presupuesto incluyó:
