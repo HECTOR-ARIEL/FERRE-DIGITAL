@@ -109,7 +109,7 @@ dialog{overflow:auto}
   <p class="m" style="margin:6px 0 10px">El PDF ya se descargó y el presupuesto quedó guardado en el <b>Historial</b>. Puedes enviarlo al cliente o volver a descargarlo.</p>
   <div class="r"><button class="s" onclick="descargar()">Descargar PDF</button><button id="bcomp" onclick="compartir()">Compartir (WhatsApp, correo…)</button><button class="s" onclick="$('res').hidden=true">Cerrar</button></div></div>
  <div class="c aviso r" id="solav" hidden></div>
- <div class="c"><div class="r" style="align-items:flex-end"><label style="flex:2;min-width:180px">Cliente<input id="cl" list="cllis" autocomplete="off" placeholder="Busca o escribe el cliente" oninput="telDeCli();guardaBorrador();pintaClH()"></label><label style="flex:1;min-width:140px">Teléfono (opcional)<input id="cltel" inputmode="tel" autocomplete="off" placeholder="351…" oninput="cliDeTelIn();guardaBorrador();pintaClH()"></label></div><datalist id="cllis"></datalist><p class="m" id="clh" style="margin:6px 0 0;font-size:13px" hidden></p></div>
+ <div class="c" style="position:relative"><div class="r" style="align-items:flex-end"><label style="flex:2;min-width:180px">Cliente<span class="r" style="flex-wrap:nowrap;gap:6px;min-width:0"><input id="cl" style="flex:1;min-width:0" autocomplete="off" placeholder="Toca o escribe el cliente" onfocus="abreLCl()" oninput="telDeCli();guardaBorrador();pintaClH();pintaLCl()"><button type="button" class="s" id="lclb" title="Ver todos los clientes" onclick="event.preventDefault();$('lcl').hidden?abreLCl(true):cierraLCl()" style="flex:none">▾</button></span></label><label style="flex:1;min-width:140px">Teléfono (opcional)<input id="cltel" inputmode="tel" autocomplete="off" placeholder="351…" oninput="cliDeTelIn();guardaBorrador();pintaClH()"></label></div><div id="lcl" class="lcl" hidden></div><datalist id="cllis"></datalist><p class="m" id="clh" style="margin:6px 0 0;font-size:13px" hidden></p></div>
  <div class="c"><b>1. Agrega productos</b><input id="qb" type="search" placeholder="Buscar por descripción o código" oninput="renderB()" style="margin-top:8px">
   <div class="w"><table><tbody id="bt"></tbody></table></div></div>
  <div class="c" id="paso2"><b>2. Revisa las cantidades</b><div class="w"><table><tbody id="lt"></tbody></table></div>
@@ -1124,7 +1124,7 @@ let CLI=[],CLI_OK=false,PAGO=null;
 const telK=t=>String(t||'').replace(/\D/g,'').slice(-7);  // los últimos 7 números: 0351 / 351 / 15 no importan
 const cliDeTel=t=>telK(t).length==7?CLI.find(c=>telK(c.telefono)==telK(t)):null;
 const pintaLisCli=()=>$('cllis').innerHTML=CLI.map(c=>`<option value="${esc(c.nombre)}">`).join('');
-async function cargaCli(){const{data,error}=await sb.from('clientes').select('*').order('nombre');CLI_OK=!error;CLI=data||[];pintaLisCli();pintaClH()}
+async function cargaCli(){const{data,error}=await sb.from('clientes').select('*').order('nombre');CLI_OK=!error;CLI=data||[];pintaLisCli();pintaClH();pintaLCl()}
 // El teléfono identifica al cliente: si ya está cargado, se usa su nombre de siempre aunque escriban otro
 const cliFinal=(nombre,tel)=>cliDeTel(tel)?.nombre||nombre;
 // Al escribir el teléfono, si es de un cliente conocido se pone su nombre; al elegir un cliente, se pone su teléfono
@@ -1139,6 +1139,23 @@ function pintaClH(){const n=$('cl').value.trim(),s=W.find(x=>x.id==SOL),d=[],ct=
  if(s){const c=cliDeTel(s.telefono);d.push(`Pedido web a nombre de ${s.cliente}${s.telefono?' · tel. '+s.telefono:''}.`);if(c)d.push(`Ese teléfono es de ${c.nombre}.`);else d.push('Elige el cliente que corresponde.')}
  if(CLI_OK&&n&&!ct&&!CLI.some(c=>norm(c.nombre)==norm(n)))d.push('Cliente nuevo: se agrega a la lista.');
  $('clh').hidden=!d.length;$('clh').textContent=d.join(' ')}
+// Lista desplegable de clientes en Nuevo presupuesto: todos los clientes (y los que tienen cuenta en la Caja), con teléfono y saldo
+function cliLista(){const M=new Map();for(const c of CLI)M.set(norm(c.nombre),{nombre:c.nombre,tel:c.telefono||'',saldo:0});
+ if(CJ.ok)for(const x of saldosCaja()){const k=norm(x.nombre),y=M.get(k);if(y)y.saldo=x.saldo;else M.set(k,{nombre:x.nombre,tel:'',saldo:x.saldo})}
+ return[...M.values()].sort((a,b)=>a.nombre.localeCompare(b.nombre))}
+async function abreLCl(todos){$('lcl').hidden=false;LCLT=!!todos;pintaLCl();if(!CJ.ok){try{await cargaCaja()}catch(e){}if(!$('lcl').hidden)pintaLCl()}}
+function cierraLCl(){$('lcl').hidden=true}
+let LCLT=false,LCLV=[];
+function pintaLCl(){if($('lcl').hidden)return;const t=LCLT?'':norm($('cl').value.trim()),q=t.replace(/\D/g,''),A=cliLista();
+ LCLV=A.filter(c=>!t||norm(c.nombre).includes(t)||(q.length>=3&&c.tel.replace(/\D/g,'').includes(q)));
+ const n=$('cl').value.trim(),nuevo=n&&!A.some(c=>norm(c.nombre)==norm(n));
+ $('lcl').innerHTML=(nuevo?`<button type="button" class="lcli nuevo" onclick="cierraLCl();pintaClH()"><b>+ Cliente nuevo: ${esc(n)}</b><span class="m">Se agrega a la lista al generar el presupuesto</span></button>`:'')+
+  (LCLV.map((c,i)=>`<button type="button" class="lcli" onclick="eligeCl(${i})"><span class="lnom">${esc(c.nombre)}${c.tel?` <span class="m">· ${esc(c.tel)}</span>`:''}</span><b class="${c.saldo>.009?'deb':''}">${CJ.ok?saldoTxt(c.saldo):''}</b></button>`).join('')||
+  (nuevo?'':`<p class="m" style="margin:8px 10px">${A.length?'Ningún cliente coincide.':'Todavía no hay clientes cargados. Escribe el nombre del cliente nuevo.'}</p>`))+
+  (LCLT||!t?'':`<button type="button" class="lcli m" onclick="LCLT=true;pintaLCl()">Ver todos los clientes (${A.length})</button>`)}
+function eligeCl(i){const c=LCLV[i];$('cl').value=c.nombre;$('cltel').value=c.tel||'';cierraLCl();guardaBorrador();pintaClH()}
+document.addEventListener('pointerdown',e=>{const l=$('lcl');if(l&&!l.hidden&&!e.target.closest('#lcl,#cl,#lclb'))cierraLCl()});
+document.addEventListener('keydown',e=>{if(e.key=='Escape')cierraLCl()});
 // Después de generar el presupuesto: la venta pasa a la Caja y a la ficha del cliente
 function abrePago(id,cl,total,tel){if(!CLI_OK||!(total>0))return;PAGO={id,cl,total,tel};
  $('pgt').textContent=`Presupuesto Nº ${id}${cl?' · '+cl:''} · Total ${money(total)}`;$('pgcli').hidden=!cl;$('pgm').value='';$('dpago').showModal()}
