@@ -198,6 +198,7 @@ dialog{overflow:auto}
  <div class="c acc"><span class="m" id="notainfo" style="margin-right:auto;align-self:center"></span><button class="s" id="benv" onclick="marcarEnviado()">Marcar pedido como enviado</button><button class="s" id="botra" onclick="$('fp').click()">Usar otro archivo…</button><button id="bnota" onclick="notaGuardada()">Completar nota de pedido (Excel)</button>
   <input id="fp" type="file" accept=".xlsx" hidden onchange="completarNota(this.files[0])"></div>
  <p class="m"><b>Cómo se calcula:</b> se pide solo lo vendido (lo que se descontó del stock). Lo que faltó (lo que pidieron y no había) se muestra aparte y no se pide solo: si lo quieres, escribe la cantidad a mano. Los productos anulados en el Historial no se cuentan. Los productos que en la nota del proveedor dicen "MINIMO 6", "MIN 10"… se piden por bulto completo, y solo si el stock quedó por debajo de 5 (o de la mitad del bulto en los de 20 o más). Puedes cambiar cualquier cantidad antes de completar la nota.<br>
+ <b>Tus cambios quedan guardados:</b> lo que edites, pongas en 0 o agregues con la lupa se guarda solo y se ve igual en la PC y en el teléfono, aunque recargues. Los productos que tocaste dicen <b>"Editado por vos"</b> con la cantidad calculada; si después se venden más, te avisa, pero se respeta tu número. Con <b>↺</b> vuelves a lo calculado. Al marcar el pedido como enviado, los cambios se borran y el próximo arranca limpio.<br>
  <b>Completar nota de pedido:</b> se usa automáticamente la última nota que importaste en Productos &gt; "Importar Excel" (la misma de los precios actuales). Se escriben las cantidades en su columna "Cantidad" y se descarga una copia completa, con el mismo formato. Con "Usar otro archivo…" puedes elegir otra a mano.<br>
  <b>Marcar pedido como enviado:</b> hazlo después de mandar la nota. El próximo pedido empieza a contar desde ahí.<br>
  <b>Cuando llega la mercadería:</b> sube esa misma nota completa en Productos &gt; "Importar cantidades" para sumar el stock (corrige antes lo que no haya llegado). Para ver qué no llegó, usa la pestaña "Recepción".</p>
@@ -1410,7 +1411,7 @@ const minDesc=s=>bultoDe(s)||+(String(s||'').match(/\bCAJA\s+CERRADA\s*(?:DE\s*|
 const limiteDe=b=>b>=20?b/2:5;
 let PED={lineas:[],hasta:0,n:0};
 // Suma lo vendido en los presupuestos posteriores al último pedido enviado
-async function cargaPedido(){const MANO=(PED?.lineas||[]).filter(l=>l.mano);$('pedinfo').textContent='Cargando…';$('pedt').innerHTML='';$('pedres').hidden=true;PED={lineas:[],hasta:0,n:0};pintaPedido(true);
+async function cargaPedido(){await guardaBorr(true);const MANO=BORR_OK?[]:(PED?.lineas||[]).filter(l=>l.mano);$('pedinfo').textContent='Cargando…';$('pedt').innerHTML='';$('pedres').hidden=true;PED={lineas:[],hasta:0,n:0};pintaPedido(true);
  // datos al día de los productos con compra por cantidad (las ventas pueden venir de otro equipo)
  await frescoComp();
  const u=await sb.from('pedidos').select('hasta_presupuesto').order('id',{ascending:false}).limit(1);
@@ -1424,8 +1425,9 @@ async function cargaPedido(){const MANO=(PED?.lineas||[]).filter(l=>l.mano);$('p
    b=bultoDe(p?.clave||p?.nombre||x.nombre),total=x.vendido;let pedir=total,nota='';
    if(+p?.compra_cant>0){pedir=0;nota=`Compra de a ${fmt(p.compra_cant)}: va en Plata a separar`}else
    if(b){if(st!=null&&st>=limiteDe(b)){pedir=0;nota=`Bulto x${b} · quedan ${fmt(st)}, no se pide`}else{pedir=Math.max(1,Math.ceil(total/b))*b;nota=`Bulto x${b}`}}
-   return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',codigo:p?.codigo||'',stock:st,costo:p?+p.costo||0:null,bulto:b,pedir,nota}}).sort((a,b)=>b.vendido-a.vendido||b.falto-a.falto||a.nombre.localeCompare(b.nombre))};
+   return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',codigo:p?.codigo||'',stock:st,costo:p?+p.costo||0:null,bulto:b,pedir,calc:pedir,nota}}).sort((a,b)=>b.vendido-a.vendido||b.falto-a.falto||a.nombre.localeCompare(b.nombre))};
  for(const m of MANO)if(!PED.lineas.some(l=>l.id==m.id))PED.lineas.unshift(m);
+ await aplicaBorr();
  pintaPedido();avisoWebPedido();pintaNota()}
 // Qué nota se va a usar: la última importada con los precios
 let NOTA=null;
@@ -1449,17 +1451,32 @@ async function avisoWebPedido(){const{count}=await sb.from('solicitudes').select
 function pintaPedMas(bq){const el=$('pedmas');if(!bq){el.innerHTML='';return}
  const ya=new Set(PED.lineas.map(l=>l.id)),R=P.filter(p=>!p.borrado&&!ya.has(p.id)&&norm([p.nombre,p.clave,p.codigo].join(' ')).includes(bq)).slice(0,8);
  el.innerHTML=R.length?`<p class="m" style="margin:10px 0 4px;font-size:13px">No están en este pedido. Tócalos para sumarlos:</p>`+R.map(p=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;border-top:1px solid var(--b);padding:7px 0"><span style="min-width:0"><span class="nom">${esc(p.nombre)}</span><span class="m" style="font-size:12px;display:block">Stock ${fmt(Math.max(0,+p.stock||0))}${+p.costo?' · Costo '+money(p.costo):''}</span></span><button type="button" class="s" style="flex:none" onclick="sumaPed(${p.id})">+ Pedir</button></div>`).join(''):''}
-function quitaPed(i){const l=PED.lineas[i];if(!l?.mano)return;PED.lineas.splice(i,1);pintaPedido();toast('Quitado del pedido: '+l.nombre)}
-function sumaPed(id){const p=P.find(q=>q.id==id);if(!p)return;const b=bultoDe(p.clave||p.nombre);
- PED.lineas.unshift({id:p.id,nombre:p.nombre,clave:p.clave||'',codigo:p.codigo||'',vendido:0,falto:0,stock:Math.max(0,+p.stock||0),costo:+p.costo||0,bulto:b,pedir:b||1,nota:b?`Bulto x${b}`:'',mano:true});
- pintaPedido();toast('Agregado al pedido: '+p.nombre)}
+function quitaPed(i){const l=PED.lineas[i];if(!l?.mano)return;PED.lineas.splice(i,1);guardaBorr();pintaPedido();toast('Quitado del pedido: '+l.nombre)}
+const lineaMano=(p,pedir)=>{const b=bultoDe(p.clave||p.nombre);return{id:p.id,nombre:p.nombre,clave:p.clave||'',codigo:p.codigo||'',vendido:0,falto:0,stock:Math.max(0,+p.stock||0),costo:+p.costo||0,bulto:b,pedir:pedir??(b||1),nota:b?`Bulto x${b}`:'',mano:true}};
+function sumaPed(id){const p=P.find(q=>q.id==id);if(!p)return;PED.lineas.unshift(lineaMano(p));guardaBorr();pintaPedido();toast('Agregado al pedido: '+p.nombre)}
+function editaPed(i,v){const l=PED.lineas[i];if(!l)return;l.pedir=Math.max(0,num(v)||0);if(!l.mano)l.editado=l.pedir!==l.calc;guardaBorr();pintaPedido()}
+function reponPed(i){const l=PED.lineas[i];if(!l||l.mano)return;l.pedir=l.calc;l.editado=false;delete l.vant;guardaBorr();pintaPedido();toast('Vuelve a lo calculado: '+l.nombre)}
+// Borrador del pedido: lo que cambias a mano (cantidades, productos agregados) queda guardado en Supabase
+// hasta que marcas el pedido como enviado. Se ve igual en todos los equipos.
+let BORR_OK=true,BORR_T=null,BORR_ERR=false;
+const datosBorr=()=>({ed:Object.fromEntries(PED.lineas.filter(l=>l.editado&&!l.mano).map(l=>[l.id,{p:l.pedir,v:l.vendido}])),
+ mano:Object.fromEntries(PED.lineas.filter(l=>l.mano).map(l=>[l.id,l.pedir]))});
+async function guardaBorr(ya){if(ya){if(!BORR_T)return;clearTimeout(BORR_T)}else{if(!BORR_OK)return;clearTimeout(BORR_T);BORR_T=setTimeout(()=>guardaBorr(true),400);return}
+ BORR_T=null;const{error}=await sb.from('pedido_borrador').upsert({id:1,datos:datosBorr(),actualizado:new Date().toISOString()});
+ if(error){if(!BORR_ERR)avisa('No se pudo guardar el cambio del pedido: '+msg(error)+'\n\nRevisa la conexión. Si sigue pasando, ejecuta otra vez supabase.sql en Supabase (SQL Editor > Run).');BORR_ERR=true}else BORR_ERR=false}
+async function aplicaBorr(){const{data,error}=await sb.from('pedido_borrador').select('datos').eq('id',1).maybeSingle();
+ if(error){BORR_OK=false;return}BORR_OK=true;const d=data?.datos||{},ed=d.ed||{},mano=d.mano||{};
+ for(const l of PED.lineas){const e=ed[l.id];if(e){l.pedir=+e.p||0;l.editado=l.pedir!==l.calc;l.vant=+e.v}}
+ for(const[id,q]of Object.entries(mano)){const l=PED.lineas.find(x=>x.id==id);
+  if(l){l.pedir=+q||0;l.editado=l.pedir!==l.calc;continue}  // lo agregaste a mano y después se vendió: queda tu cantidad
+  const p=P.find(x=>x.id==id&&!x.borrado);if(p)PED.lineas.unshift(lineaMano(p,+q||0))}}
 function pintaPedido(cargando){const n=PED.lineas.filter(l=>l.pedir>0).length;
  if(!cargando)$('pedinfo').textContent=PED.n?`${PED.n} presupuesto(s) desde el último pedido (hasta el Nº ${PED.hasta}) · ${n} producto(s) para pedir.`:'No hay presupuestos nuevos desde el último pedido.';
  const bq=norm($('pedq').value.trim()),ok=l=>!bq||norm([l.nombre,l.clave,l.codigo].join(' ')).includes(bq);$('pedqx').hidden=!bq;pintaPedMas(bq);
- $('pedt').innerHTML=PED.lineas.map((l,i)=>!ok(l)?'':`<tr${l.pedir>0?'':' class="off"'}><td><div class="nom">${esc(l.nombre)}</div>${l.clave&&norm(l.clave)!=norm(l.nombre)?`<div class="m" style="font-size:12px">Proveedor: ${esc(l.clave.toUpperCase())}</div>`:''}  <div class="tags">${l.mano?'<span class="tag">Agregado a mano</span>':''}${l.nota?`<span class="tag">${esc(l.nota)}</span>`:''}<span class="tag sub">Vendido ${fmt(l.vendido)}</span>${l.falto?`<span class="tag sub" style="color:var(--no)">Faltó ${fmt(l.falto)}</span>`:''}<span class="tag sub">Stock ${l.stock==null?'-':fmt(l.stock)}</span>${l.costo?`<span class="tag sub">Costo ${money(l.costo)}${l.pedir>0?' · '+money(l.costo*l.pedir):''}</span>`:''}</div>
+ $('pedt').innerHTML=PED.lineas.map((l,i)=>!ok(l)?'':`<tr${l.pedir>0?'':' class="off"'}><td><div class="nom">${esc(l.nombre)}</div>${l.clave&&norm(l.clave)!=norm(l.nombre)?`<div class="m" style="font-size:12px">Proveedor: ${esc(l.clave.toUpperCase())}</div>`:''}  <div class="tags">${l.mano?'<span class="tag">Agregado a mano</span>':''}${l.editado?`<span class="tag" style="color:#d97706">Editado por vos · calculado ${fmt(l.calc)}${l.vant!=null&&!isNaN(l.vant)&&l.vant!=l.vendido?` · lo vendido cambió de ${fmt(l.vant)} a ${fmt(l.vendido)}`:''}</span>`:''}${l.nota?`<span class="tag">${esc(l.nota)}</span>`:''}<span class="tag sub">Vendido ${fmt(l.vendido)}</span>${l.falto?`<span class="tag sub" style="color:var(--no)">Faltó ${fmt(l.falto)}</span>`:''}<span class="tag sub">Stock ${l.stock==null?'-':fmt(l.stock)}</span>${l.costo?`<span class="tag sub">Costo ${money(l.costo)}${l.pedir>0?' · '+money(l.costo*l.pedir):''}</span>`:''}</div>
   <td class="n hide-sm">${fmt(l.vendido)}<td class="n hide-sm">${l.falto?`<span class="falta">${fmt(l.falto)}</span>`:'-'}<td class="n hide-sm">${l.stock==null?'-':fmt(l.stock)}
   <td class="n hide-sm">${l.costo?money(l.costo):'-'}
-  <td class="n"><div style="display:flex;gap:6px;justify-content:flex-end;align-items:center"><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.pedir}" onfocus="this.select()" onchange="PED.lineas[${i}].pedir=Math.max(0,num(this.value)||0);pintaPedido()">${l.mano?`<button type="button" class="s" title="Quitar del pedido" onclick="quitaPed(${i})">✕</button>`:''}</div>
+  <td class="n"><div style="display:flex;gap:6px;justify-content:flex-end;align-items:center"><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.pedir}" onfocus="this.select()" onchange="editaPed(${i},this.value)">${l.mano?`<button type="button" class="s" title="Quitar del pedido" onclick="quitaPed(${i})">✕</button>`:l.editado?`<button type="button" class="s" title="Volver a lo calculado (${fmt(l.calc)})" onclick="reponPed(${i})">↺</button>`:''}</div>
   <td class="n hide-sm">${l.pedir>0&&l.costo?`<b>${money(l.costo*l.pedir)}</b>`:'-'}</tr>`).join('')
   ||(cargando?'':bq?`<tr><td class="m">Ningún producto de este pedido coincide con "${esc($('pedq').value.trim())}".</tr>`:'<tr><td class="m">Nada para pedir por ahora.</tr>');
  // Total a costo de lo que se va a pedir (los productos sin costo cargado no suman y se avisa)
@@ -1531,7 +1548,9 @@ async function marcarEnviado(){if(!PED.n&&!PED.lineas.some(l=>l.mano&&l.pedir>0)
  if(!await confirma(`¿Marcar el pedido como enviado?\n\nLas ventas de estos ${PED.n} presupuesto(s) ya no se contarán en el próximo pedido.`+(PED.web?`\n\nOjo: hay ${PED.web} pedido(s) web sin pasar a presupuesto. No están en este pedido; se contarán en el próximo cuando los pases.`:'')))return;
  const b=$('benv');b.disabled=true;
  const{error}=await sb.from('pedidos').insert({hasta_presupuesto:PED.hasta,lineas:PED.lineas.filter(l=>l.pedir>0).map(l=>({id:l.id,nombre:l.clave||l.nombre,cantidad:l.pedir}))});
- b.disabled=false;if(error)return avisa(msg(error));toast('Pedido marcado como enviado');PED.lineas=[];$('pedq').value='';cargaPedido()}
+ b.disabled=false;if(error)return avisa(msg(error));
+ clearTimeout(BORR_T);BORR_T=null;if(BORR_OK){const r=await sb.from('pedido_borrador').upsert({id:1,datos:{},actualizado:new Date().toISOString()});if(r.error)avisa('El pedido quedó enviado, pero no se pudieron borrar tus cambios guardados: '+msg(r.error)+'\n\nVuelve a entrar en Pedido y revisa las cantidades.')}
+ toast('Pedido marcado como enviado');PED.lineas=[];$('pedq').value='';cargaPedido()}
 
 /* ---------- recepción: comparar lo pedido con lo que llegó ---------- */
 // Se eligen dos Excel (lo pedido y lo que llegó) y se comparan en el momento. No se guarda nada.

@@ -77,6 +77,18 @@ create table if not exists pedidos(
   hasta_presupuesto bigint not null default 0,
   lineas jsonb                              -- [{id, nombre, cantidad}] lo que se pidió
 );
+-- Borrador del pedido (una sola fila): lo que cambias a mano en la pestaña Pedido
+-- (cantidades editadas y productos agregados). Se vacía al marcar el pedido como enviado.
+create table if not exists pedido_borrador(
+  id int primary key default 1 check (id = 1),
+  datos jsonb not null default '{}',        -- {ed: {id: {p: cantidad, v: vendido al editar}}, mano: {id: cantidad}}
+  actualizado timestamptz default now()
+);
+insert into pedido_borrador(id) values (1) on conflict (id) do nothing;
+alter table pedido_borrador enable row level security;
+drop policy if exists "admin pedido_borrador" on pedido_borrador;
+create policy "admin pedido_borrador" on pedido_borrador for all to authenticated using (true) with check (true);
+revoke all on pedido_borrador from anon;
 -- ===================== PEDIDOS WEB (CARRITO DEL CATÁLOGO) =====================
 -- Lo que los clientes arman en el carrito y envían. No descuenta stock:
 -- desde el panel (pestaña "Pedidos web") se pasa a presupuesto y ahí se descuenta.
