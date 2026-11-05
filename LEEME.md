@@ -97,7 +97,8 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - La primera vez hay que ejecutar otra vez `supabase.sql`. Después se cargan el **saldo inicial** y las **deudas** que ya existen, cliente por cliente.
 - **Entró plata**: se divide por 1,3 (se puede cambiar): capital para mercadería y ganancia. Si es pago de una deuda, se marca la tilde. Si el cliente queda debiendo, se escribe cuánto.
 - **Compré mercadería**: sale del capital. Si no alcanza, avisa; la ganancia no se toca y, si se guarda igual, el capital queda en negativo. Las compras de bulto llevan su tilde.
-- **Gasto** y **Retiro**: salen de la ganancia.
+- **Gasto** y **Retiro**: salen de la ganancia. Cada gasto lleva su tipo: Gastos fijos, Automotor u Otros.
+- En **Movimientos**, el botón **Gastos** muestra cuánto se gastó en cada tipo (🚗 Automotor, Gastos fijos, Otros). Tocando un tipo se ven solo esos gastos. Arriba se elige el período: esta semana, este mes, el mes pasado o todo.
 - **Clientes**: cada cliente con cuenta tiene su ficha (botón **Ver**) con el saldo y el historial. Ahí se carga cuánto se le llevó y cuánto pagó; lo que paga entra a la caja. Para agregar uno con lo que ya debe, **+ Cliente con deuda**. Si una deuda quedó mal, se arregla con **Corregir saldo a** en su ficha (no mueve la plata de la caja). **Eliminar cliente** borra la cuenta y su deuda; lo que ya pagó sigue en la Caja, sin el nombre.
 - **Qué hacer con el capital**: primero reponer lo vendido, después los bultos; lo demás queda de reserva. El costo de lo vendido se cuenta solo desde los presupuestos nuevos.
 - Si algo se cargó mal, se borra con ✕ y los saldos se recalculan. La división es una estimación: el porcentaje real varía por producto.
