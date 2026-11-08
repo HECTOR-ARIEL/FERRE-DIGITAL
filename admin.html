@@ -212,7 +212,7 @@ dialog{overflow:auto}
  <div class="c"><div class="r" style="justify-content:space-between;align-items:center"><b>Movimientos</b><select id="cjver" onchange="pintaCaja()" style="width:auto" title="Qué movimientos mostrar"><option value="sem">Esta semana</option><option value="mes">Este mes</option><option value="mpa">Mes pasado</option><option value="">Todos</option></select></div>
   <div class="seg" id="cjfil" role="tablist"><button type="button" data-f="" class="on" onclick="filCaja(this)">Todos</button><button type="button" data-f="cobro" onclick="filCaja(this)">Pagos</button><button type="button" data-f="compra" onclick="filCaja(this)">Compras</button><button type="button" data-f="gasto" onclick="filCaja(this)">Gastos</button><button type="button" data-f="fiado" onclick="filCaja(this)">Saldos</button></div>
   <div id="cjgas" hidden></div><p class="m" id="cjsem" style="font-size:13px;margin:6px 0"></p><div class="w"><table><tbody id="cjmov"></tbody></table></div></div>
- <div class="c r" style="align-items:center"><span class="m" style="flex:1;min-width:200px">Lo que entra se divide por <input id="cjdiv" inputmode="decimal" style="width:70px;display:inline-block" onchange="guardaDivisor()"> para separar capital y ganancia.</span><button class="s" onclick="abreCaja('inicial')">Cargar saldo inicial</button></div>
+ <div class="c r" style="align-items:center"><span class="m" style="flex:1;min-width:200px">Lo que entra se divide por <input id="cjdiv" inputmode="decimal" style="width:70px;display:inline-block" onchange="guardaDivisor()"> para separar capital y ganancia.</span><button class="s" onclick="abreCaja('inicial')">Poner la caja en 0 / corregir saldo</button></div>
  <p class="m"><b>Cómo funciona:</b> todo lo que entra se divide: una parte va al capital (solo para comprar mercadería) y el resto a la ganancia (de ahí salen gastos y retiros). El costo de lo vendido se cuenta solo desde los presupuestos; lo que tenga compra por cantidad va en Plata a separar. Si cargaste algo mal, bórralo con ✕ y se corrige todo. La cuenta es una estimación porque el porcentaje real cambia en cada producto.</p>
 </section>
 <section id="t-rec" hidden>
@@ -283,7 +283,7 @@ dialog{overflow:auto}
  <label id="cjlga">Tipo de gasto<select id="cjga"><option>Gastos fijos</option><option>Automotor</option><option>Otros</option></select></label>
  <label id="cjlde">Aclaración (opcional)<input id="cjde" autocomplete="off"></label>
  <label><span id="cjmt">Monto</span><input id="cjm" inputmode="decimal" oninput="avisaCaja()"></label>
- <label id="cjlg2">Ganancia inicial<input id="cjm2" inputmode="decimal" placeholder="0"></label>
+ <label id="cjlg2">Ganancia para retirar<input id="cjm2" inputmode="decimal"></label>
  <label class="chk" id="cjlpd"><input type="checkbox" id="cjpd" onchange="avisaCaja()"> Es pago de una deuda anterior</label>
  <label id="cjlnv">Dejó a deber de esta compra (opcional)<input id="cjnv" inputmode="decimal" placeholder="0" oninput="avisaCaja()"></label>
  <label class="chk" id="cjlbu"><input type="checkbox" id="cjbu"> Es un bulto (se paga con la plata a separar)</label>
@@ -381,7 +381,7 @@ const masObs=new IntersectionObserver(e=>{if(e[0].isIntersecting&&!$('mas').hidd
 let COMP_OK=false,P=[],L=JSON.parse(leeLS('borrador')||'[]'),ed=null,nuevaImg=null,quitarImg=false,lim=100,enPap=false;const sel=new Set();
 const PH='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44"><path d="M12 30l7-8 5 6 3-3 5 5" fill="none" stroke="#b5c2bf" stroke-width="2"/><circle cx="28" cy="16" r="3" fill="#b5c2bf"/></svg>');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const dos=n=>Number(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
+const dos=n=>{n=Math.round(Number(n)*100)/100;return(n||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})};  // n||0 evita el "-0,00"
 const money=n=>(CFG.MONEDA||'')+' '+dos(n);
 const fmt=n=>Number(n).toLocaleString('de-DE',{maximumFractionDigits:2});
 const red=(n,d)=>Math.round(n*10**d)/10**d;
@@ -1205,7 +1205,7 @@ const GTIP=['Automotor','Gastos fijos','Otros'],tipoGasto=m=>{const t=String(m.d
 function filGasto(g){CJG=CJG==g?'':g;pintaCaja()}
 function filCaja(b){CJF=b.dataset.f;CJG='';document.querySelectorAll('#cjfil button').forEach(x=>x.classList.toggle('on',x==b));pintaCaja()}
 let CJ={mov:[],cfg:{divisor:1.3,costo_vendido:0},ok:false},CJT='';
-const CJTIT={cobro:'Entró plata',compra:'Compré mercadería',gasto:'Gasto',retiro:'Retiro',inicial:'Saldo inicial',deuda:'Cliente con deuda'};
+const CJTIT={cobro:'Entró plata',compra:'Compré mercadería',gasto:'Gasto',retiro:'Retiro',inicial:'Poner la caja en (0 = arrancar de cero)',deuda:'Cliente con deuda'};
 const CJNOM={cobro:'Entró plata',fiado:'Deuda',compra:'Compra',gasto:'Gasto',retiro:'Retiro',inicial:'Saldo inicial'};
 // semana de sábado a viernes
 const iniSemana=()=>{const d=new Date;d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+1)%7));return d};
@@ -1221,7 +1221,7 @@ async function cargaCaja(){$('cjav').hidden=true;
 function pintaCaja(){const cap=sumaCj('capital'),gan=sumaCj('ganancia'),D=saldosCaja(),deben=D.reduce((s,x)=>s+Math.max(0,x.saldo),0),comp=sumaCj('monto',m=>m.tipo=='compra'&&!m.bulto);
  const pend=Math.max(0,(+CJ.cfg.costo_vendido||0)-comp),bul=bultosCaja(),lib=cap-pend-bul;
  const dato=(t,v,neg)=>`<div style="flex:1;min-width:150px;padding:12px;background:var(--c);border:1px solid var(--b);border-radius:10px"><div class="m" style="font-size:12px">${t}</div><div style="font-size:21px;font-weight:600${neg?';color:var(--no)':''}">${money(v)}</div></div>`;
- $('cjres').innerHTML=`<div class="r" style="margin-bottom:10px">${dato('Capital en caja',cap,cap<0)}${dato('Ganancia para retirar',gan,gan<0)}${dato('Te deben los clientes',deben)}</div>`;
+ $('cjres').innerHTML=`<div class="r" style="margin-bottom:10px">${dato('Capital en caja',cap,cap<-.005)}${dato('Ganancia para retirar',gan,gan<-.005)}${dato('Te deben los clientes',deben)}</div>`;
  const tot=Math.max(1,pend+bul+Math.max(0,lib)),fila=(n,t,v,c)=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;font-size:15px;padding:3px 0"><span>${n}. ${t}</span><b style="white-space:nowrap${c?';color:var(--no)':''}">${money(v)}</b></div>`;
  $('cjcap').innerHTML=`<div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--bg);margin:10px 0"><div style="width:${pend/tot*100}%;background:var(--no)"></div><div style="width:${bul/tot*100}%;background:var(--m)"></div><div style="width:${Math.max(0,lib)/tot*100}%;background:var(--b)"></div></div>`
   +fila(1,'Mercadería vendida sin reponer',pend,pend>0)+fila(2,'Plata a separar para bultos',bul)+(lib<0?`<p class="falta" style="margin:6px 0 0">Faltan ${money(-lib)} de capital para cubrir todo esto.</p>`:fila(3,'Capital libre, de reserva',lib));
@@ -1239,8 +1239,8 @@ function pintaCaja(){const cap=sumaCj('capital'),gan=sumaCj('ganancia'),D=saldos
  $('cjdiv').value=fmtIn(CJ.cfg.divisor)}
 function abreCaja(t){if(!CJ.ok)return avisa('La Caja todavía no está lista. Revisa el aviso de arriba.');CJT=t;$('cjt').textContent=CJTIT[t];
  const ver=(i,v)=>$(i).hidden=!v;ver('cjlcl',t=='cobro'||t=='deuda');ver('cjlte',t=='deuda');ver('cjlpr',t=='compra');ver('cjlga',t=='gasto');ver('cjlde',['compra','gasto'].includes(t));ver('cjlg2',t=='inicial');ver('cjlpd',t=='cobro');ver('cjlnv',t=='cobro');ver('cjlbu',t=='compra');
- $('cjmt').textContent=t=='inicial'?'Capital inicial':t=='cobro'?'Plata que entró':t=='deuda'?'Cuánto debe':'Monto';
- for(const i of['cjcl','cjte','cjde','cjm','cjm2','cjnv'])$(i).value='';$('cjpd').checked=$('cjbu').checked=false;$('cjpr').selectedIndex=$('cjga').selectedIndex=0;avisaCaja();$('dcaja').showModal()}
+ $('cjmt').textContent=t=='inicial'?'Capital en caja':t=='cobro'?'Plata que entró':t=='deuda'?'Cuánto debe':'Monto';
+ for(const i of['cjcl','cjte','cjde','cjm','cjm2','cjnv'])$(i).value='';$('cjpd').checked=$('cjbu').checked=false;$('cjpr').selectedIndex=$('cjga').selectedIndex=0;if(t=='inicial')$('cjm').value=$('cjm2').value='0';avisaCaja();$('dcaja').showModal()}
 // Muestra cómo se va a repartir lo que se está cargando
 function avisaCaja(){let t='';const m=num($('cjm').value)||0,div=+CJ.cfg.divisor||1.3;
  if(CJT=='cobro'){if(m>0)t=`Capital ${money(m/div)} · Ganancia ${money(m-m/div)}`;
@@ -1253,7 +1253,17 @@ async function guardaCaja(e){e.preventDefault();const t=CJT,m=num($('cjm').value
  else if(t=='deuda'){if(!cl||!(m>0))return avisa('Escribe el cliente y cuánto debe.');const ya=saldosCaja().find(x=>norm(x.nombre)==norm(cl))?.saldo||0;if(ya&&!await confirma(`${cl} ya tiene saldo: ${saldoTxt(ya)}.
 
 Se le va a sumar ${money(m)}. Para poner otro saldo, usa "Corregir saldo" en su ficha. ¿Sumar igual?`))return;o={tipo:'fiado',cliente:cl,detalle:'Deuda inicial',monto:m,deuda:m}}
- else if(t=='inicial'){const g=num($('cjm2').value)||0;if(!m&&!g)return avisa('Escribe el capital o la ganancia inicial.');o={tipo:'inicial',monto:m+g,capital:m,ganancia:g}}
+ else if(t=='inicial'){// Deja la caja EN estos valores (no los suma): 0 = arrancar de cero
+  const c1=num($('cjm').value),g1=num($('cjm2').value);if(c1==null&&g1==null)return avisa('Escribe el capital y la ganancia con que arranca la caja (0 para empezar de cero).');
+  const cap=sumaCj('capital'),gan=sumaCj('ganancia'),nc=c1??cap,ng=g1??gan,dc=red(nc-cap,2),dg=red(ng-gan,2);
+  if(!dc&&!dg)return avisa('La caja ya tiene esos valores.');
+  if(!await confirma(`La caja queda así:
+
+Capital: ${money(cap)} → ${money(nc)}
+Ganancia: ${money(gan)} → ${money(ng)}
+
+Lo que te deben los clientes no cambia. ¿Guardar?`))return;
+  o={tipo:'inicial',detalle:'Caja puesta en '+money(nc)+' / '+money(ng),monto:nc+ng,capital:dc,ganancia:dg}}
  else{if(!(m>0))return avisa('Escribe el monto.');const de=$('cjde').value.trim();
   if(t=='gasto')o={tipo:'gasto',detalle:$('cjga').value+(de?': '+de:''),monto:m,ganancia:-m};
   else if(t=='retiro'){const gan=sumaCj('ganancia');if(m>gan&&!await confirma(`Hay ${money(gan)} de ganancia y vas a retirar ${money(m)}. ¿Guardar igual?`))return;o={tipo:'retiro',detalle:de||null,monto:m,ganancia:-m}}
@@ -1313,7 +1323,7 @@ async function guardaCli(e){e.preventDefault();const le=num($('clle').value)||0,
  for(const k of['clle','clpa','clde'])$(k).value='';toast('Guardado');await cargaCaja();pintaCli()}
 async function borraCaja(id){const m=CJ.mov.find(x=>x.id==id);if(!m||!await confirma(`¿Borrar este movimiento de ${money(m.monto)}?\n\nLos saldos se recalculan.`))return;
  const{error}=await sb.from('caja_mov').delete().eq('id',id);if(error)return avisa(msg(error));toast('Movimiento borrado');cargaCaja()}
-async function guardaDivisor(){const d=num($('cjdiv').value);if(!(d>=1))return avisa('Escribe un número como 1,3.');
+async function guardaDivisor(){const d=num($('cjdiv').value);if(!(d>=1)){$('cjdiv').value=fmtIn(CJ.cfg.divisor);return avisa('Esta casilla es el divisor (cómo se separa capital y ganancia), no el saldo. Tiene que ser 1 o más, por ejemplo 1,3.\n\nPara poner la caja en 0 usa el botón "Poner la caja en 0".')}
  const{error}=await sb.from('caja_config').update({divisor:d}).eq('id',1);if(error)return avisa(msg(error));CJ.cfg.divisor=d;toast('Guardado. Se aplica desde ahora; lo ya cargado no cambia.')}
 
 /* ---------- copia de seguridad ---------- */
