@@ -17,6 +17,8 @@ alter table productos add column if not exists clave text;  -- descripción orig
 alter table productos add column if not exists borrado boolean not null default false;  -- en la papelera
 alter table productos add column if not exists minimo numeric(12,2);  -- compra mínima en el catálogo (vacío = por unidad)
 alter table productos add column if not exists cod_prov text;  -- código del proveedor en el Excel (no es tu código; sirve para reconocer productos renombrados)
+alter table productos add column if not exists marca text;  -- color en el catálogo: 'sube' (rojo) o 'baja' (verde) respecto al Excel anterior
+alter table productos add column if not exists nuevo_ts timestamptz;  -- cuándo apareció en el catálogo (amarillo durante 7 días)
 alter table productos alter column codigo drop not null;
 
 -- Versión anterior: "precio" era un número fijo. Ahora pasa a ser el costo,
@@ -129,7 +131,22 @@ create policy "admin productos" on productos for all to authenticated using (tru
 create policy "admin presupuestos" on presupuestos for all to authenticated using (true) with check (true);
 -- Los visitantes no pueden ver tu costo ni tu % de ganancia
 revoke select on productos from anon;
-grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado, sector_id, minimo) on productos to anon;
+grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado, sector_id, minimo, marca, nuevo_ts) on productos to anon;
+
+-- ===================== COLORES DEL CATÁLOGO =====================
+-- Amarillo = producto nuevo: se marca la hora en que aparece en el catálogo (cuando recibe su código).
+-- El catálogo lo pinta 7 días. Los productos que ya estaban no se pintan.
+create or replace function tg_nuevo() returns trigger language plpgsql as $$
+begin
+  if new.nuevo_ts is null and coalesce(new.codigo, '') <> ''
+     and (tg_op = 'INSERT' or coalesce(old.codigo, '') = '') then
+    new.nuevo_ts := now();
+  end if;
+  return new;
+end $$;
+drop trigger if exists productos_nuevo on productos;
+create trigger productos_nuevo before insert or update of codigo on productos
+  for each row execute function tg_nuevo();
 
 -- ===================== COMPRA POR CANTIDAD FIJA (PLATA A SEPARAR) =====================
 -- Productos que se compran de a muchas unidades (bulto de fichas, canillas de a 100…): no entran en el
@@ -162,6 +179,9 @@ create table if not exists caja_config(
   costo_vendido numeric not null default 0
 );
 insert into caja_config(id) values (1) on conflict (id) do nothing;
+-- "Vendido" en la Caja: fechas elegidas a mano (vacío = semana de sábado a viernes)
+alter table caja_config add column if not exists ven_desde date;
+alter table caja_config add column if not exists ven_hasta date;
 alter table caja_mov enable row level security;
 alter table caja_config enable row level security;
 drop policy if exists "admin caja_mov" on caja_mov;
@@ -253,11 +273,21 @@ create policy "admin notas" on storage.objects for all to authenticated
 -- pasa a usar la descripción nueva del proveedor en vez de crear otro. Conserva tu código, ganancia,
 -- foto, sector y stock; la descripción visible cambia solo si no la habías editado.
 -- "cod" es el código del proveedor: se guarda en cod_prov (tu código no se toca).
-create or replace function importar_productos(p_filas jsonb, p_ganancia numeric)
+-- Colores: compara el costo nuevo con el del Excel anterior → 'sube' (rojo), 'baja' (verde) o nada.
+-- Diferencias de menos del 0,5 % (redondeos) no cuentan. p_limpiar (el panel lo manda en el primer bloque)
+-- borra los colores del Excel anterior: el color dura hasta el próximo Excel.
+create or replace function marca_precio(viejo numeric, nuevo numeric) returns text
+language sql immutable as $$
+  select case when coalesce(viejo, 0) <= 0 then null
+              when nuevo > viejo * 1.005 then 'sube'
+              when nuevo < viejo * 0.995 then 'baja' end $$;
+drop function if exists importar_productos(jsonb, numeric);
+create or replace function importar_productos(p_filas jsonb, p_ganancia numeric, p_limpiar boolean default false)
 returns json language plpgsql as $$
 declare f jsonb; d text; k text; b boolean; r bigint; vieja text;
         nuevos int := 0; actualizados int := 0; omitidos int := 0; reemplazados int := 0;
 begin
+  if p_limpiar then update productos set marca = null where marca is not null; end if;
   for f in select * from jsonb_array_elements(p_filas) loop
     d := regexp_replace(trim(f->>'descripcion'), '\s+', ' ', 'g');
     k := lower(d);
@@ -268,6 +298,7 @@ begin
       if found then
         update productos set clave = k,
           nombre = case when lower(regexp_replace(trim(nombre), '\s+', ' ', 'g')) = vieja then d else nombre end,
+          marca = marca_precio(costo, (f->>'costo')::numeric),
           costo = (f->>'costo')::numeric, stock = coalesce((f->>'stock')::numeric, stock),
           cod_prov = coalesce(nullif(f->>'cod', ''), cod_prov)
           where id = r;
@@ -284,7 +315,8 @@ begin
     elsif b then
       omitidos := omitidos + 1;
     else
-      update productos set costo = (f->>'costo')::numeric,
+      update productos set marca = marca_precio(costo, (f->>'costo')::numeric),
+                           costo = (f->>'costo')::numeric,
                            stock = coalesce((f->>'stock')::numeric, stock),
                            cod_prov = coalesce(nullif(f->>'cod', ''), cod_prov)
         where clave = k;
@@ -560,11 +592,11 @@ end $$;
 revoke execute on function cantidad_solicitud(bigint, bigint, numeric) from public, anon;
 grant execute on function cantidad_solicitud(bigint, bigint, numeric) to authenticated;
 
-revoke execute on function importar_productos(jsonb, numeric) from public, anon;
+revoke execute on function importar_productos(jsonb, numeric, boolean) from public, anon;
 revoke execute on function sumar_stock(jsonb) from public, anon;
 grant execute on function sumar_stock(jsonb) to authenticated;
 revoke execute on function crear_presupuesto(text, jsonb, bigint) from public, anon;
-grant execute on function importar_productos(jsonb, numeric) to authenticated;
+grant execute on function importar_productos(jsonb, numeric, boolean) to authenticated;
 grant execute on function crear_presupuesto(text, jsonb, bigint) to authenticated;
 
 -- ===================== AVISO POR TELEGRAM =====================

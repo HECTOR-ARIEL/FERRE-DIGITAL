@@ -196,3 +196,12 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 - Para muchos a la vez: marca los productos y en la barra de abajo elige **Compra mínima… > Según la descripción** o **Por unidad**.
 - Filtro (junto a sectores): **Con compra mínima**, **Por unidad** o **Dicen MINIMO pero van por unidad** (para revisarlos).
 - La primera vez hay que ejecutar otra vez `supabase.sql` en Supabase (crea la columna `minimo`). Hasta entonces, todos se venden por unidad.
+
+## Colores del catálogo
+- **Rojo:** el precio subió respecto al Excel anterior. **Verde:** bajó. Duran hasta que importás el próximo Excel (cambios de menos del 0,5 % no cuentan).
+- **Amarillo:** producto nuevo en el catálogo (desde que le ponés su código). Dura 7 días. Si después le cambia el precio, pasa a rojo o verde.
+- Cambiar la ganancia a mano no pinta nada: solo cuentan los precios del Excel.
+
+## Caja: "Plata que entró esta semana"
+- Suma toda la plata que entró de sábado a viernes (los "Entró plata", también cuando un cliente paga una deuda). Lo fiado no suma hasta que lo pagan.
+- Tocando la casilla podés elegir las fechas a mano (desde / hasta). Se guarda y se ve igual en la PC y en el teléfono. Con "Volver a la semana normal" vuelve a contar sola cada sábado.

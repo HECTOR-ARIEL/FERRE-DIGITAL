@@ -25,6 +25,10 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 .cl .sb{font-weight:700;text-align:right;white-space:nowrap}.cl .q{color:var(--no);font-size:12px;font-weight:600;grid-column:1/-1}
 .tot{font-size:20px;text-align:right}.acc{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}.acc .s:first-child{margin-right:auto}
 #cok{text-align:center;justify-items:center}#cok .ok{font-size:40px;width:64px;height:64px;border-radius:99px;display:grid;place-items:center;background:var(--a);color:#fff}
+/* colores del catálogo: rojo = subió, verde = bajó (hasta el próximo Excel), amarillo = nuevo (7 días) */
+.card.sube{border:2px solid #ff2d55;background:color-mix(in srgb,#ff2d55 9%,var(--c));box-shadow:0 0 6px #ff2d55,0 0 18px rgba(255,45,85,.55)}
+.card.baja{border:2px solid #22e07a;background:color-mix(in srgb,#22ff88 9%,var(--c));box-shadow:0 0 6px #22ff88,0 0 18px rgba(34,255,136,.5)}
+.card.nuevo{border:2px solid #ffd900;background:color-mix(in srgb,#ffe600 12%,var(--c));box-shadow:0 0 6px #ffe600,0 0 18px rgba(255,230,0,.6)}
 </style></head><body>
 <header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><h1 id="tit">Catálogo</h1></div><div class="datos"><b>Héctor Ariel De Cia</b><span>Alias: <b class="sel">distri.dec</b></span><a href="tel:+543516522035">Tel: 351-6522-035</a></div>
 <div class="r"><button id="tema" class="s" onclick="cambiarTema()">◐</button><button id="car" class="s" onclick="abrirCarrito()" title="Ver el carrito y pedir presupuesto">🛒<span class="tx"> Carrito</span><span class="nb" id="nb" hidden>0</span></button><a class="btn s" href="admin.html">Administrar</a></div></header>
@@ -69,14 +73,15 @@ if(CFG.NOMBRE)document.title=CFG.NOMBRE+' · Catálogo';
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 const pide=c=>()=>sb.from('productos').select(c).eq('activo',true).eq('borrado',false).not('codigo','is',null).neq('codigo','').order('nombre');
 async function load(){
- try{P=await todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo')).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock')))}
+ try{P=await todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts')).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock')))}
  catch(e){$('u').textContent='No se pudo cargar el catálogo.';return}
  const{data}=await sb.from('sectores').select('id,nombre').order('nombre');SEC=data||[];pintaChips();
  r();$('u').textContent=P.length+' productos';pintaCar()}
+const color=p=>p.marca=='sube'?' sube':p.marca=='baja'?' baja':p.nuevo_ts&&Date.now()-Date.parse(p.nuevo_ts)<7*864e5?' nuevo':'';
 function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
  const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return(!sec||p.sector_id==sec)&&w.every(x=>s.includes(x))});
  FL=F;pintaAbc($('abc'),F);if(P.length)$('u').textContent=$('q').value.trim()||sec?`${F.length} de ${P.length}`:P.length+' productos';
- $('g').innerHTML=F.slice(0,lim).map(p=>`<article id="a${p.id}" class="card${p.stock>0?'':' agotado'}">
+ $('g').innerHTML=F.slice(0,lim).map(p=>`<article id="a${p.id}" class="card${p.stock>0?'':' agotado'}${color(p)}">
   <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(nom(p))}">`:'Sin imagen'}</div>
   <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(nom(p))}</h2><span class="pr">${p.precio>0?money(p.precio):'Consultar precio'}</span>${p.minimo>0?`<span class="mn">Compra mínima: ${fmt(p.minimo)}</span>`:''}${!(p.precio>0)?'':p.stock>0?`<div class="add" id="k${p.id}">${ctrl(p.id)}</div>`:'<span class="sin">Sin stock</span>'}</div></article>`).join('')
   ||`<p class="m" style="grid-column:1/-1">${P.length?'No hay productos que coincidan con la búsqueda.':'Todavía no hay productos en el catálogo.'}</p>`;
