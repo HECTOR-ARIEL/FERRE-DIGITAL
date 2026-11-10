@@ -41,6 +41,7 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 .franja{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;width:100%;margin:14px 0 0;padding:10px 14px;border:0;border-radius:10px;background:linear-gradient(90deg,#ff1f1f,#ff8a00);color:#fff;font-weight:800;font-size:15px;text-align:left;white-space:normal}
 .franja:hover{background:linear-gradient(90deg,#e81010,#f07a00)}.franja span{font-size:13px;background:#fff;color:#d40000;border-radius:99px;padding:4px 12px;white-space:nowrap}
 .cl .of{color:#e00000;font-weight:700}
+.sep{grid-column:1/-1;margin:18px 0 0;padding-top:14px;border-top:1px solid var(--b);font-size:15px;color:var(--m)}
 </style></head><body>
 <header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><h1 id="tit">Catálogo</h1></div><div class="datos"><b>Héctor Ariel De Cia</b><span>Alias: <b class="sel">distri.dec</b></span><a href="tel:+543516522035">Tel: 351-6522-035</a></div>
 <div class="r"><button id="tema" class="s" onclick="cambiarTema()">◐</button><button id="car" class="s" onclick="abrirCarrito()" title="Ver el carrito y pedir presupuesto">🛒<span class="tx"> Carrito</span><span class="nb" id="nb" hidden>0</span></button><a class="btn s" href="admin.html">Administrar</a></div></header>
@@ -95,8 +96,10 @@ async function load(){
 const color=p=>p.of?' oferta':p.marca=='sube'?' sube':p.marca=='baja'?' baja':p.nuevo_ts&&Date.now()-Date.parse(p.nuevo_ts)<7*864e5?' nuevo':'';
 function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
  const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return(!sec||(sec=='of'?p.of:p.sector_id==sec))&&w.every(x=>s.includes(x))});
+ // Primero todo lo que tiene stock (en orden alfabético) y después lo que está sin stock
+ F.sort((a,b)=>(b.stock>0)-(a.stock>0));const n1=F.findIndex(p=>!(p.stock>0));
  FL=F;pintaAbc($('abc'),F);if(P.length)$('u').textContent=$('q').value.trim()||sec?`${F.length} de ${P.length}`:P.length+' productos';
- $('g').innerHTML=F.slice(0,lim).map(p=>`<article id="a${p.id}" class="card${p.stock>0?'':' agotado'}${color(p)}">
+ $('g').innerHTML=F.slice(0,lim).map((p,i)=>(i&&i==n1?'<h3 class="sep">Sin stock por ahora</h3>':'')+`<article id="a${p.id}" class="card${p.stock>0?'':' agotado'}${color(p)}">
   <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(nom(p))}">`:'Sin imagen'}</div>
   <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(nom(p))}</h2>${p.of?`<span class="antes">${money(p.antes)}</span>`:''}<span class="pr">${p.precio>0?money(p.precio):'Consultar precio'}</span>${p.minimo>0?`<span class="mn">Compra mínima: ${fmt(p.minimo)}</span>`:''}${!(p.precio>0)?'':p.stock>0?`<div class="add" id="k${p.id}">${ctrl(p.id)}</div>`:'<span class="sin">Sin stock</span>'}</div></article>`).join('')
   ||`<p class="m" style="grid-column:1/-1">${P.length?'No hay productos que coincidan con la búsqueda.':'Todavía no hay productos en el catálogo.'}</p>`;
