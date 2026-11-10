@@ -34,6 +34,11 @@ dialog{overflow:auto}
 .mqg{display:grid;grid-template-columns:minmax(0,230px) minmax(0,1fr) minmax(0,280px);gap:16px;align-items:start}.mqf{display:grid;gap:10px}.mqf .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mqd{background:#e4e4e4;--t:#1a1a1a;--m:#5c5c5c;color:#1a1a1a;border-radius:10px;padding:10px;text-align:center}.mqd svg{width:100%;max-width:260px;height:auto}.mqd p{margin:4px 0 0;font-size:12px}.mqm table td{padding:5px 4px;font-size:13px}.mqm .tot{font-size:18px;margin:8px 0 0}#mqcfg{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:820px){.mqg{grid-template-columns:1fr}.mqd svg{max-width:200px}}
 .ren{align-items:flex-start;font-size:14px;padding:8px 0;border-bottom:1px solid var(--b)}.ren input{margin-top:3px;flex:none}.ren i{font-style:normal;font-size:12px}#dimpl{max-height:45vh;overflow:auto}
 .tag.nw{background:var(--a);color:#fff;border-color:var(--a);font-weight:700}
+/* ofertas: recuadro en el producto y etiqueta en listas y presupuesto */
+.ofb{border:2px dashed #ff6a00;border-radius:10px;padding:10px 12px;display:grid;gap:8px;background:color-mix(in srgb,#ff8a00 7%,var(--c))}.ofb .chk{font-weight:700}
+.ofr{font-size:14px;line-height:1.55}.ofr .ok{color:#0a8a3a;font-weight:600}.ofr .mal{color:var(--no);font-weight:700}
+.tag.of,.tof{background:linear-gradient(90deg,#ff1f1f,#ff8a00);color:#fff;border:0;font-weight:700}.tof{display:inline-block;font-size:10px;letter-spacing:.05em;border-radius:4px;padding:1px 6px;margin-left:4px;vertical-align:1px}
+.antes{text-decoration:line-through;color:var(--m);font-size:12px}
 .wp{display:grid;gap:8px}.wp.nuevo{border-left:4px solid var(--a)}.wp .cab{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}.wp .cab b{font-size:16px}
 .stw{display:flex;align-items:center;gap:4px}.stw button{width:34px;height:34px;padding:0;font-size:18px;flex:none}.stw .qty{width:64px;text-align:center;padding:6px 4px}
 /* teléfono: en cada producto del pedido web, la descripción arriba y cantidad · subtotal · quitar abajo */
@@ -75,7 +80,7 @@ dialog{overflow:auto}
   <button id="qx" type="button" hidden title="Borrar búsqueda" onclick="$('q').value='';lim=100;renderP();$('q').focus()">✕</button></div><span class="m" id="u"></span></div>
  <div class="c r" id="tbar">
   <select id="fs" onchange="lim=100;renderP()" title="Filtrar por sector"></select>
-  <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option><option value="k">Sin stock (con código)</option><option value="p">Sin precio (a $ 0)</option><option value="m">Con compra mínima</option><option value="u">Por unidad</option><option value="x">Dicen MINIMO o CAJA CERRADA pero van por unidad</option></select>
+  <select id="fc" onchange="lim=100;renderP()" title="Filtrar por código"><option value="">Todos</option><option value="o">🔥 En oferta</option><option value="c">Con código (en catálogo)</option><option value="s">Sin código (no salen en catálogo)</option><option value="k">Sin stock (con código)</option><option value="p">Sin precio (a $ 0)</option><option value="m">Con compra mínima</option><option value="u">Por unidad</option><option value="x">Dicen MINIMO o CAJA CERRADA pero van por unidad</option></select>
   <button onclick="editar()">+ Nuevo producto</button>
   <button class="s" onclick="$('f').click()">Importar Excel</button>
   <input id="f" type="file" accept=".xlsx,.xls,.csv" hidden onchange="imp(this.files[0])">
@@ -336,6 +341,9 @@ dialog{overflow:auto}
   <label>Ganancia %<input id="fgan" inputmode="decimal" oninput="deCosto()"></label>
   <label>Precio venta<input id="fven" inputmode="decimal" oninput="deVenta()"></label>
  </div>
+ <div class="ofb" id="lof"><label class="chk"><input id="fof" type="checkbox" onchange="calcOf()"> 🔥 En oferta</label>
+  <label id="lgo">Ganancia en oferta %<input id="fgo" inputmode="decimal" placeholder="Ej.: 25" oninput="calcOf()"></label>
+  <div class="ofr" id="fofr"></div></div>
  <div class="g3"><label>Stock<input id="fsto" inputmode="decimal"></label><label id="lsec" style="grid-column:span 2">Sector<select id="fsec"></select></label></div>
  <div class="g3" id="lmin"><label>Compra mínima<input id="fmin" inputmode="decimal" placeholder="Por unidad"></label>
   <div style="grid-column:span 2;display:grid;gap:4px;align-content:end"><button type="button" class="s" id="fminb" onclick="$('fmin').value=this.dataset.n"></button><span class="m" style="font-size:12px">Vacío = se vende por unidad. Con número, el cliente no puede pedir menos.</span></div></div>
@@ -404,7 +412,7 @@ function toast(t){const d=document.createElement('div');d.className='toast';d.te
 function msg(e){if(e.code=='23505')return 'Ya existe otro producto con ese código.';return e.message||String(e)}
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 // lo que se ve en la tabla de productos: búsqueda + filtro de código (+ papelera)
-const lista=()=>{const c=$('fc').value,f=$('fs').value;return filtra($('q').value,enPap).filter(p=>(!c||(c=='m'?p.minimo>0:c=='u'?!(p.minimo>0):c=='x'?!(p.minimo>0)&&minDesc(p.clave||p.nombre)>0:c=='k'?!!p.codigo&&!(+p.stock>0):c=='p'?!(+p.precio>0):(c=='c')==!!p.codigo))&&(!f||(f=='-'?!p.sector_id:p.sector_id==f)))};
+const lista=()=>{const c=$('fc').value,f=$('fs').value;return filtra($('q').value,enPap).filter(p=>(!c||(c=='o'?enOf(p):c=='m'?p.minimo>0:c=='u'?!(p.minimo>0):c=='x'?!(p.minimo>0)&&minDesc(p.clave||p.nombre)>0:c=='k'?!!p.codigo&&!(+p.stock>0):c=='p'?!(+p.precio>0):(c=='c')==!!p.codigo))&&(!f||(f=='-'?!p.sector_id:p.sector_id==f)))};
 // busca dentro de los productos normales, o de la papelera si enPap=true
 const filtra=(q,enPap=false)=>{const w=norm(q).split(/\s+/).filter(Boolean);return P.filter(p=>!!p.borrado==enPap&&w.every(x=>norm((p.codigo||'')+' '+p.nombre).includes(x)))};
 
@@ -441,9 +449,10 @@ async function load(silencio){try{P=await todos(()=>sb.from('productos').select(
  MIN_OK=!P.length||'minimo'in P[0];  // false si todavía no se ejecutó el SQL de compra mínima
  COD_OK=!P.length||'cod_prov'in P[0];  // false si todavía no se ejecutó el SQL de renombrados
  COMP_OK=!!P.length&&'compra_cant'in P[0];  // false si todavía no se ejecutó el SQL de compra por cantidad
+ OF_OK=!!P.length&&'oferta'in P[0];  // false si todavía no se ejecutó el SQL de ofertas
  await cargaSectores();cargaCli();
  // los precios del presupuesto en curso se actualizan con los de la base
- L=L.filter(l=>P.some(p=>p.id==l.id&&!p.borrado)).map(l=>{const p=P.find(x=>x.id==l.id);return{...l,codigo:p.codigo,nombre:p.nombre,precio:+p.precio}});
+ L=L.filter(l=>P.some(p=>p.id==l.id&&!p.borrado)).map(l=>{const p=P.find(x=>x.id==l.id);return{...l,codigo:p.codigo,nombre:p.nombre,...pv(p)}});
  for(const id of sel)if(!P.some(p=>p.id==id))sel.delete(id);
  renderP();renderB();rl()}
 function papelera(v){enPap=v;$('fc').value='';sel.clear();lim=100;$('q').value='';$('avpap').hidden=!v;$('gananc').hidden=v;
@@ -456,7 +465,7 @@ function renderP(){pintaCapital();const F=lista(),np=P.filter(p=>p.borrado).leng
  pintaAbc($('abc'),F);$('qx').hidden=!$('q').value;$('u').textContent=$('q').value.trim()?`${F.length} de ${P.filter(p=>!!p.borrado==enPap).length}`:F.length+' productos';
  $('pt').innerHTML=F.slice(0,lim).map(p=>`<tr id="r${p.id}" onclick="${enPap?`marca(${p.id})`:`editar(${p.id})`}"${p.activo&&!enPap?'':' class="off"'}>
   <td class="cc" onclick="event.stopPropagation()"><input type="checkbox" class="ck" ${sel.has(p.id)?'checked':''} onchange="marca(${p.id},this.checked)">
-  <td class="hide-sm">${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td class="de">${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}<div class="nom">${esc(p.nombre)}</div><div class="tags">${p.sector_id&&S.nom[p.sector_id]?`<span class="tag sec">${esc(S.nom[p.sector_id])}</span>`:''}${p.minimo>0?`<span class="tag mn" title="Compra mínima en el catálogo">Mín. ${fmt(p.minimo)}</span>`:''}${p.activo||enPap?'':'<span class="tag">Oculto</span>'}${p.codigo||enPap?'':'<span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?`<span class="tag sub">Stock ${fmt(p.stock)}</span>`:'<span class="tag" style="color:var(--no)">Sin stock</span>'}</div><td class="n hide-sm">${money(p.costo)}<td class="n ga" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n pv"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
+  <td class="hide-sm">${thumb(p.imagen)}<td class="cod hide-sm">${esc(p.codigo||'—')}<td class="de">${p.codigo?`<span class="cod sub">${esc(p.codigo)}</span>`:''}<div class="nom">${esc(p.nombre)}</div><div class="tags">${p.sector_id&&S.nom[p.sector_id]?`<span class="tag sec">${esc(S.nom[p.sector_id])}</span>`:''}${p.minimo>0?`<span class="tag mn" title="Compra mínima en el catálogo">Mín. ${fmt(p.minimo)}</span>`:''}${enOf(p)?`<span class="tag of" title="En oferta: se vende a ${money(p.precio_oferta)}">🔥 Oferta ${money(p.precio_oferta)}</span>`:''}${p.activo||enPap?'':'<span class="tag">Oculto</span>'}${p.codigo||enPap?'':'<span class="tag" title="Sin código no sale en el catálogo">Sin código</span>'}${p.stock>0?`<span class="tag sub">Stock ${fmt(p.stock)}</span>`:'<span class="tag" style="color:var(--no)">Sin stock</span>'}</div><td class="n hide-sm">${money(p.costo)}<td class="n ga" onclick="event.stopPropagation()"><input class="gi" inputmode="decimal" value="${fmtIn(p.ganancia)}" title="Escribe el % y pulsa Enter" onfocus="this.select()" onkeydown="if(event.key=='Enter')this.blur()" onchange="cambiaGan(${p.id},this)"> %<td class="n pv"><b id="pv${p.id}">${money(p.precio)}</b><td class="n hide-sm">${fmt(p.stock)}</tr>`).join('')
   ||`<tr><td colspan="8" class="m">${enPap?'La papelera está vacía.':P.length?'Ningún producto coincide con la búsqueda.':'Todavía no hay productos. Importa un Excel o crea uno nuevo.'}</tr>`;
  $('mas').hidden=F.length<=lim;masObs.unobserve($('mas'));masObs.observe($('mas'));
  $('ckall').checked=F.length>0&&F.every(p=>sel.has(p.id));
@@ -516,7 +525,7 @@ async function asignarSector(v){if(v==='')return;const ids=[...sel],n=ids.length
  for(let i=0;i<n;i+=200){const{error}=await sb.from('productos').update({sector_id:id}).in('id',ids.slice(i,i+200));if(error)return avisa(msg(error))}
  sel.clear();toast(id?`${n} producto(s) movidos a ${S.nom[id]}`:'Sector quitado');load()}
 // Compra mínima de los seleccionados: "d" = el número que dice la descripción del proveedor (MINIMO 12…), "0" = por unidad
-let MIN_OK=false,COD_OK=false;
+let MIN_OK=false,COD_OK=false,OF_OK=false;
 async function asignarMinimo(v){if(v==='')return;const L2=P.filter(p=>sel.has(p.id));if(!L2.length)return;const g=new Map();let sin=0;
  for(const p of L2){const m=v=='d'?minDesc(p.clave||p.nombre):0;if(v=='d'&&!m){sin++;continue}const k=m>1?m:null;g.set(k,[...(g.get(k)||[]),p.id])}
  const n=L2.length-sin;if(!n)return avisa('Ninguno de los productos seleccionados dice "MINIMO" ni "CAJA CERRADA" en la descripción. Pon la compra mínima a mano en la ficha de cada producto.');
@@ -540,12 +549,20 @@ function editar(id){ed=id?P.find(p=>p.id==id):{codigo:'',nombre:'',costo:0,ganan
  $('fcod').value=ed.codigo||'';{const u=!ed.codigo&&ultCod();$('fcodu').innerHTML=u?`(último código creado: <b>${esc(u.c)}</b> · siguiente: <a href="#" onclick="$('fcod').value='${esc(u.sig)}';return false" title="Usar este código">${esc(u.sig)}</a>)`:''}$('fdes').value=ed.nombre;$('fcos').value=fmtIn(ed.costo);$('fgan').value=fmtIn(ed.ganancia);$('fsto').value=fmtIn(ed.stock);$('fact').checked=ed.activo;$('fsec').value=ed.sector_id??(id?'':$('fs').value.replace('-',''));$('lsec').hidden=!S.ok;
  const bd=minDesc(ed.clave||ed.nombre);$('fmin').value=ed.minimo>0?fmtIn(ed.minimo):'';$('lmin').hidden=!MIN_OK;
  $('fminb').hidden=!bd;$('fminb').dataset.n=bd;$('fminb').textContent=`Usar el de la descripción (${bd})`;
+ $('lof').hidden=!OF_OK;$('fof').checked=!!ed.oferta;$('fgo').value=ed.ganancia_oferta!=null?fmtIn(ed.ganancia_oferta):'';
  deCosto();verImg(ed.imagen);$('fdel').hidden=!id;
  $('fclave').textContent=ed.clave?'Vinculado al Excel como: "'+ed.clave+'"':'';$('dlg').showModal()}
 const fmtIn=n=>String(red(Number(n)||0,4)).replace('.',',');
 function verImg(u){$('fimg').src=u||PH;$('fqi').hidden=!u}
-function deCosto(){const c=num($('fcos').value)||0,g=num($('fgan').value)||0;$('fven').value=dos(red(c*(1+g/100),2))}
-function deVenta(){const c=num($('fcos').value)||0,v=num($('fven').value);if(c>0&&v!==null)$('fgan').value=fmtIn(red((v/c-1)*100,4))}
+function deCosto(){const c=num($('fcos').value)||0,g=num($('fgan').value)||0;$('fven').value=dos(red(c*(1+g/100),2));calcOf()}
+function deVenta(){const c=num($('fcos').value)||0,v=num($('fven').value);if(c>0&&v!==null)$('fgan').value=fmtIn(red((v/c-1)*100,4));calcOf()}
+// Oferta: el producto se vende con otra ganancia mientras tenga la tilde. Muestra el precio y cuánto queda de ganancia.
+function calcOf(){const on=$('fof').checked,c=num($('fcos').value)||0,g=num($('fgan').value)||0,o=num($('fgo').value);$('lgo').style.opacity=on?1:.45;
+ if(!on)return $('fofr').innerHTML='<span class="m">Tildalo para que salga en Ofertas, con el precio de antes tachado.</span>';
+ if(o===null)return $('fofr').innerHTML='Escribí la ganancia que querés en oferta.';
+ const pn=red(c*(1+g/100),2),po=red(c*(1+o/100),2);
+ $('fofr').innerHTML=`Precio normal: <s>${money(pn)}</s> → <b>en oferta: ${money(po)}</b><br>`+
+  (o<=0?'<span class="mal">⚠️ ¡Así lo vendés al costo o a pérdida!</span>':o>=g?'<span class="mal">⚠️ La ganancia en oferta tiene que ser menor que la normal.</span>':`<span class="ok">Te quedan ${money(po-c)} de ganancia por unidad (${fmt(o)} %).</span>`)}
 async function elegirImg(f){$('fi').value='';$('fc2').value='';if(!f)return;try{nuevaImg=await reducir(f);quitarImg=false;verImg(URL.createObjectURL(nuevaImg))}catch(e){avisa(e.message)}}
 function quitarImagen(){nuevaImg=null;quitarImg=true;verImg(null)}
 // Reduce la foto (máx. 1000 px, JPEG) para que ocupe poco espacio y cargue rápido
@@ -560,6 +577,11 @@ async function guardarProd(e){e.preventDefault();
  const o={codigo:$('fcod').value.trim()||null,nombre:$('fdes').value.trim().replace(/\s+/g,' '),costo:num($('fcos').value)??0,ganancia:num($('fgan').value)??0,stock:num($('fsto').value)??0,activo:$('fact').checked};if(S.ok)o.sector_id=+$('fsec').value||null;
  if(MIN_OK){const m=num($('fmin').value);o.minimo=m>1?m:null}
  if(!o.nombre)return avisa('La descripción es obligatoria.');
+ if(OF_OK){const on=$('fof').checked,go=num($('fgo').value);
+  if(on&&go===null)return avisa('Escribí la ganancia en oferta (por ejemplo 25), o sacale la tilde de "En oferta".');
+  if(on&&go>=o.ganancia&&!await confirma(`La ganancia en oferta (${fmt(go)} %) no es menor que la normal (${fmt(o.ganancia)} %): el precio no baja. ¿Guardar igual?`))return;
+  if(on&&go<=0&&!await confirma('Con esa ganancia lo vendés al costo o a pérdida. ¿Guardar igual?'))return;
+  o.oferta=on;o.ganancia_oferta=on?go:ed.ganancia_oferta??null}
  if(COMP_OK){const on=$('fcomp').checked,ca=num($('fcca').value),av=num($('fcav').value);if(on&&!(ca>0))return avisa('Escribe de a cuántas unidades se compra este producto.');
   o.compra_cant=on?ca:null;o.compra_aviso=on?Math.max(0,av??0):null;if(!on){o.compra_vendido=0;o.compra_pendiente=false}}
  const b=$('fsave');b.disabled=true;
@@ -698,22 +720,27 @@ const disp=l=>Math.min(l.cantidad,stockL(l));
 let ult=null,H=[];
 // Resultados de la búsqueda: si el producto ya está en el presupuesto, su cantidad se cambia ahí mismo
 function renderB(){const q=$('qb').value.trim(),F=q?filtra(q).slice(0,30):[];
- $('bt').innerHTML=F.map(p=>{const l=L.find(x=>x.id==p.id);return `<tr id="b${p.id}" class="pick" onclick="add(${p.id})" title="Tocar para agregar"><td>${thumb(p.imagen)}<td>${p.codigo?`<span class="cod">${esc(p.codigo)}</span><br>`:''}${esc(p.nombre)}<td class="n">${money(p.precio)}<br>${p.stock>0?`<span class="m" style="font-size:12px">Stock ${fmt(p.stock)}</span>`:'<span class="falta">Sin stock</span>'}<td class="n">${l?`<input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" title="Cantidad en el presupuesto (Enter para volver a buscar)" onclick="event.stopPropagation()" onfocus="this.select()" onkeydown="if(event.key=='Enter'){event.preventDefault();$('qb').focus();$('qb').select()}" onchange="setCant(${p.id},this.value)">`:'<span class="mas">+</span>'}</tr>`}).join('')
+ $('bt').innerHTML=F.map(p=>{const l=L.find(x=>x.id==p.id);return `<tr id="b${p.id}" class="pick" onclick="add(${p.id})" title="Tocar para agregar"><td>${thumb(p.imagen)}<td>${p.codigo?`<span class="cod">${esc(p.codigo)}</span><br>`:''}${esc(p.nombre)}<td class="n">${enOf(p)?`<span class="antes">${money(p.precio)}</span><br>${money(p.precio_oferta)}<br><span class="tof" style="margin:0">OFERTA</span>`:money(p.precio)}<br>${p.stock>0?`<span class="m" style="font-size:12px">Stock ${fmt(p.stock)}</span>`:'<span class="falta">Sin stock</span>'}<td class="n">${l?`<input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" title="Cantidad en el presupuesto (Enter para volver a buscar)" onclick="event.stopPropagation()" onfocus="this.select()" onkeydown="if(event.key=='Enter'){event.preventDefault();$('qb').focus();$('qb').select()}" onchange="setCant(${p.id},this.value)">`:'<span class="mas">+</span>'}</tr>`}).join('')
   ||(q?'<tr><td class="m">Sin resultados</tr>':'')}
 // Cantidad de una línea: se acepta 0 (por ejemplo, un producto sin stock que igual quieres que figure)
 function setCant(id,v){const l=L.find(x=>x.id==id);if(!l)return;const n=num(v);l.cantidad=n>0?n:0;rl();renderB()}
 // Agrega el producto (o suma 1 si ya estaba) sin moverse de la búsqueda: la cantidad se cambia en la misma fila
+// Precio con que se vende: si está en oferta, el de oferta (y "antes" guarda el normal para tacharlo)
+function enOf(p){return !!p.oferta&&p.precio_oferta!=null}
+function pv(p){return enOf(p)?{precio:+p.precio_oferta,oferta:true,antes:+p.precio}:{precio:+p.precio,oferta:false,antes:null}}
+function tof(l){return l.oferta?'<span class="tof">PRECIO DE OFERTA</span>':''}
+function pAntes(l){return l.oferta&&l.antes?`<span class="antes">${money(l.antes)}</span><br>`:''}
 function add(id){const p=P.find(x=>x.id==id);let l=L.find(x=>x.id==id);
- if(!l)L.push(l={id:p.id,codigo:p.codigo,nombre:p.nombre,precio:+p.precio,cantidad:1});else l.cantidad++;
+ if(!l)L.push(l={id:p.id,codigo:p.codigo,nombre:p.nombre,...pv(p),cantidad:1});else l.cantidad++;
  rl();renderB();toast(`Agregado: ${p.nombre} (cantidad ${fmt(l.cantidad)})`);
  const tr=$('b'+id),q=tr?.querySelector('.qty');if(tr)tr.classList.add('flash');
  // con mouse queda lista la casilla para escribir la cantidad; en el teléfono no se abre el teclado
  if(q&&matchMedia('(pointer:fine)').matches){q.focus({preventScroll:true});q.select()}}
 function guardaBorrador(){guardaLS('borrador',JSON.stringify(L));guardaLS('cliente',$('cl').value);guardaLS('cliente_tel',$('cltel').value)}
 function rl(){$('lt').innerHTML=L.map((l,i)=>{const s=stockL(l),nota=s<=0?'Sin stock: saldrá en rojo en el PDF y no se cobra':s<l.cantidad?`Solo hay ${fmt(s)} en stock: se presupuestan ${fmt(s)}`:'';
-  return `<tr><td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span><br>`:''}${esc(l.nombre)}${nota?`<div class="falta">${nota}</div>`:`<div class="m" style="font-size:12px">Stock ${fmt(s)}</div>`}
+  return `<tr><td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span><br>`:''}${esc(l.nombre)}${tof(l)}${nota?`<div class="falta">${nota}</div>`:`<div class="m" style="font-size:12px">Stock ${fmt(s)}</div>`}
   <td><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" onfocus="this.select()" onchange="setCant(${l.id},this.value)">
-  <td class="n hide-sm">${money(l.precio)}<td class="n">${s<=0?'<span class="falta">-</span>':money(disp(l)*l.precio)}
+  <td class="n hide-sm">${pAntes(l)}${money(l.precio)}<td class="n">${s<=0?'<span class="falta">-</span>':money(disp(l)*l.precio)}
   <td class="n"><button class="s" title="Quitar" onclick="L.splice(${i},1);rl()">✕</button></tr>`}).join('')
   ||'<tr><td class="m">Busca productos arriba y pulsa "Añadir".</tr>';
  $('tt').textContent='Total: '+money(tot());$('nl').textContent=L.length;$('nl').hidden=!L.length;
@@ -761,19 +788,26 @@ function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=
  cab();let i=0;
  for(const l of p.lineas.filter(l=>!l.anulado)){const dis=+(l.disponible??l.cantidad),sin=dis<=0,parcial=!sin&&dis<l.cantidad,t=d.splitTextToSize(String(l.nombre),66);
   const nota=sin?'SIN STOCK - producto no disponible':parcial?`Solo ${fmt(dis)} disponible(s) de ${fmt(l.cantidad)} pedido(s)`:'';
-  const alto=t.length*4.2+(nota?4:0)+3.6;
+  const of=!!l.oferta&&+l.antes>0,alto=t.length*4.2+(nota?4:0)+(of?4.4:0)+3.6;
   if(y+alto>270){d.addPage();y=20;cab();i=0}
   if(i++%2){d.setFillColor(247,247,247);d.rect(X,y-4.6,W-X,alto,'F')}
   d.setFontSize(9);d.setTextColor(...(sin?ROJO:NEG));
   d.text(String(l.codigo||''),C.cod,y);d.text(fmt(sin?l.cantidad:dis),C.cant,y,{align:'center'});d.text(t,C.des,y);
   d.text(money(l.precio),C.pu,y,{align:'right'});d.text(sin?'-':money(dis*l.precio),C.sub,y,{align:'right'});
   if(nota){d.setTextColor(...ROJO);d.setFont('helvetica','bold');d.setFontSize(7.5);d.text(nota,C.des,y+t.length*4.2-.3);d.setFont('helvetica','normal')}
+  // precio de oferta: etiqueta roja debajo de la descripción y el precio de antes tachado debajo del precio
+  if(of){const yo=y+t.length*4.2+(nota?4:0)-.1;d.setFont('helvetica','bold');d.setFontSize(6.5);const tw=d.getTextWidth('PRECIO DE OFERTA')+3.4;
+   d.setFillColor(...ROJO);d.roundedRect(C.des,yo-2.9,tw,3.9,.8,.8,'F');d.setTextColor(255);d.text('PRECIO DE OFERTA',C.des+1.7,yo);
+   d.setFont('helvetica','normal');d.setFontSize(7.5);d.setTextColor(...G);const a=money(l.antes),aw=d.getTextWidth(a);d.text(a,C.pu,yo,{align:'right'});
+   d.setDrawColor(...G);d.setLineWidth(.25);d.line(C.pu-aw-.3,yo-1,C.pu+.3,yo-1);d.setLineWidth(.3)}
   y+=alto}
  d.setDrawColor(...CL);d.line(X,y-3,W,y-3);
  if(y>250){d.addPage();y=20}
  if(p.lineas.every(l=>l.anulado)){y+=4;d.setFont('helvetica','bold');d.setFontSize(14);d.setTextColor(...ROJO);d.text('PRESUPUESTO ANULADO',X,y);d.setFont('helvetica','normal');y+=4}
  if(p.lineas.some(falta)){y+=3;d.setFontSize(8.5);d.setTextColor(...ROJO);
   d.text('Los productos marcados en rojo no tienen stock suficiente: solo se cobra la cantidad disponible.',X,y);y+=3}
+ {const ah=p.lineas.filter(l=>!l.anulado&&l.oferta&&+l.antes>0).reduce((s,l)=>s+(+(l.disponible??l.cantidad))*(+l.antes-l.precio),0);
+  if(ah>0.009){y+=4;d.setFont('helvetica','bold');d.setFontSize(9);d.setTextColor(...ROJO);d.text('Con los precios de oferta ahorra '+money(ah)+'.',X,y);d.setFont('helvetica','normal');y+=3}}
  if(p.une?.length){y+=4;d.setFontSize(8.5);d.setTextColor(...G);d.text(d.splitTextToSize('Este presupuesto reúne los presupuestos Nº '+p.une.join(', ')+'.',W-X),X,y);y+=3}
  // pie
  y+=8;d.setFontSize(7.5);d.setFont('helvetica','normal');d.setTextColor(...G);d.text('Documento generado electrónicamente — '+fecha,X,y);
@@ -1393,7 +1427,7 @@ function pintaWeb(){$('web').innerHTML=W.map((s,i)=>{const tel=s.telefono?`<a hr
  return `<div class="c wp ${s.estado}"><div class="cab">${s.estado!='nuevo'?`<input type="checkbox" class="ck" title="Seleccionar para eliminar" ${selW.has(s.id)?'checked':''} onchange="this.checked?selW.add(${s.id}):selW.delete(${s.id});pintaWeb()">`:''}<b>${esc(s.cliente)}</b>${tel}<span class="m">Nº ${s.id} · ${fechaHora(s.fecha)}</span>
   <span class="tag">${ESTW[s.estado]||esc(s.estado)}${s.presupuesto_id?' · Presupuesto Nº '+s.presupuesto_id:''}</span></div>
   ${s.nota?`<div class="nota">${esc(s.nota)}</div>`:''}
-  <div class="w"><table><tbody>${(s.lineas||[]).map(l=>{const r=+l.reservado||0,ed=s.estado=='nuevo';return `<tr><td class="n" style="width:1%">${ed?`<div class="stw"><button class="s" title="Restar uno" onclick="cantWeb(${i},${l.id},${+l.cantidad-1})">−</button><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" title="Cantidad (se guarda al salir de la casilla)" onfocus="this.select()" onchange="cantWeb(${i},${l.id},this.value)"><button class="s" title="Sumar uno" onclick="cantWeb(${i},${l.id},${+l.cantidad+1})">+</button></div>`:`<b>${fmt(l.cantidad)}</b>`}<td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span> `:''}${esc(l.nombre)}${s.estado=='nuevo'&&l.reservado!=null&&r<l.cantidad?`<div class="falta">${r>0?`Solo se reservaron ${fmt(r)} (no había más stock)`:'Sin stock: no se reservó nada'}</div>`:''}<td class="n">${money(l.cantidad*l.precio)}${ed?`<td class="n" style="width:1%"><button class="s" title="Quitar del pedido" onclick="cantWeb(${i},${l.id},0)">✕</button>`:''}</tr>`}).join('')}</tbody></table></div>
+  <div class="w"><table><tbody>${(s.lineas||[]).map(l=>{const r=+l.reservado||0,ed=s.estado=='nuevo';return `<tr><td class="n" style="width:1%">${ed?`<div class="stw"><button class="s" title="Restar uno" onclick="cantWeb(${i},${l.id},${+l.cantidad-1})">−</button><input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" title="Cantidad (se guarda al salir de la casilla)" onfocus="this.select()" onchange="cantWeb(${i},${l.id},this.value)"><button class="s" title="Sumar uno" onclick="cantWeb(${i},${l.id},${+l.cantidad+1})">+</button></div>`:`<b>${fmt(l.cantidad)}</b>`}<td>${l.codigo?`<span class="cod">${esc(l.codigo)}</span> `:''}${esc(l.nombre)}${tof(l)}${s.estado=='nuevo'&&l.reservado!=null&&r<l.cantidad?`<div class="falta">${r>0?`Solo se reservaron ${fmt(r)} (no había más stock)`:'Sin stock: no se reservó nada'}</div>`:''}<td class="n">${money(l.cantidad*l.precio)}${ed?`<td class="n" style="width:1%"><button class="s" title="Quitar del pedido" onclick="cantWeb(${i},${l.id},0)">✕</button>`:''}</tr>`}).join('')}</tbody></table></div>
   <div class="r" style="justify-content:space-between"><span>Total estimado: <b>${money(s.total)}</b></span><div class="acc">
   ${s.estado=='nuevo'?`<button class="danger" onclick="estadoWeb(${i},'descartado')">Descartar</button><button onclick="pasarWeb(${i})">Pasar a presupuesto</button>`
    :s.estado=='descartado'?`<button class="s" onclick="estadoWeb(${i},'nuevo')">Recuperar</button>`:''}</div></div></div>`}).join('')
@@ -1433,7 +1467,7 @@ async function estadoWeb(i,e){const s=W[i];if(e=='descartado'&&!await confirma(`
 // Carga el pedido en "Nuevo presupuesto" con los precios de hoy; los productos eliminados se avisan y se saltean
 async function pasarWeb(i){const s=W[i];if(L.length&&!await confirma(`Ya hay un presupuesto a medio armar.\n¿Reemplazarlo por el pedido de ${s.cliente}?`))return;
  const no=[];L=[];for(const l of s.lineas||[]){const p=P.find(x=>x.id==l.id);if(!p||p.borrado){no.push(l.nombre);continue}
-  L.push({id:p.id,codigo:p.codigo,nombre:p.nombre,precio:+p.precio,cantidad:+l.cantidad,res:+l.reservado||0})}
+  L.push({id:p.id,codigo:p.codigo,nombre:p.nombre,...pv(p),cantidad:+l.cantidad,res:+l.reservado||0})}
  $('cl').value=cliDeTel(s.telefono)?.nombre||s.cliente;$('cltel').value=s.telefono||'';SOL=s.id;guardaLS('sol',SOL);guardaBorrador();$('qb').value='';rl();renderB();pintaSol();pintaClH();tab('pres');window.scrollTo(0,0);
  if(no.length)avisa('Estos productos ya no existen y no se cargaron:\n\n• '+no.join('\n• '))}
 function pintaSol(){const s=W.find(x=>x.id==SOL);$('solav').hidden=!SOL;

@@ -129,9 +129,15 @@ drop policy if exists "admin presupuestos" on presupuestos;
 create policy "catalogo publico" on productos for select using (activo and not borrado);
 create policy "admin productos" on productos for all to authenticated using (true) with check (true);
 create policy "admin presupuestos" on presupuestos for all to authenticated using (true) with check (true);
+-- OFERTAS: con la tilde "oferta", el producto se vende con otra ganancia (más baja) mientras la tilde esté puesta.
+-- precio_oferta se calcula solo (como precio); vacío = el producto no está en oferta.
+alter table productos add column if not exists oferta boolean not null default false;
+alter table productos add column if not exists ganancia_oferta numeric;
+alter table productos add column if not exists precio_oferta numeric(12,2)
+  generated always as (case when oferta and ganancia_oferta is not null then round(costo * (1 + ganancia_oferta / 100), 2) end) stored;
 -- Los visitantes no pueden ver tu costo ni tu % de ganancia
 revoke select on productos from anon;
-grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado, sector_id, minimo, marca, nuevo_ts) on productos to anon;
+grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado, sector_id, minimo, marca, nuevo_ts, oferta, precio_oferta) on productos to anon;
 
 -- ===================== COLORES DEL CATÁLOGO =====================
 -- Amarillo = producto nuevo: se marca la hora en que aparece en el catálogo (cuando recibe su código).
@@ -350,7 +356,9 @@ begin
   for l in select * from jsonb_array_elements(p_lineas) loop
     c := (l->>'cantidad')::numeric;
     if c is null or c < 0 then raise exception 'Cantidad no válida: %', l->>'nombre'; end if;
-    select id, codigo, nombre, precio, stock, costo, compra_cant into pr from productos where id = (l->>'id')::bigint for update;
+    -- en oferta se cobra el precio de oferta; "antes" guarda el precio normal para mostrarlo tachado
+    select id, codigo, nombre, coalesce(precio_oferta, precio) precio, precio_oferta is not null oferta, precio antes,
+           stock, costo, compra_cant into pr from productos where id = (l->>'id')::bigint for update;
     if not found then raise exception 'Producto no encontrado: %', l->>'nombre'; end if;
     d := least(c, greatest(pr.stock, 0));
     if d > 0 then
@@ -362,9 +370,10 @@ begin
         update caja_config set costo_vendido = costo_vendido + d * coalesce(pr.costo, 0) where id = 1;
       end if;
     end if;
-    lineas := lineas || jsonb_build_object('id', pr.id, 'codigo', pr.codigo, 'nombre', pr.nombre,
+    lineas := lineas || (jsonb_build_object('id', pr.id, 'codigo', pr.codigo, 'nombre', pr.nombre,
                                            'precio', pr.precio, 'cantidad', c, 'disponible', d,
-                                           'costo', coalesce(pr.costo, 0), 'rep', pr.compra_cant is null);
+                                           'costo', coalesce(pr.costo, 0), 'rep', pr.compra_cant is null)
+              || case when pr.oferta then jsonb_build_object('oferta', true, 'antes', pr.antes) else '{}' end);
     t := t + d * pr.precio;
   end loop;
   insert into presupuestos(cliente, total, lineas) values (p_cliente, t, lineas) returning id into n;
@@ -441,7 +450,8 @@ begin
       if k is null then
         lineas := lineas || jsonb_build_array(jsonb_build_object('id', (l->>'id')::bigint, 'codigo', l->'codigo', 'nombre', l->>'nombre',
           'precio', (l->>'precio')::numeric, 'cantidad', coalesce((l->>'cantidad')::numeric, 0),
-          'disponible', coalesce((l->>'disponible')::numeric, (l->>'cantidad')::numeric, 0)));
+          'disponible', coalesce((l->>'disponible')::numeric, (l->>'cantidad')::numeric, 0))
+          || case when coalesce((l->>'oferta')::boolean, false) then jsonb_build_object('oferta', true, 'antes', l->'antes') else '{}' end);
       else
         lineas := jsonb_set(lineas, array[k::text], (lineas->k) || jsonb_build_object(
           'cantidad', (lineas->k->>'cantidad')::numeric + coalesce((l->>'cantidad')::numeric, 0),
@@ -507,7 +517,8 @@ begin
   for l in select * from jsonb_array_elements(p_lineas) loop
     c := (l->>'cantidad')::numeric;
     if c is null or c <= 0 or c > 100000 then raise exception 'Cantidad no válida'; end if;
-    select id, codigo, nombre, precio, stock, minimo into pr from productos
+    select id, codigo, nombre, coalesce(precio_oferta, precio) precio, precio_oferta is not null oferta, precio antes,
+           stock, minimo into pr from productos
       where id = (l->>'id')::bigint and activo and not borrado for update;
     continue when not found;
     continue when coalesce(pr.precio, 0) <= 0;  -- a $ 0 no se vende por el carrito
@@ -515,8 +526,9 @@ begin
     d := least(c, greatest(pr.stock, 0));
     if d > 0 then update productos set stock = stock - d where id = pr.id; end if;
     if d < c then falta := true; end if;
-    lineas := lineas || jsonb_build_object('id', pr.id, 'codigo', pr.codigo, 'nombre', pr.nombre,
-                                           'precio', pr.precio, 'cantidad', c, 'reservado', d);
+    lineas := lineas || (jsonb_build_object('id', pr.id, 'codigo', pr.codigo, 'nombre', pr.nombre,
+                                           'precio', pr.precio, 'cantidad', c, 'reservado', d)
+              || case when pr.oferta then jsonb_build_object('oferta', true, 'antes', pr.antes) else '{}' end);
     t := t + c * pr.precio;
   end loop;
   if jsonb_array_length(lineas) = 0 then raise exception 'Los productos del carrito ya no están disponibles'; end if;

@@ -205,3 +205,11 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 ## Caja: "Plata que entró esta semana"
 - Suma toda la plata que entró de sábado a viernes (los "Entró plata", también cuando un cliente paga una deuda). Lo fiado no suma hasta que lo pagan.
 - Tocando la casilla podés elegir las fechas a mano (desde / hasta). Se guarda y se ve igual en la PC y en el teléfono. Con "Volver a la semana normal" vuelve a contar sola cada sábado.
+
+## Ofertas
+- En **Productos**, abrí el producto y poné la tilde **🔥 En oferta**. Escribí la **ganancia en oferta** (por ejemplo 25 si normalmente le ganás 30). El panel te muestra el precio nuevo y cuánto te queda de ganancia, y te avisa si lo vendés al costo o a pérdida.
+- La oferta queda hasta que le saques la tilde. Si importás un Excel nuevo, la oferta sigue y se calcula con el costo nuevo.
+- En el **catálogo** aparece el botón **🔥 OFERTAS**, siempre primero, y una franja que invita a entrar. **Solo se muestran si hay algún producto en oferta.** El producto en oferta también sigue en su sector, con la cinta OFERTA y el precio de antes tachado (la oferta gana sobre los colores rojo/verde/amarillo).
+- En el **carrito**, los **pedidos web** y el **presupuesto** se cobra el precio de oferta. El presupuesto y su PDF muestran "PRECIO DE OFERTA" con el precio de antes tachado, y cuánto ahorra el cliente.
+- En la **Caja** entra lo que cobraste (el precio de oferta). La Caja separa capital y ganancia con el divisor, así que en las ofertas la ganancia se ve un poco más alta de lo real; se compensa con los productos a los que les marcás más del 30 %.
+- En Productos, el filtro **🔥 En oferta** muestra todos los que tienen la tilde.

@@ -29,6 +29,18 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 .card.sube{border:2px solid #ff2d55;background:color-mix(in srgb,#ff2d55 9%,var(--c));box-shadow:0 0 6px #ff2d55,0 0 18px rgba(255,45,85,.55)}
 .card.baja{border:2px solid #22e07a;background:color-mix(in srgb,#22ff88 9%,var(--c));box-shadow:0 0 6px #22ff88,0 0 18px rgba(34,255,136,.5)}
 .card.nuevo{border:2px solid #ffd900;background:color-mix(in srgb,#ffe600 12%,var(--c));box-shadow:0 0 6px #ffe600,0 0 18px rgba(255,230,0,.6)}
+/* ofertas: gana sobre los colores. Cinta arriba de la foto, precio de antes tachado y botón que late (solo si hay ofertas) */
+.card.oferta{border:2px solid #ff4d00;box-shadow:0 0 0 1px #ff8a00 inset}
+.card.oferta .img::before{content:"OFERTA";position:absolute;z-index:1;top:0;left:0;right:0;background:linear-gradient(90deg,#ff1f1f,#ff8a00);color:#fff;font-size:12px;font-weight:900;letter-spacing:.15em;padding:4px 0;text-align:center}
+.card .antes{font-size:13px;color:var(--m);text-decoration:line-through}.card.oferta .pr{color:#e00000}:root[data-theme=dark] .card.oferta .pr{color:#ff5a3c}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .card.oferta .pr{color:#ff5a3c}}
+.chips button.of{background:linear-gradient(90deg,#ff1f1f,#ff8a00);color:#fff;border:0;font-weight:900;letter-spacing:.04em;animation:late 1.6s ease-in-out infinite}
+.chips button.of.on{outline:2px solid var(--t);outline-offset:2px}
+@keyframes late{0%,100%{box-shadow:0 0 0 0 rgba(255,60,0,.55)}50%{box-shadow:0 0 0 7px rgba(255,60,0,0)}}
+@media(prefers-reduced-motion:reduce){.chips button.of{animation:none}}
+.franja{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;width:100%;margin:14px 0 0;padding:10px 14px;border:0;border-radius:10px;background:linear-gradient(90deg,#ff1f1f,#ff8a00);color:#fff;font-weight:800;font-size:15px;text-align:left;white-space:normal}
+.franja:hover{background:linear-gradient(90deg,#e81010,#f07a00)}.franja span{font-size:13px;background:#fff;color:#d40000;border-radius:99px;padding:4px 12px;white-space:nowrap}
+.cl .of{color:#e00000;font-weight:700}
 </style></head><body>
 <header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><h1 id="tit">Catálogo</h1></div><div class="datos"><b>Héctor Ariel De Cia</b><span>Alias: <b class="sel">distri.dec</b></span><a href="tel:+543516522035">Tel: 351-6522-035</a></div>
 <div class="r"><button id="tema" class="s" onclick="cambiarTema()">◐</button><button id="car" class="s" onclick="abrirCarrito()" title="Ver el carrito y pedir presupuesto">🛒<span class="tx"> Carrito</span><span class="nb" id="nb" hidden>0</span></button><a class="btn s" href="admin.html">Administrar</a></div></header>
@@ -36,6 +48,7 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 <div class="top"><div class="bus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
  <input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Nombre o código" aria-label="Buscar productos" oninput="busca()" onkeydown="if(event.key=='Enter')this.blur()">
  <button id="qx" type="button" hidden title="Borrar búsqueda" onclick="$('q').value='';busca();$('q').focus()">✕</button></div><span class="m" id="u"></span><div class="chips" id="chips" hidden></div></div>
+<button type="button" class="franja" id="franja" hidden onclick="eligeSec('of')"></button>
 <div class="grid" id="g"></div>
 <p id="mas" class="m" hidden style="text-align:center">Cargando más productos…</p>
 </main>
@@ -73,17 +86,19 @@ if(CFG.NOMBRE)document.title=CFG.NOMBRE+' · Catálogo';
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 const pide=c=>()=>sb.from('productos').select(c).eq('activo',true).eq('borrado',false).not('codigo','is',null).neq('codigo','').order('nombre');
 async function load(){
- try{P=await todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts')).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock')))}
+ try{P=await todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts,oferta,precio_oferta')).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock')))}
  catch(e){$('u').textContent='No se pudo cargar el catálogo.';return}
+ // en oferta: se vende al precio de oferta y se guarda el de antes para mostrarlo tachado
+ for(const p of P)if(p.oferta&&p.precio_oferta!=null&&+p.precio_oferta>0){p.antes=+p.precio;p.precio=+p.precio_oferta;p.of=true}
  const{data}=await sb.from('sectores').select('id,nombre').order('nombre');SEC=data||[];pintaChips();
  r();$('u').textContent=P.length+' productos';pintaCar()}
-const color=p=>p.marca=='sube'?' sube':p.marca=='baja'?' baja':p.nuevo_ts&&Date.now()-Date.parse(p.nuevo_ts)<7*864e5?' nuevo':'';
+const color=p=>p.of?' oferta':p.marca=='sube'?' sube':p.marca=='baja'?' baja':p.nuevo_ts&&Date.now()-Date.parse(p.nuevo_ts)<7*864e5?' nuevo':'';
 function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
- const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return(!sec||p.sector_id==sec)&&w.every(x=>s.includes(x))});
+ const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return(!sec||(sec=='of'?p.of:p.sector_id==sec))&&w.every(x=>s.includes(x))});
  FL=F;pintaAbc($('abc'),F);if(P.length)$('u').textContent=$('q').value.trim()||sec?`${F.length} de ${P.length}`:P.length+' productos';
  $('g').innerHTML=F.slice(0,lim).map(p=>`<article id="a${p.id}" class="card${p.stock>0?'':' agotado'}${color(p)}">
   <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(nom(p))}">`:'Sin imagen'}</div>
-  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(nom(p))}</h2><span class="pr">${p.precio>0?money(p.precio):'Consultar precio'}</span>${p.minimo>0?`<span class="mn">Compra mínima: ${fmt(p.minimo)}</span>`:''}${!(p.precio>0)?'':p.stock>0?`<div class="add" id="k${p.id}">${ctrl(p.id)}</div>`:'<span class="sin">Sin stock</span>'}</div></article>`).join('')
+  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(nom(p))}</h2>${p.of?`<span class="antes">${money(p.antes)}</span>`:''}<span class="pr">${p.precio>0?money(p.precio):'Consultar precio'}</span>${p.minimo>0?`<span class="mn">Compra mínima: ${fmt(p.minimo)}</span>`:''}${!(p.precio>0)?'':p.stock>0?`<div class="add" id="k${p.id}">${ctrl(p.id)}</div>`:'<span class="sin">Sin stock</span>'}</div></article>`).join('')
   ||`<p class="m" style="grid-column:1/-1">${P.length?'No hay productos que coincidan con la búsqueda.':'Todavía no hay productos en el catálogo.'}</p>`;
  $('mas').hidden=F.length<=lim;masObs.unobserve($('mas'));masObs.observe($('mas'))}
 // Índice A-Z: la barra (el) salta al primer producto de la letra; ir(letra) hace el salto
@@ -96,9 +111,11 @@ function gestoAbc(el,ir){let ult='',t;const ver=document.createElement('div');ve
  el.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType=='touch')toca(e)});el.addEventListener('pointerup',()=>ult='')}
 let FL=[],SEC=[],sec=null;
 // Botones de sectores: solo los que tienen productos en el catálogo
-function pintaChips(){const hay=new Set(P.map(p=>p.sector_id)),L=SEC.filter(x=>hay.has(x.id));if(!L.some(x=>x.id==sec))sec=null;
- $('chips').innerHTML=`<button type="button" class="${sec?'':'on'}" onclick="eligeSec(null)">Todos</button>`+L.map(x=>`<button type="button" class="${sec==x.id?'on':''}" onclick="eligeSec(${x.id})">${esc(x.nombre)}</button>`).join('');
- $('chips').hidden=!L.length;hh()}
+// OFERTAS va siempre primero y solo aparece si hay productos en oferta (con la franja que invita a entrar)
+function pintaChips(){const hay=new Set(P.map(p=>p.sector_id)),L=SEC.filter(x=>hay.has(x.id)),nOf=P.filter(p=>p.of).length;if(sec=='of'?!nOf:!L.some(x=>x.id==sec))sec=null;
+ $('chips').innerHTML=(nOf?`<button type="button" class="of${sec=='of'?' on':''}" onclick="eligeSec('of')">🔥 OFERTAS (${nOf})</button>`:'')+`<button type="button" class="${sec?'':'on'}" onclick="eligeSec(null)">Todos</button>`+L.map(x=>`<button type="button" class="${sec==x.id?'on':''}" onclick="eligeSec(${x.id})">${esc(x.nombre)}</button>`).join('');
+ $('chips').hidden=!L.length&&!nOf;
+ $('franja').hidden=!nOf||sec=='of';$('franja').innerHTML=`🔥 ¡Hay ${nOf} producto${nOf==1?'':'s'} en oferta! <span>Ver ofertas ›</span>`;hh()}
 function eligeSec(id){sec=id;pintaChips();busca();$('chips').querySelector('.on')?.scrollIntoView({inline:'center',block:'nearest'})}
 // Buscar: muestra los resultados desde arriba y el contador de coincidencias
 function busca(){lim=48;r();$('qx').hidden=!$('q').value;if(scrollY>0)scrollTo(0,0)}
@@ -126,7 +143,7 @@ function ponCant(id,v){let n=parseFloat(String(v).replace(',','.'));const m=minD
 // Número del botón y, si está abierta, la lista del carrito. Se quitan los productos que ya no están en el catálogo.
 function pintaCar(){if(P.length){let cambio=false;for(const id in C)if(!P.some(x=>x.id==id)){delete C[id];cambio=true}if(cambio)guardaLS('carrito',JSON.stringify(C))}
  const L=lineasCar(),n=P.length?L.length:Object.keys(C).length;$('nb').textContent=n;$('nb').hidden=!n;if(!$('dcar').open||!$('cok').hidden)return;
- $('cl').innerHTML=L.map(({p,c})=>`<div><span class="nm">${esc(nom(p))}<small>${p.codigo?esc(p.codigo)+' · ':''}${money(p.precio)} c/u${p.minimo>0?` · mínimo ${fmt(p.minimo)}`:''}</small></span>
+ $('cl').innerHTML=L.map(({p,c})=>`<div><span class="nm">${esc(nom(p))}<small>${p.codigo?esc(p.codigo)+' · ':''}${p.of?'<span class="of">Oferta</span> · ':''}${money(p.precio)} c/u${p.minimo>0?` · mínimo ${fmt(p.minimo)}`:''}</small></span>
   <span class="sb">${money(c*p.precio)}</span><div class="st">${ctrl(p.id)}</div>
   <button type="button" class="s" style="justify-self:end" title="Quitar del carrito" onclick="ponCant(${p.id},0)">✕</button>
   ${c>p.stock?`<span class="q">${p.stock>0?'Hay menos stock que lo pedido: te confirmamos la cantidad.':'Ahora sin stock: te confirmamos si llega.'}</span>`:''}</div>`).join('')
