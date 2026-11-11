@@ -129,7 +129,7 @@ dialog{overflow:auto}
 
 <section id="t-web" hidden>
  <div class="c r"><select id="wf" onchange="cargaWeb()" style="width:auto" title="Qué pedidos mostrar"><option value="nuevo">Nuevos (por preparar)</option><option value="presupuestado">Ya presupuestados</option><option value="descartado">Descartados</option><option value="">Todos</option></select>
-  <span class="m" id="winfo" style="flex:1"></span><button class="s" onclick="cargaWeb()">↻ Actualizar</button><button class="s" onclick="limpiarWeb()" title="Borra todos los pedidos web ya presupuestados y los descartados. Los nuevos no se tocan.">Eliminar todos los terminados</button></div>
+  <input id="wq" type="search" autocomplete="off" placeholder="🔎 Cliente, teléfono, producto o Nº" aria-label="Buscar pedido web" oninput="filtraLista('web',this.value)" style="flex:1;min-width:180px;max-width:320px"><span class="m" id="winfo" style="flex:1"></span><button class="s" onclick="cargaWeb()">↻ Actualizar</button><button class="s" onclick="limpiarWeb()" title="Borra todos los pedidos web ya presupuestados y los descartados. Los nuevos no se tocan.">Eliminar todos los terminados</button></div>
  <div id="web"></div>
  <div id="wbar" class="selbar" hidden><span><b id="wsel">0</b> seleccionado(s)</span>
   <button class="s" onclick="selW.clear();pintaWeb()">Cancelar</button><button class="s" onclick="W.forEach(s=>s.estado!='nuevo'&&selW.add(s.id));pintaWeb()">Marcar todos los mostrados</button><button class="danger" onclick="borrarWeb()">Eliminar</button></div>
@@ -214,7 +214,7 @@ dialog{overflow:auto}
  <div id="cjres"></div>
  <div class="c"><b>Qué hacer con el capital</b><div id="cjcap"></div></div>
  <div class="c r"><button style="flex:1" onclick="abreCaja('cobro')">Entró plata</button><button style="flex:1" onclick="abreCaja('compra')">Compré mercadería</button><button style="flex:1" onclick="abreCaja('gasto')">Gasto</button><button style="flex:1" onclick="abreCaja('retiro')">Retiro</button></div>
- <div class="c"><div class="r" style="justify-content:space-between;align-items:center"><b>Clientes</b><button class="s" onclick="abreCaja('deuda')">+ Cliente con deuda</button></div><div id="cjdeu"></div></div>
+ <div class="c"><div class="r" style="justify-content:space-between;align-items:center"><b>Clientes</b><input id="cjcq" type="search" autocomplete="off" placeholder="🔎 Buscar cliente" aria-label="Buscar cliente" oninput="filtraLista('cjdeu',this.value)" style="flex:1;min-width:140px;max-width:300px"><button class="s" onclick="abreCaja('deuda')">+ Cliente con deuda</button></div><div id="cjdeu"></div></div>
  <div class="c"><div class="r" style="justify-content:space-between;align-items:center"><b>Movimientos</b><select id="cjver" onchange="pintaCaja()" style="width:auto" title="Qué movimientos mostrar"><option value="sem">Esta semana</option><option value="mes">Este mes</option><option value="mpa">Mes pasado</option><option value="">Todos</option></select></div>
   <div class="seg" id="cjfil" role="tablist"><button type="button" data-f="" class="on" onclick="filCaja(this)">Todos</button><button type="button" data-f="cobro" onclick="filCaja(this)">Pagos</button><button type="button" data-f="compra" onclick="filCaja(this)">Compras</button><button type="button" data-f="gasto" onclick="filCaja(this)">Gastos</button><button type="button" data-f="fiado" onclick="filCaja(this)">Saldos</button></div>
   <div id="cjgas" hidden></div><p class="m" id="cjsem" style="font-size:13px;margin:6px 0"></p><div class="w"><table><tbody id="cjmov"></tbody></table></div></div>
@@ -403,6 +403,12 @@ const money=n=>(CFG.MONEDA||'')+' '+dos(n);
 const fmt=n=>Number(n).toLocaleString('de-DE',{maximumFractionDigits:2});
 const red=(n,d)=>Math.round(n*10**d)/10**d;
 const norm=s=>String(s??'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().trim();
+// Muestra solo los renglones de una lista que tienen todas las palabras buscadas (clientes de la Caja, pedidos web)
+function filtraLista(id,q){const w=norm(q).split(/\s+/).filter(Boolean);for(const el of $(id).children){const t=norm(el.textContent);el.hidden=w.length>0&&!w.every(x=>t.includes(x))}}
+// Ctrl+F (o Cmd+F en Mac): en vez del buscador del navegador, va directo al buscador de la pestaña abierta
+document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||e.altKey||e.shiftKey||e.key.toLowerCase()!='f')return;
+ const t=document.querySelector('.tabs button.on')?.dataset.t,id={prod:'q',pres:'qb',web:'wq',hist:'hq',mos:'mhb',ped:'pedq',caja:'cjcq'}[t],el=id&&$(id);
+ if(!el||$('app').hidden||document.querySelector('dialog[open]'))return;e.preventDefault();el.scrollIntoView({block:'center'});el.focus();el.select()});
 // Acepta 1234.5 · 1234,5 · 1.234,50 · 1,234.50 · $ 1.234
 const num=v=>{if(typeof v=='number')return v;let s=String(v??'').replace(/[^\d,.-]/g,'');if(!s)return null;
  if(s.includes(',')&&s.includes('.'))s=s.lastIndexOf(',')>s.lastIndexOf('.')?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
@@ -1296,7 +1302,7 @@ function pintaCaja(){const cap=sumaCj('capital'),gan=sumaCj('ganancia'),D=saldos
  $('cjcap').innerHTML=`<div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--bg);margin:10px 0"><div style="width:${pend/tot*100}%;background:var(--no)"></div><div style="width:${bul/tot*100}%;background:var(--m)"></div><div style="width:${Math.max(0,lib)/tot*100}%;background:var(--b)"></div></div>`
   +fila(1,'Mercadería vendida sin reponer',pend,pend>0)+fila(2,'Plata a separar para bultos',bul)+(lib<0?`<p class="falta" style="margin:6px 0 0">Faltan ${money(-lib)} de capital para cubrir todo esto.</p>`:fila(3,'Capital libre, de reserva',lib));
  $('cjlis').innerHTML=CLI.map(c=>`<option value="${esc(c.nombre)}">`).join('');
- CJ.cli=D;$('cjdeu').innerHTML=D.map((x,i)=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;border-top:1px solid var(--b);padding:7px 0;margin-top:4px"><span class="nom">${esc(x.nombre)}</span><span class="r" style="flex-wrap:nowrap;gap:10px"><b style="white-space:nowrap">${saldoTxt(x.saldo)}</b><button class="s" title="Editar nombre" onclick="renombraCli(CJ.cli[${i}].nombre)">✎</button><button class="s" onclick="abreCli(${i})">Ver</button></span></div>`).join('')||'<p class="m" style="margin:6px 0 0">Todavía no hay clientes con cuenta.</p>';
+ CJ.cli=D;$('cjdeu').innerHTML=D.map((x,i)=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;border-top:1px solid var(--b);padding:7px 0;margin-top:4px"><span class="nom">${esc(x.nombre)}</span><span class="r" style="flex-wrap:nowrap;gap:10px"><b style="white-space:nowrap">${saldoTxt(x.saldo)}</b><button class="s" title="Editar nombre" onclick="renombraCli(CJ.cli[${i}].nombre)">✎</button><button class="s" onclick="abreCli(${i})">Ver</button></span></div>`).join('')||'<p class="m" style="margin:6px 0 0">Todavía no hay clientes con cuenta.</p>';filtraLista('cjdeu',$('cjcq').value);
  const per=$('cjver').value,hoy=new Date,ini=per=='sem'?iniSemana():per=='mes'?new Date(hoy.getFullYear(),hoy.getMonth(),1):per=='mpa'?new Date(hoy.getFullYear(),hoy.getMonth()-1,1):null,fin=per=='mpa'?new Date(hoy.getFullYear(),hoy.getMonth(),1):null,sem=!!ini,
   VS=ini?CJ.mov.filter(m=>{const f=new Date(m.fecha);return f>=ini&&(!fin||f<fin)}):CJ.mov,V=CJF?VS.filter(m=>m.tipo==CJF&&(CJF!='gasto'||!CJG||tipoGasto(m)==CJG)):VS,N=V.slice(0,300),s=t=>VS.filter(m=>m.tipo==t).reduce((a,m)=>a+(+m.monto||0),0),cu=n=>n==1?'1 movimiento':n+' movimientos';
  const G=VS.filter(m=>m.tipo=='gasto'),gt=g=>G.filter(m=>tipoGasto(m)==g).reduce((a,m)=>a+(+m.monto||0),0),perTxt={sem:'esta semana',mes:'este mes',mpa:'el mes pasado','':'en total'}[per];
@@ -1457,7 +1463,7 @@ function pintaWeb(){$('web').innerHTML=W.map((s,i)=>{const tel=s.telefono?`<a hr
   ${s.estado=='nuevo'?`<button class="danger" onclick="estadoWeb(${i},'descartado')">Descartar</button><button onclick="pasarWeb(${i})">Pasar a presupuesto</button>`
    :s.estado=='descartado'?`<button class="s" onclick="estadoWeb(${i},'nuevo')">Recuperar</button>`:''}</div></div></div>`}).join('')
  ||'<div class="c m">No hay pedidos web '+($('wf').value=='nuevo'?'nuevos.':'para mostrar.')+'</div>';
- $('wbar').hidden=!selW.size;$('wsel').textContent=selW.size}
+ $('wbar').hidden=!selW.size;$('wsel').textContent=selW.size;filtraLista('web',$('wq').value)}
 // Cambiar la cantidad de un producto de un pedido web nuevo (0 = quitarlo). La base ajusta el stock reservado.
 async function cantWeb(i,pid,v){const s=W[i],l=(s.lineas||[]).find(x=>x.id==pid),n=num(v);if(!l)return;
  if(n==null||n<0){pintaWeb();return avisa('Cantidad no válida.')}if(n==+l.cantidad)return;
