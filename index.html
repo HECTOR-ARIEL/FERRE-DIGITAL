@@ -42,9 +42,18 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 .franja:hover{background:linear-gradient(90deg,#e81010,#f07a00)}.franja span{font-size:13px;background:#fff;color:#d40000;border-radius:99px;padding:4px 12px;white-space:nowrap}
 .cl .of{color:#e00000;font-weight:700}
 .sep{grid-column:1/-1;margin:18px 0 0;padding-top:14px;border-top:1px solid var(--b);font-size:15px;color:var(--m)}
+/* datos del negocio: franja negra al final del catálogo (y la misma información en la ventana "Info") */
+.pie{background:var(--neg);color:#f2f2f2;border-top:3px solid var(--a);margin-top:28px;padding:24px 40px 18px 16px}
+.pie .in{max-width:1100px;margin:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px 28px}
+.pie h3{margin:0 0 6px;font-size:12px;letter-spacing:.15em;color:#ff5a5a}.pie p{margin:0 0 16px;font-size:14px;line-height:1.6}.pie .g{color:#a3a3a3}
+.pie a{color:#fff}.pie dl{display:grid;grid-template-columns:auto 1fr;gap:7px 14px;margin:0 0 16px;font-size:14px;line-height:1.45}.pie dt{font-weight:700}.pie dd{margin:0}
+.pie .pb{max-width:1100px;margin:8px auto 0;padding-top:14px;border-top:1px solid #2b2b2b;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px}
+.pie .wa{background:#25a244;color:#fff;text-decoration:none;padding:8px 14px;border-radius:8px;font-weight:600}.pie .wa:hover{background:#1e8a39}
+#dinf{background:var(--neg)}#dinf .pie{margin:0;border-top:0;padding-top:4px}#dinf .dh{padding:14px 16px 0;color:#fff}#dinf .dh .s{color:#fff;border-color:#4a4a4a;background:transparent}
+@media(max-width:520px){#inf .tx{display:none}}
 </style></head><body>
 <header><div class="brand"><img src="logo.jpg" alt="Distribuidor DEC"><h1 id="tit">Catálogo</h1></div><div class="datos"><b>Héctor Ariel De Cia</b><span>Alias: <b class="sel">distri.dec</b></span><a href="tel:+543516522035">Tel: 351-6522-035</a></div>
-<div class="r"><button id="tema" class="s" onclick="cambiarTema()">◐</button><button id="car" class="s" onclick="abrirCarrito()" title="Ver el carrito y pedir presupuesto">🛒<span class="tx"> Carrito</span><span class="nb" id="nb" hidden>0</span></button><a class="btn s" href="admin.html">Administrar</a></div></header>
+<div class="r"><button id="tema" class="s" onclick="cambiarTema()">◐</button><button id="inf" class="s" onclick="abrirInfo()" title="Horario, días de entrega, dirección y formas de pago">ℹ️<span class="tx"> Info</span></button><button id="car" class="s" onclick="abrirCarrito()" title="Ver el carrito y pedir presupuesto">🛒<span class="tx"> Carrito</span><span class="nb" id="nb" hidden>0</span></button><a class="btn s" href="admin.html">Administrar</a></div></header>
 <main class="con-abc"><nav class="abc" id="abc" aria-label="Índice alfabético"></nav>
 <div class="top"><div class="bus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
  <input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Nombre o código" aria-label="Buscar productos" oninput="busca()" onkeydown="if(event.key=='Enter')this.blur()">
@@ -53,6 +62,22 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 <div class="grid" id="g"></div>
 <p id="mas" class="m" hidden style="text-align:center">Cargando más productos…</p>
 </main>
+<footer class="pie" id="info"><div class="in">
+ <div>
+  <h3>🕒 HORARIO DE ATENCIÓN</h3><p>Todos los días<br><span class="g">De lunes a domingo</span></p>
+  <h3>📍 DÓNDE ESTAMOS</h3><p>Av. Argentina 296<br><span class="g">Villa Santa Cruz del Lago, Córdoba</span><br><a href="https://www.google.com/maps/search/?api=1&amp;query=Av.%20Argentina%20296%2C%20Villa%20Santa%20Cruz%20del%20Lago%2C%20C%C3%B3rdoba" target="_blank" rel="noopener">Ver en el mapa</a></p>
+  <h3>💳 FORMAS DE PAGO</h3><p>Efectivo<br>Transferencia (Naranja X)<br><span class="g">Alias: distri.dec</span></p>
+ </div>
+ <div>
+  <h3>🚚 DÍAS DE ENTREGA</h3>
+  <dl><dt>Lunes</dt><dd class="g">Toma de pedidos</dd><dt>Martes</dt><dd>Villa Carlos Paz</dd><dt>Miércoles</dt><dd>Tanti</dd><dt>Jueves</dt><dd>Córdoba</dd>
+   <dt>Viernes</dt><dd>Cosquín, Villa Caeiro, Villa Bustos, Villa Parque Siquimán, Villa Santa Cruz del Lago y hasta La Falda</dd></dl>
+ </div>
+</div>
+<div class="pb"><span><b>Distribuidor DEC</b> <span class="g">· Héctor Ariel De Cia</span></span><a class="wa" href="https://wa.me/5493516522035" target="_blank" rel="noopener">WhatsApp 351-6522-035</a></div>
+</footer>
+<!-- "Info": la misma información del pie, sin tener que bajar todo el catálogo -->
+<dialog id="dinf"><div class="dh"><h2>Información</h2><button type="button" class="s" title="Cerrar" onclick="$('dinf').close()">✕</button></div><div class="pie" id="dinfc"></div></dialog>
 <dialog id="dcar"><form id="cform" onsubmit="enviar(event)">
  <div class="dh"><h2>Tu carrito</h2><button type="button" class="s" title="Cerrar" onclick="$('dcar').close()">✕</button></div>
  <div class="cl" id="cl"></div>
@@ -152,6 +177,7 @@ function pintaCar(){if(P.length){let cambio=false;for(const id in C)if(!P.some(x
   ${c>p.stock?`<span class="q">${p.stock>0?'Hay menos stock que lo pedido: te confirmamos la cantidad.':'Ahora sin stock: te confirmamos si llega.'}</span>`:''}</div>`).join('')
   ||'<p class="m">Tu carrito está vacío. Tocá <b>+ Agregar</b> en los productos que quieras presupuestar.</p>';
  $('ctot').textContent='Total estimado: '+money(L.reduce((s,l)=>s+l.c*l.p.precio,0));$('cdat').hidden=!n}
+function abrirInfo(){$('dinfc').innerHTML=$('info').innerHTML;$('dinf').showModal()}
 function abrirCarrito(){$('cform').hidden=false;$('cok').hidden=true;$('cn').value=leeLS('car_nombre')||'';$('ct').value=leeLS('car_tel')||'';$('dcar').showModal();pintaCar()}
 function vaciar(){if(confirm('¿Vaciar el carrito?')){C={};guardaLS('carrito','{}');r();pintaCar()}}
 async function enviar(e){e.preventDefault();const L=lineasCar();if(!L.length)return;

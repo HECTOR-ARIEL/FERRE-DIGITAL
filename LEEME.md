@@ -213,3 +213,8 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 - En el **carrito**, los **pedidos web** y el **presupuesto** se cobra el precio de oferta. El presupuesto y su PDF muestran "PRECIO DE OFERTA" con el precio de antes tachado, y cuánto ahorra el cliente.
 - En la **Caja** entra lo que cobraste (el precio de oferta). La Caja separa capital y ganancia con el divisor, así que en las ofertas la ganancia se ve un poco más alta de lo real; se compensa con los productos a los que les marcás más del 30 %.
 - En Productos, el filtro **🔥 En oferta** muestra todos los que tienen la tilde.
+
+## Datos del negocio en el catálogo
+- Al final del catálogo hay una franja negra con el horario, la dirección (con "Ver en el mapa"), las formas de pago, los días de entrega y el botón de WhatsApp.
+- El botón **Info** de arriba muestra lo mismo sin tener que bajar todo el catálogo.
+- Para cambiar esos datos, se editan en `index.html`, en la parte `<footer class="pie" id="info">`.
