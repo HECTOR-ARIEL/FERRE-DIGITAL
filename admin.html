@@ -1145,17 +1145,40 @@ async function pdfMq(prev){const R=calcMq(MQ.items);
   d.circle(X+7,by+bh/2,2.8,'F');d.setDrawColor(255,255,255);d.setLineWidth(.6);d.line(X+5.7,by+bh/2,X+6.7,by+bh/2+1.1);d.line(X+6.7,by+bh/2+1.1,X+8.5,by+bh/2-1.2);
   d.setTextColor(...NEG);esp(tt,X+12.5,by+bh/2+1,.3)}
  fila(col?'Total sin colocación':'Total',R.total,!col);if(col){d.setFontSize(9.5);fila(MQ.dir?.trim()?d.splitTextToSize('Colocación en '+MQ.dir.trim(),120)[0]:'Colocación',col);fila('Total con colocación',R.total+col,true)}else fila('Colocación','No incluida');
- // términos y condiciones: cada sección es una lista de párrafos ('• ' = viñeta)
+ // términos y condiciones: cada sección es una lista de párrafos ('• ' = viñeta),
+ // o, si lleva 'caja', un recuadro gris con datos [etiqueta, valor] en columnas
  const TYC=[['PLAZO DE ENTREGA',['Los mosquiteros se entregan dentro de los 7 (siete) días posteriores a la toma de medidas.','Si necesita recibirlos en otra fecha, se acuerda al momento de confirmar el pedido.']],
-  ['FORMAS DE PAGO',['Aceptamos efectivo y transferencia bancaria.','• 50 % del total como anticipo, al confirmar el pedido.','• 50 % restante al momento de la entrega o de la colocación.']]];
- d.setFont('helvetica','normal');d.setFontSize(9.5);const tl=TYC.map(([,ps])=>ps.map(t=>t.startsWith('• ')?d.splitTextToSize(t.slice(2),W-X-10):d.splitTextToSize(t,W-X-4)));
- if(y+18+tl.reduce((a,ps)=>a+ps.reduce((b,l)=>b+l.length*4.6+1,0)+8,0)>272){d.addPage();y=20}else y+=12;
+  ['FORMAS DE PAGO',['Aceptamos efectivo y transferencia bancaria.','• 50 % del total como anticipo, al confirmar el pedido.','• 50 % restante al momento de la entrega o de la colocación.']],
+  ['DATOS PARA TRANSFERENCIA',[['Medio','Mercado Pago'],['Alias','mosquitero.dec'],['Titular','Héctor Ariel De Cia'],['DNI','40.247.874']],'caja'],
+  ['VALIDEZ DEL PRESUPUESTO',['Este presupuesto es válido por 7 (siete) días desde su emisión.']]],hc=14;
+ d.setFont('helvetica','normal');d.setFontSize(9.5);const tl=TYC.map(([,ps,c])=>c?[]:ps.map(t=>t.startsWith('• ')?d.splitTextToSize(t.slice(2),W-X-10):d.splitTextToSize(t,W-X-4)));
+ if(y+18+tl.reduce((a,ps,k)=>a+(TYC[k][2]?hc:ps.reduce((b,l)=>b+l.length*4.6+1,0))+8,0)>272){d.addPage();y=20}else y+=12;
  d.setFont('helvetica','bold');d.setFontSize(16);d.setTextColor(...NEG);const tt='TÉRMINOS Y CONDICIONES',tw=d.getTextWidth(tt)+1*(tt.length-1);esp(tt,X,y,1);
  d.setFillColor(...ROJO);d.rect(X,y+2.3,tw,1,'F');y+=12;
- TYC.forEach(([ti,ps],k)=>{d.setFont('helvetica','bold');d.setFontSize(9.5);d.setTextColor(...NEG);esp(ti,X,y,.6);y+=5.5;
-  d.setFont('helvetica','normal');d.setFontSize(9.5);d.setTextColor(25,25,25);
-  ps.forEach((t,m)=>{const l=tl[k][m];if(t.startsWith('• ')){d.setTextColor(...ROJO);d.text('•',X+2,y);d.setTextColor(25,25,25);d.text(l,X+6,y)}else d.text(l,X,y);y+=l.length*4.6+1});y+=5});
- y+=6;d.setFontSize(7.5);d.setFont('helvetica','normal');d.setTextColor(...G);d.text('Documento generado electrónicamente — '+fecha,X,y);
+ TYC.forEach(([ti,ps,c],k)=>{d.setFont('helvetica','bold');d.setFontSize(9.5);d.setTextColor(...NEG);esp(ti,X,y,.6);y+=5.5;
+  if(c){// recuadro como el de "toma de medidas": gris claro con el filo rojo a la izquierda
+   d.setFillColor(246,246,246);d.setDrawColor(226,226,226);d.setLineWidth(.3);d.roundedRect(X,y-3.5,W-X,hc,2,2,'FD');d.setFillColor(...ROJO);d.rect(X,y-1.5,.9,hc-4,'F');
+   const cw=(W-X-8)/ps.length;ps.forEach(([l,v],i)=>{const cx=X+6+i*cw;d.setFont('helvetica','bold');d.setFontSize(6.8);d.setTextColor(...G);esp(l.toUpperCase(),cx,y+1,.5);
+    d.setFontSize(10);d.setTextColor(...NEG);d.text(v,cx,y+6.6)});y+=hc-1.5}
+  else{d.setFont('helvetica','normal');d.setFontSize(9.5);d.setTextColor(25,25,25);
+   ps.forEach((t,m)=>{const l=tl[k][m];if(t.startsWith('• ')){d.setTextColor(...ROJO);d.text('•',X+2,y);d.setTextColor(25,25,25);d.text(l,X+6,y)}else d.text(l,X,y);y+=l.length*4.6+1})}
+  y+=5});
+ // contactos: debajo de los términos, con la misma franja negra y roja del encabezado
+ // [nombre, cargo, teléfono] — el teléfono vacío no se muestra
+ const CONT=[['Yanina Estefanía Figueroa','VENDEDORA',''],['Héctor Ariel De Cia','FABRICANTE','351-6522-035']];
+ y-=2;if(y+16+CONT.length*6.5>283){d.addPage();y=20}
+ d.setFillColor(...NEG);d.rect(X,y,W-X,1.6,'F');d.setFillColor(...ROJO);d.rect(X,y+1.6,W-X,.6,'F');y+=7.5;
+ // título de la sección, con la misma letra que "Plazo de entrega"
+ d.setFont('helvetica','bold');d.setFontSize(9.5);d.setTextColor(...NEG);esp('DUEÑOS',X,y,.6);y+=6.5;
+ // ícono de contacto: círculo rojo con una persona blanca
+ const icono=(cx,cy)=>{d.setFillColor(...ROJO);d.circle(cx,cy,2.5,'F');d.setFillColor(255,255,255);d.circle(cx,cy-.75,.85,'F');d.ellipse(cx,cy+1.5,1.45,.95,'F')};
+ CONT.forEach(([n,r,t])=>{icono(X+2.5,y-1.2);d.setFont('helvetica','bold');d.setFontSize(10);d.setTextColor(...NEG);d.text(n,X+7,y);const nx=X+7+d.getTextWidth(n)+3;
+  d.setFontSize(7);d.setTextColor(...ROJO);esp(r,nx,y,.5);
+  // el teléfono va pegado al cargo, así cada número queda junto a su persona
+  if(t){const tx=nx+d.getTextWidth(r)+.5*(r.length-1)+4;d.setFont('helvetica','normal');d.setFontSize(8.5);d.setTextColor(...G);d.text('Tel.',tx,y);
+   const tx2=tx+d.getTextWidth('Tel.')+1.5;d.setFont('helvetica','bold');d.setFontSize(10);d.setTextColor(...NEG);d.text(t,tx2,y)}
+  y+=6.5});
+ y+=3;d.setFontSize(7.5);d.setFont('helvetica','normal');d.setTextColor(...G);d.text('Documento generado electrónicamente — '+fecha,X,y);
  const marca=(CFG.NOMBRE||'').toUpperCase();d.setFont('helvetica','bold');d.setFontSize(7);const mw=d.getTextWidth(marca)+.6*(marca.length-1)+10;
  d.setFillColor(...NEG);d.roundedRect(W-mw,y-4,mw,6,3,3,'F');d.setTextColor(255);esp(marca,W-5,y,.6,true);
  const np=d.getNumberOfPages();for(let k=1;k<=np;k++){d.setPage(k);d.setFont('helvetica','normal');d.setFontSize(7.5);d.setTextColor(...G);d.text(`Página ${k} de ${np}`,W,290,{align:'right'})}
