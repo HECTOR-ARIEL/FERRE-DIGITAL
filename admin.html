@@ -1149,7 +1149,7 @@ async function pdfMq(prev){const R=calcMq(MQ.items);
  // o, si lleva 'caja', un recuadro gris con datos [etiqueta, valor] en columnas
  const TYC=[['PLAZO DE ENTREGA',['Los mosquiteros se entregan dentro de los 7 (siete) días posteriores a la toma de medidas.','Si necesita recibirlos en otra fecha, se acuerda al momento de confirmar el pedido.']],
   ['FORMAS DE PAGO',['Aceptamos efectivo y transferencia bancaria.','• 50 % del total como anticipo, al confirmar el pedido.','• 50 % restante al momento de la entrega o de la colocación.']],
-  ['DATOS PARA TRANSFERENCIA',[['Medio','Mercado Pago'],['Alias','mosquitero.dec'],['Titular','Héctor Ariel De Cia'],['DNI','40.247.874']],'caja'],
+  ['DATOS PARA TRANSFERENCIA',[['Medio','Mercado Pago'],['Alias','mosquitero.dec'],['Titular','Héctor Ariel De Cia']],'caja'],
   ['VALIDEZ DEL PRESUPUESTO',['Este presupuesto es válido por 7 (siete) días desde su emisión.']]],hc=14;
  d.setFont('helvetica','normal');d.setFontSize(9.5);const tl=TYC.map(([,ps,c])=>c?[]:ps.map(t=>t.startsWith('• ')?d.splitTextToSize(t.slice(2),W-X-10):d.splitTextToSize(t,W-X-4)));
  if(y+18+tl.reduce((a,ps,k)=>a+(TYC[k][2]?hc:ps.reduce((b,l)=>b+l.length*4.6+1,0))+8,0)>272){d.addPage();y=20}else y+=12;
