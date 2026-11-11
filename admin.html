@@ -312,6 +312,14 @@ dialog{overflow:auto}
  <div class="acc"><button type="button" class="s" onclick="$('dmq').close()">Cancelar</button><button type="button" onclick="guardaPreciosMq()">Guardar</button></div>
 </form></dialog>
 
+<dialog id="dver"><form method="dialog" onsubmit="return false">
+ <h2 id="vert" style="margin-bottom:2px">Presupuesto</h2>
+ <div class="m" id="verd" style="font-size:14px"></div>
+ <div class="r" style="justify-content:space-between;align-items:center;gap:8px"><b id="verp" style="font-size:14px"></b><button type="button" class="s" onclick="limpiaPrep()" style="padding:4px 10px;font-size:13px">Desmarcar todo</button></div>
+ <div class="secl" id="verl" style="max-height:58vh;overflow:auto;gap:0"></div>
+ <div id="vera"></div>
+ <div class="acc"><button type="button" class="s" onclick="$('dver').close()">Cerrar</button><button type="button" class="s" onclick="descargar(VER)">Descargar PDF</button></div>
+</form></dialog>
 <dialog id="danu"><form method="dialog" onsubmit="return false">
  <h2 id="anut">Anular</h2>
  <p class="m" style="margin:0;font-size:14px">Marca los productos que el cliente no se lleva. Lo que se había descontado vuelve al stock, deja de salir en el PDF y no se pide al proveedor. Si el presupuesto está en la Caja, se le descuenta al cliente de su deuda.</p>
@@ -862,9 +870,26 @@ async function cargaHist(){const t=$('hq').value.trim().replace(/[,()%*]/g,' ').
  cuentaPend();const{data,error}=await q;if(error)return /load failed|fetch/i.test(msg(error))?null:avisa(msg(error));H=data.slice(0,lh);$('hmas').hidden=data.length<=lh;pintaHist()}
 function pintaHist(){const t=$('hq').value.trim();
  $('hist').innerHTML=H.map((p,i)=>{const f=new Date(p.fecha),ls=p.lineas||[],sin=ls.some(falta),na=ls.filter(l=>l.anulado).length;
-  return `<tr><td class="cc"><input type="checkbox" class="ck" ${selH.has(p.id)?'checked':''} onchange="this.checked?selH.add(${p.id}):selH.delete(${p.id});pintaHist()"><td class="cod">${p.id}<td>${f.toLocaleDateString('es')} <span class="m hide-sm">${f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span><td>${esc(p.cliente||'-')}${sin?' <span class="tag" style="color:var(--no)">Faltó stock</span>':''}${na&&na==ls.length?' <span class="tag" style="color:var(--no)">Anulado</span>':na?` <span class="tag">${na} anulado(s)</span>`:''}${p.une?` <span class="tag sec">Unifica Nº ${p.une.join(', ')}</span>`:''}${p.unificado_en?` <span class="tag">Unificado en Nº ${p.unificado_en}</span>`:''}${entTag(p,na==ls.length)}<td class="n hide-sm">${ls.length-na}<td class="n"><b>${money(p.total)}</b><td class="n"><div class="acc" style="justify-content:flex-end;flex-wrap:nowrap">${p.unificado_en||na==ls.length?'':p.entregado?`<button class="s" title="Desmarcar entrega" onclick="entregar([${p.id}],false)">↩</button>`:`<button onclick="entregar([${p.id}],true)">Entregar</button>`}${p.une?`<button class="s" onclick="deshacerUnif(${i})">Deshacer</button>`:na<ls.length&&!p.unificado_en?`<button class="s" onclick="abrirAnular(${i})">Anular</button>`:''}<button class="s" onclick="descargar(H[${i}])">PDF</button></div></tr>`}).join('')
+  return `<tr><td class="cc"><input type="checkbox" class="ck" ${selH.has(p.id)?'checked':''} onchange="this.checked?selH.add(${p.id}):selH.delete(${p.id});pintaHist()"><td class="cod">${p.id}<td>${f.toLocaleDateString('es')} <span class="m hide-sm">${f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span><td>${esc(p.cliente||'-')}${sin?' <span class="tag" style="color:var(--no)">Faltó stock</span>':''}${na&&na==ls.length?' <span class="tag" style="color:var(--no)">Anulado</span>':na?` <span class="tag">${na} anulado(s)</span>`:''}${p.une?` <span class="tag sec">Unifica Nº ${p.une.join(', ')}</span>`:''}${p.unificado_en?` <span class="tag">Unificado en Nº ${p.unificado_en}</span>`:''}${entTag(p,na==ls.length)}<td class="n hide-sm">${ls.length-na}<td class="n"><b>${money(p.total)}</b><td class="n"><div class="acc" style="justify-content:flex-end;flex-wrap:nowrap">${p.unificado_en||na==ls.length?'':p.entregado?`<button class="s" title="Desmarcar entrega" onclick="entregar([${p.id}],false)">↩</button>`:`<button onclick="entregar([${p.id}],true)">Entregar</button>`}${p.une?`<button class="s" onclick="deshacerUnif(${i})">Deshacer</button>`:na<ls.length&&!p.unificado_en?`<button class="s" onclick="abrirAnular(${i})">Anular</button>`:''}<button onclick="verPres(${i})">Ver</button></div></tr>`}).join('')
   ||`<tr><td colspan="7" class="m">${t?'No hay presupuestos que coincidan.':'Todavía no hay presupuestos.'}</tr>`;
  $('hall').checked=H.length>0&&H.every(p=>selH.has(p.id));$('hbar').hidden=!selH.size;$('hsel').textContent=selH.size;$('bunif').hidden=selH.size<2}
+// Ver un presupuesto sin descargar el PDF: lista para ir armando el pedido.
+// Los productos que vas preparando se tildan y quedan guardados en este dispositivo.
+let VER=null;
+const prepK=p=>'prep'+p.id,prepLee=p=>{try{return new Set(JSON.parse(leeLS(prepK(p))||'[]'))}catch{return new Set()}};
+function verPres(i){const p=H[i];VER=p;const f=new Date(p.fecha);
+ $('vert').textContent=`Nº ${p.id}${p.cliente?' · '+p.cliente:''}`;
+ $('verd').textContent=f.toLocaleDateString('es')+' '+f.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})+' · Total '+money(p.total)+(p.entregado?' · Entregado':'');
+ pintaVer();$('dver').showModal();$('verl').scrollTop=0}
+function pintaVer(){const p=VER,ok=prepLee(p),ls=(p.lineas||[]).map((l,j)=>[l,j]).filter(([l])=>!l.anulado);
+ $('verl').innerHTML=ls.map(([l,j])=>{const dis=+(l.disponible??l.cantidad),sin=dis<=0,par=!sin&&dis<l.cantidad,c=ok.has(j);
+  const cant=sin?0:dis,nota=sin?'Sin stock: no va':par?`Pidió ${fmt(l.cantidad)}, solo hay ${fmt(dis)}`:'';
+  return `<label class="chk ren" style="padding:9px 2px;border-bottom:1px solid var(--b,#8883);${c?'opacity:.5':''}${sin?';color:var(--no)':''}"><input type="checkbox" class="ck" ${sin?'disabled':''} ${c?'checked':''} onchange="marcaPrep(${j},this.checked)"><span style="flex:1;min-width:0;${c?'text-decoration:line-through':''}"><b style="font-size:17px">${fmt(cant)}</b> × ${esc(l.nombre)}${l.codigo?` <span class="m" style="font-size:12px">${esc(l.codigo)}</span>`:''}${nota?`<br><i style="color:var(--no);font-size:13px">${nota}</i>`:''}</span></label>`}).join('')||'<p class="m">Este presupuesto no tiene productos (anulado).</p>';
+ const tot=ls.filter(([l])=>+(l.disponible??l.cantidad)>0).length,hechos=ls.filter(([l,j])=>ok.has(j)&&+(l.disponible??l.cantidad)>0).length;
+ $('verp').textContent=tot?(hechos==tot?'✔ Pedido listo':`Preparados ${hechos} de ${tot}`):'';
+ $('vera').innerHTML=p.une?.length?`<p class="m" style="font-size:13px;margin:6px 0 0">Reúne los presupuestos Nº ${p.une.join(', ')}.</p>`:''}
+function marcaPrep(j,v){const ok=prepLee(VER);v?ok.add(j):ok.delete(j);guardaLS(prepK(VER),JSON.stringify([...ok]));pintaVer()}
+function limpiaPrep(){try{localStorage.removeItem(prepK(VER))}catch{}pintaVer()}
 // Entregas: cada presupuesto se marca como entregado (con la fecha). Los unificados siguen al presupuesto final.
 let HF='';
 function filHist(b){HF=b.dataset.f;document.querySelectorAll('#hfil button').forEach(x=>x.classList.toggle('on',x==b));selH.clear();lh=30;cargaHist()}
