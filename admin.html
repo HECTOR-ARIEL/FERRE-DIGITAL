@@ -1070,6 +1070,14 @@ function dibujaMq(f){if(f.ti=='tope'){const h=f.al,[,cn,K]=colMq(f.co);if(!(h>0)
   $('mdibt').textContent=`${cn} · tope de ${mtr(h)} m`;return}
  const reb=f.ab=='pvr',te=f.ti=='tejido',a=f.fi||reb||te?f.an:f.an/2,h=f.al;if(!(a>0&&h>0)){$('mdib').innerHTML='<text x="130" y="160" text-anchor="middle" fill="var(--m)" font-size="13">Ingresa ancho y alto</text>';$('mdibt').textContent='';return}
  const k=Math.min(170/a,250/h),w=a*k,hh=h*k,x=(260-w)/2+10,y=(320-hh)/2,P=8,C='var(--t)',[,cn,K]=colMq(f.co),O='stroke="#888" stroke-width=".7"';
+ // reposición de tejido: solo el tejido con el burlete negro alrededor (y a los dos lados de cada travesaño), sin perfiles
+ if(te){const N='#111';let s='';
+  for(let i=x+5;i<x+w-2;i+=5)s+=`<line x1="${i}" y1="${y}" x2="${i}" y2="${y+hh}" stroke="var(--m)" stroke-width=".35"/>`;
+  for(let j=y+5;j<y+hh-2;j+=5)s+=`<line x1="${x}" y1="${j}" x2="${x+w}" y2="${j}" stroke="var(--m)" stroke-width=".35"/>`;
+  s+=`<rect x="${x}" y="${y}" width="${w}" height="${hh}" rx="2" fill="none" stroke="${N}" stroke-width="4"/>`;
+  for(const t of altTrMq(f,h)){const ty=y+hh-t*k;s+=`<line x1="${x}" y1="${ty-3}" x2="${x+w}" y2="${ty-3}" stroke="${N}" stroke-width="3"/><line x1="${x}" y1="${ty+3}" x2="${x+w}" y2="${ty+3}" stroke="${N}" stroke-width="3"/><text x="${x+w-6}" y="${ty-8}" font-size="11" text-anchor="end" fill="${C}" stroke="#e4e4e4" stroke-width="3" paint-order="stroke">${mtr(t)} m</text>`}
+  s+=`<text x="${x+w/2}" y="${y+hh+20}" text-anchor="middle" font-size="12" fill="${C}">${mtr(a)} m</text><text x="${x+w+8}" y="${y+14}" font-size="12" fill="${C}">${mtr(h)} m</text>`;
+  $('mdib').innerHTML=s;$('mdibt').textContent=`Reposición de tejido · ${mtr(a)} × ${mtr(h)} m`+(ntrMq(f)?` · dividido en ${ntrMq(f)+1} paños`:'')+' · tejido y burlete';return}
  // marco del color elegido, con un filo gris para que el blanco se vea sobre fondo claro
  let s=`<rect x="${x}" y="${y}" width="${w}" height="${hh}" fill="none" stroke="${K}" stroke-width="${P}"/><rect x="${x-P/2}" y="${y-P/2}" width="${w+P}" height="${hh+P}" fill="none" ${O}/><rect x="${x+P/2}" y="${y+P/2}" width="${w-P}" height="${hh-P}" fill="none" ${O}/>`;
  // uniones a 45° en las cuatro esquinas
@@ -1132,6 +1140,11 @@ function dibPdfMq(d,x,bx,by,bw,bh){const K=colMq(x.co)[2].match(/\w\w/g).map(h=>
  d.setLineWidth(.15);d.setDrawColor(...GR);
  if(x.ti=='tope'){const k=(bh-4)/x.al,hh=x.al*k,cx=bx+bw/2-3;d.setFillColor(...K);d.rect(cx,by,2,hh,'FD');cota(cx+6,by,cx+6,by+hh,mmTxt(x.al),true);return}
  const reb=x.ab=='pvr',te=x.ti=='tejido',a=x.fi||reb||te?x.an:x.an/2,h=x.al,no=ntoMq(x),dx=no>1||reb?6:3,k=Math.min((bw-4-dx-6)/a,(bh-6)/h),w=a*k,hh=h*k,ox=bx+4+(bw-4-dx-6-w)/2,oy=by,P=1.3;
+ // reposición de tejido: solo el tejido con el burlete negro, sin perfiles
+ if(te){d.setDrawColor(200,200,200);d.setLineWidth(.05);for(let i=ox+1.2;i<ox+w-.3;i+=1.2)d.line(i,oy,i,oy+hh);for(let j=oy+1.2;j<oy+hh-.3;j+=1.2)d.line(ox,j,ox+w,j);
+  d.setDrawColor(17,17,17);d.setLineWidth(.8);d.roundedRect(ox,oy,w,hh,.4,.4,'S');
+  d.setLineWidth(.45);for(const t of altTrMq(x,h)){const ty=oy+hh-t*k;d.line(ox,ty-.55,ox+w,ty-.55);d.line(ox,ty+.55,ox+w,ty+.55)}
+  cota(ox,oy+hh+2.5,ox+w,oy+hh+2.5,mmTxt(a));cota(ox+w+dx,oy,ox+w+dx,oy+hh,mmTxt(h),true);return}
  const pol=pts=>d.lines(pts.slice(1).map((q,i)=>[q[0]-pts[i][0],q[1]-pts[i][1]]),pts[0][0],pts[0][1],[1,1],'FD',true);
  if(reb&&x.mo=='comp'){const g=ox-1.6,t=oy-1.6,R=ox+w+1.6,e=1.1,b=oy+hh;d.setFillColor(...K);pol([[g,t],[g+e,t+e],[g+e,b],[g,b]]);pol([[g,t],[R,t],[R-e,t+e],[g+e,t+e]]);pol([[R,t],[R,b],[R-e,b],[R-e,t+e]])}
  d.setFillColor(...K);d.rect(ox,oy,w,hh,'FD');d.setFillColor(250,250,250);d.rect(ox+P,oy+P,w-2*P,hh-2*P,'FD');
