@@ -6,7 +6,7 @@
 #mas{display:block;margin:18px auto 0}.card .cod{font-size:14px;font-weight:600;color:var(--t);opacity:.75}.card{scroll-margin-top:calc(var(--hh,75px) + var(--th,76px))}
 /* sectores: botones que se deslizan de lado */
 .chips{flex-basis:100%;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.chips::-webkit-scrollbar{display:none}
-.chips button{flex:none;padding:6px 14px;border-radius:99px;font-size:14px;background:var(--c);color:var(--t);border:1px solid var(--b)}
+.chips button{flex:none;white-space:nowrap;padding:6px 14px;border-radius:99px;font-size:14px;background:var(--c);color:var(--t);border:1px solid var(--b)}
 .chips button.on{background:var(--a);color:#fff;border-color:var(--a)}
 @media(max-width:520px){.top{margin:-12px -34px 0 -12px;padding:10px 34px 10px 12px}.top .m{font-size:12px}.bus{min-width:0}}
 /* carrito: botón en la cabecera, controles en cada tarjeta y ventana con el pedido */
@@ -44,6 +44,7 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 /* NUEVOS PRODUCTOS: botón y franja amarillos, solo si hay productos que aparecieron en los últimos 7 días */
 .chips button.nv{background:linear-gradient(90deg,#ffd900,#ffb300);color:#1a1a1a;border:0;font-weight:900;letter-spacing:.04em}
 .chips button.nv.on{outline:2px solid var(--t);outline-offset:2px}
+@media(max-width:600px){.chips button.nv .lg{display:none}}  /* en el teléfono dice solo "NUEVOS" */
 .franja.nv{background:linear-gradient(90deg,#ffd900,#ffb300);color:#1a1a1a}.franja.nv:hover{background:linear-gradient(90deg,#f2cc00,#f5a800)}.franja.nv span{color:#1a1a1a}
 .sep{grid-column:1/-1;margin:18px 0 0;padding-top:14px;border-top:1px solid var(--b);font-size:15px;color:var(--m)}
 /* datos del negocio: franja negra al final del catálogo (y la misma información en la ventana "Info") */
@@ -150,7 +151,7 @@ let FL=[],SEC=[],sec=null;
 // OFERTAS va siempre primero y solo aparece si hay productos en oferta (con la franja que invita a entrar)
 // NUEVOS PRODUCTOS va al lado, en amarillo, y solo aparece si hay productos nuevos (7 días)
 function pintaChips(){const hay=new Set(P.map(p=>p.sector_id)),L=SEC.filter(x=>hay.has(x.id)),nOf=P.filter(p=>p.of).length,nNv=P.filter(p=>p.nv).length;if(sec=='of'?!nOf:sec=='nv'?!nNv:!L.some(x=>x.id==sec))sec=null;
- $('chips').innerHTML=(nOf?`<button type="button" class="of${sec=='of'?' on':''}" onclick="eligeSec('of')">🔥 OFERTAS (${nOf})</button>`:'')+(nNv?`<button type="button" class="nv${sec=='nv'?' on':''}" onclick="eligeSec('nv')">✨ NUEVOS PRODUCTOS (${nNv})</button>`:'')+`<button type="button" class="${sec?'':'on'}" onclick="eligeSec(null)">Todos</button>`+L.map(x=>`<button type="button" class="${sec==x.id?'on':''}" onclick="eligeSec(${x.id})">${esc(x.nombre)}</button>`).join('');
+ $('chips').innerHTML=(nOf?`<button type="button" class="of${sec=='of'?' on':''}" onclick="eligeSec('of')">🔥 OFERTAS (${nOf})</button>`:'')+(nNv?`<button type="button" class="nv${sec=='nv'?' on':''}" onclick="eligeSec('nv')">✨ NUEVOS<span class="lg"> PRODUCTOS</span> (${nNv})</button>`:'')+`<button type="button" class="${sec?'':'on'}" onclick="eligeSec(null)">Todos</button>`+L.map(x=>`<button type="button" class="${sec==x.id?'on':''}" onclick="eligeSec(${x.id})">${esc(x.nombre)}</button>`).join('');
  $('chips').hidden=!L.length&&!nOf&&!nNv;
  $('franjaNv').hidden=!nNv||sec=='nv';$('franjaNv').innerHTML=`✨ ¡Llegaron ${nNv} producto${nNv==1?'':'s'} nuevo${nNv==1?'':'s'}! <span>Ver nuevos ›</span>`;
  $('franja').hidden=!nOf||sec=='of';$('franja').innerHTML=`🔥 ¡Hay ${nOf} producto${nOf==1?'':'s'} en oferta! <span>Ver ofertas ›</span>`;hh()}
