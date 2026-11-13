@@ -1148,24 +1148,30 @@ function pintaListaMq(){const R=calcMq(MQ.items),cod=codMq(R.items);
   </tbody></table></div>${R.err?`<p class="falta">${esc(R.err)}</p>`:''}</div>`:(R.err?`<p class="falta">${esc(R.err)}</p>`:'');
  numMq();const col=+MQ.colocacion||0;$('mtot').innerHTML=R.items.length?`Total: <b>${money(R.total)}</b>${col?`<div class="m" style="font-size:14px">Colocación ${money(col)} · Con colocación <b>${money(R.total+col)}</b></div>`:''}`:''}
 // Costo total de materiales de un presupuesto: tejido, burlete, perfiles (barras de 6 m enteras) y accesorios, con los precios de hoy
-function costoTotMq(items,tit){const R=calcMq(items),c=CM||{},A={},row=(a,b,d,e='')=>`<tr><td>${a}</td><td class="n">${b}</td><td class="n">${d}</td>${e}</tr>`;let tej=0,bur=0,cTej=0,cBur=0,cPerM=0;
+function costoTotMq(items,tit,col=0,vg=null){const R=calcMq(items),c=CM||{},A={},row=(a,b,d,e='')=>`<tr><td>${a}</td><td class="n">${b}</td><td class="n">${d}</td>${e}</tr>`;let tej=0,bur=0,cTej=0,cBur=0,cPerM=0;
  for(const x of R.items)for(const l of x.mat){const q=x.ca;if(l[5]=='tejido'){tej+=l[6]*q;cTej+=l[2]*q}else if(l[5]=='burlete'){bur+=l[6]*q;cBur+=l[2]*q}else if(l[3])cPerM+=l[2]*q;else{const k=l[0],o=A[k]??={n:0,c:0};o.n+=(l[6]??(+l[1]||0))*q;o.c+=l[2]*q}}
- const PB=Object.entries(R.barras),cBar=PB.reduce((t,[,b])=>t+b.costo,0),cAcc=Object.values(A).reduce((t,o)=>t+o.c,0),gasto=cTej+cBur+cBar+cAcc,venta=R.total,col=+MQ.colocacion||0;
+ const PB=Object.entries(R.barras),cAcc=Object.values(A).reduce((t,o)=>t+o.c,0),gasto=cTej+cBur+cPerM+cAcc,venta=vg??R.total,gan=venta-gasto,pc=(n,d)=>d>0?fmt(red(n/d*100,1))+' %':'-';
  const av=R.items.filter(x=>x.av||x.err).length;
  $('cmqt').textContent=tit;
  $('cmqb').innerHTML=`<div class="w"><table style="font-size:13px"><thead><tr><th>Material</th><th class="n">Cantidad</th><th class="n">Costo</th></tr></thead><tbody>
-  ${row('<b>Tejido</b>',`${fmt(Math.round(tej*1000))} mm <span class="m">(${fmt(red(tej/30,2))} rollos)</span>`,money(cTej))}
-  ${row('<b>Burlete</b>',`${fmt(Math.round(bur*1000))} mm <span class="m">(${fmt(red(bur/100,2))} rollos)</span>`,money(cBur))}
-  ${PB.map(([k,b])=>row(`<b>Perfil</b> ${esc(nomBarraMq(k))}`,`${b.n} barra${b.n>1?'s':''} <span class="m">(se usan ${mtr(b.metros)} m)</span>`,money(b.costo))).join('')}
+  ${row('<b>Tejido</b>',`${fmt(Math.round(tej*1000))} mm<div class="m" style="font-size:11px">${fmt(red(tej/30,2))} rollos</div>`,money(cTej))}
+  ${row('<b>Burlete</b>',`${fmt(Math.round(bur*1000))} mm<div class="m" style="font-size:11px">${fmt(red(bur/100,2))} rollos</div>`,money(cBur))}
+  ${PB.map(([k,b])=>row(`<b>Perfil</b> ${esc(nomBarraMq(k))}`,`${mtr(b.metros)} m<div class="m" style="font-size:11px">${fmt(red(b.metros/6,2))} barras · comprar ${b.n}</div>`,money(b.metros*barraMq(c,k)/6))).join('')}
   ${Object.entries(A).map(([k,o])=>row(esc(k),fmt(o.n),money(o.c))).join('')}
   <tr><td colspan="2"><b>Total de materiales</b></td><td class="n"><b>${money(gasto)}</b></td></tr></tbody></table></div>
-  <div class="r" style="justify-content:space-between;margin-top:8px"><span>Venta (sin colocación)</span><b>${money(venta)}</b></div>
-  <div class="r" style="justify-content:space-between"><span>Ganancia sobre materiales</span><b>${money(venta-gasto)}</b></div>
+  <div style="margin-top:12px;border:2px solid var(--b);border-radius:10px;padding:10px 12px;font-size:15px">
+   <div class="r" style="justify-content:space-between"><span>Se vendió en${vg!=null&&Math.round(vg)!=Math.round(R.total)?`<div class="m" style="font-size:12px">lo que se le cobró (con los precios de hoy daría ${money(R.total)})</div>`:''}</span><b>${money(venta)}</b></div>
+   <div class="r" style="justify-content:space-between"><span>Gasto en materiales</span><b style="color:var(--no)">− ${money(gasto)}</b></div>
+   <div class="r" style="justify-content:space-between;border-top:1px solid var(--b);margin-top:6px;padding-top:6px;font-size:17px"><span><b>Ganancia total</b><div class="m" style="font-size:12px">descontando los materiales</div></span><b style="color:var(--ok,#1a7f37)">${money(gan)}</b></div>
+   <div class="m" style="font-size:12px;text-align:right">Es el ${pc(gan,gasto)} sobre lo gastado · el ${pc(gan,venta)} de lo que se cobra</div>
+   ${col?`<div class="r" style="justify-content:space-between;margin-top:6px"><span>+ Colocación</span><b>${money(col)}</b></div>
+   <div class="r" style="justify-content:space-between;font-size:17px"><b>Ganancia total con colocación</b><b style="color:var(--ok,#1a7f37)">${money(gan+col)}</b></div>`:''}
+  </div>
   ${R.err?`<p class="falta">${esc(R.err)}</p>`:''}${av?`<p class="falta">⚠ ${av} renglón(es) con aviso: revisalos en la lista.</p>`:''}
-  <p class="m" style="font-size:12px;margin:8px 0 0">Los perfiles se cuentan por barras enteras de 6 m (lo que hay que comprar); en el precio de cada mosquitero se cobran solo los metros que usa (${money(cPerM)}). El tejido se cuenta como 1,20 m × lo que se corta de cada mosquitero. Calculado con los precios de hoy.</p>`;
+  <p class="m" style="font-size:12px;margin:8px 0 0">Los perfiles se cuentan por los metros que se usan (por ejemplo 1,5 barras), igual que en el precio de cada mosquitero; lo que sobra de las barras queda en el taller para otros trabajos. "Comprar" es solo para saber cuántas barras enteras hacen falta. El tejido se cuenta como 1,20 m × lo que se corta de cada mosquitero. Calculado con los precios de hoy.</p>`;
  $('dcmq').showModal()}
-const costoMq=()=>MQ.items.length?costoTotMq(MQ.items,MQ.id?`Costo total · Nº ${MQ.id}${MQ.cliente?' · '+MQ.cliente:''}`:'Costo total · presupuesto actual'):avisa('Agrega al menos un mosquitero.');
-function costoHistMq(id){const x=HMQ.find(h=>h.id==id);if(!x)return;costoTotMq((x.items||[]).map(({precio,sm,...i})=>i),`Costo total · Nº ${x.id} · ${x.cliente||'-'}`)}
+const costoMq=()=>MQ.items.length?costoTotMq(MQ.items,MQ.id?`Costo total · Nº ${MQ.id}${MQ.cliente?' · '+MQ.cliente:''}`:'Costo total · presupuesto actual',+MQ.colocacion||0):avisa('Agrega al menos un mosquitero.');
+function costoHistMq(id){const x=HMQ.find(h=>h.id==id);if(!x)return;costoTotMq((x.items||[]).map(({precio,sm,...i})=>i),`Costo total · Nº ${x.id} · ${x.cliente||'-'}`,+x.colocacion||0,+x.total)}
 // Detalle de cada renglón en el PDF (medidas en mm)
 const mmTxt=v=>String(Math.round(v*1000));
 const tituloPdfMq=x=>x.ti=='tejido'?'Reposición de tejido mosquitero':x.ti=='tope'?`Tope de mosquitero (repuesto) línea ${x.li}`:`Mosquitero ${x.ab=='pvr'?'rebatible':x.fi?'fijo':'corredizo'} línea ${x.li}`;
