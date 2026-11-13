@@ -140,18 +140,21 @@ revoke select on productos from anon;
 grant select (id, codigo, nombre, precio, imagen, stock, activo, borrado, sector_id, minimo, marca, nuevo_ts, oferta, precio_oferta) on productos to anon;
 
 -- ===================== COLORES DEL CATÁLOGO =====================
--- Amarillo = producto nuevo: se marca la hora en que aparece en el catálogo (cuando recibe su código).
--- El catálogo lo pinta 7 días. Los productos que ya estaban no se pintan.
-create or replace function tg_nuevo() returns trigger language plpgsql as $$
+-- Amarillo = producto nuevo: se marca la hora en que aparece en el catálogo por primera vez
+-- (tiene código, está visible y no está en la papelera). El catálogo lo pinta 7 días.
+-- Los productos que ya se veían reciben una fecha vieja, así no se pintan nunca.
+update productos set nuevo_ts = '2000-01-01'
+ where nuevo_ts is null and coalesce(codigo,'') <> '' and activo and not borrado;
+create or replace function tg_nuevo() returns trigger language plpgsql set search_path = public as $$
 begin
-  if new.nuevo_ts is null and coalesce(new.codigo, '') <> ''
-     and (tg_op = 'INSERT' or coalesce(old.codigo, '') = '') then
+  if new.nuevo_ts is null and coalesce(new.codigo, '') <> '' and new.activo and not new.borrado
+     and (tg_op = 'INSERT' or not (coalesce(old.codigo, '') <> '' and old.activo and not old.borrado)) then
     new.nuevo_ts := now();
   end if;
   return new;
 end $$;
 drop trigger if exists productos_nuevo on productos;
-create trigger productos_nuevo before insert or update of codigo on productos
+create trigger productos_nuevo before insert or update of codigo, activo, borrado on productos
   for each row execute function tg_nuevo();
 
 -- ===================== COMPRA POR CANTIDAD FIJA (PLATA A SEPARAR) =====================

@@ -155,7 +155,7 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
   tornillo del travesaño; patín superior e inferior; % de ganancia; corte de sierra y despunte (en mm).
 - Arriba: **cliente, teléfono y dirección** (salen en el PDF).
 - **Las medidas se cargan en milímetros** (1500 × 2000). Si escribes en metros (1,50) también lo entiende. En la lista y el PDF salen en metros.
-- Cada mosquitero: ubicación, línea, **color** (el dibujo se pinta de ese color y sale en el PDF), **ancho de la ventana entera** y alto (el mosquitero cubre una hoja: la mitad del ancho), cantidad,
+- Cada mosquitero: ubicación, línea, **color** (el dibujo se pinta de ese color y sale en el PDF), **ancho de la ventana entera** y alto, **hojas de la ventana** (2, 3 o 4: el mosquitero cubre una hoja, o sea el ancho dividido por las hojas; los presupuestos guardados antes quedan como de 2 hojas), cantidad,
   travesaño (al marcar "Lleva travesaño" aparece debajo la cantidad de travesaños, hasta 6, y sus alturas en mm separadas por espacio; vacío = repartidos parejo) y tope (se marca solo, salvo en Herrero; debajo se elige cuántos topes, por ejemplo 2). Al costado se ve el dibujo y los materiales.
 - **Suplemento de alto**: al corredizo se le suman automáticamente unos mm al alto (6 mm de fábrica; se cambia en "Precios de mosquiteros") para que entre en las guías. Se usa para cortar y cobrar el perfil, el tejido y el burlete, pero en el PDF sale el alto medido (por ejemplo 2000 mm). El fijo y el tope de repuesto no lo llevan.
 - **Puerta-ventana rebatible (PVR)**: se cotiza con la medida tal cual (sin dividir, sin suplemento de alto y sin patines). Dos modelos:
@@ -202,7 +202,8 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 
 ## Colores del catálogo
 - **Rojo:** el precio subió respecto al Excel anterior. **Verde:** bajó. Duran hasta que importás el próximo Excel (cambios de menos del 0,5 % no cuentan).
-- **Amarillo:** producto nuevo en el catálogo (desde que le ponés su código). Dura 7 días. Si después le cambia el precio, pasa a rojo o verde.
+- **Amarillo:** producto nuevo en el catálogo. Los 7 días empiezan cuando el producto tiene código **y** está visible en el catálogo (si le ponés el código y lo dejás oculto, todavía no cuenta). Cuenta una sola vez: si después lo ocultás y lo volvés a mostrar, no vuelve a ser nuevo. Si después le cambia el precio, pasa a rojo o verde.
+- **✨ NUEVOS PRODUCTOS:** cuando hay productos nuevos (de los últimos 7 días), el catálogo muestra al lado de OFERTAS un botón amarillo y una franja amarilla que lleva a verlos. Si no hay productos nuevos, no aparecen.
 - Cambiar la ganancia a mano no pinta nada: solo cuentan los precios del Excel.
 
 ## Caja: "Plata que entró esta semana"

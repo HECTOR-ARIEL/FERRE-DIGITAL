@@ -41,6 +41,10 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 .franja{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;width:100%;margin:14px 0 0;padding:10px 14px;border:0;border-radius:10px;background:linear-gradient(90deg,#ff1f1f,#ff8a00);color:#fff;font-weight:800;font-size:15px;text-align:left;white-space:normal}
 .franja:hover{background:linear-gradient(90deg,#e81010,#f07a00)}.franja span{font-size:13px;background:#fff;color:#d40000;border-radius:99px;padding:4px 12px;white-space:nowrap}
 .cl .of{color:#e00000;font-weight:700}
+/* NUEVOS PRODUCTOS: botón y franja amarillos, solo si hay productos que aparecieron en los últimos 7 días */
+.chips button.nv{background:linear-gradient(90deg,#ffd900,#ffb300);color:#1a1a1a;border:0;font-weight:900;letter-spacing:.04em}
+.chips button.nv.on{outline:2px solid var(--t);outline-offset:2px}
+.franja.nv{background:linear-gradient(90deg,#ffd900,#ffb300);color:#1a1a1a}.franja.nv:hover{background:linear-gradient(90deg,#f2cc00,#f5a800)}.franja.nv span{color:#1a1a1a}
 .sep{grid-column:1/-1;margin:18px 0 0;padding-top:14px;border-top:1px solid var(--b);font-size:15px;color:var(--m)}
 /* datos del negocio: franja negra al final del catálogo (y la misma información en la ventana "Info") */
 .pie{background:var(--neg);color:#f2f2f2;border-top:3px solid var(--a);margin-top:28px;padding:24px 40px 18px 16px}
@@ -59,10 +63,12 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
  <input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Nombre o código" aria-label="Buscar productos" oninput="busca()" onkeydown="if(event.key=='Enter')this.blur()">
  <button id="qx" type="button" hidden title="Borrar búsqueda" onclick="$('q').value='';busca();$('q').focus()">✕</button></div><span class="m" id="u"></span><div class="chips" id="chips" hidden></div></div>
 <button type="button" class="franja" id="franja" hidden onclick="eligeSec('of')"></button>
-<div class="grid" id="g"></div>
+<button type="button" class="franja nv" id="franjaNv" hidden onclick="eligeSec('nv')"></button>
+<div class="grid" id="g"><p class="m" style="grid-column:1/-1;text-align:center">Cargando catálogo…</p></div>
 <p id="mas" class="m" hidden style="text-align:center">Cargando más productos…</p>
 </main>
-<footer class="pie" id="info"><div class="in">
+<!-- el pie queda oculto hasta que cargan los productos, así no aparece primero -->
+<footer class="pie" id="info" hidden><div class="in">
  <div>
   <h3>🕒 HORARIO DE ATENCIÓN</h3><p>Todos los días<br><span class="g">De lunes a domingo</span></p>
   <h3>📍 DÓNDE ESTAMOS</h3><p>Av. Argentina 296<br><span class="g">Villa Santa Cruz del Lago, Córdoba</span><br><a href="https://www.google.com/maps/search/?api=1&amp;query=Av.%20Argentina%20296%2C%20Villa%20Santa%20Cruz%20del%20Lago%2C%20C%C3%B3rdoba" target="_blank" rel="noopener">Ver en el mapa</a></p>
@@ -113,14 +119,16 @@ async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await
 const pide=c=>()=>sb.from('productos').select(c).eq('activo',true).eq('borrado',false).not('codigo','is',null).neq('codigo','').order('nombre');
 async function load(){
  try{P=await todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts,oferta,precio_oferta')).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock')))}
- catch(e){$('u').textContent='No se pudo cargar el catálogo.';return}
+ catch(e){$('u').textContent='No se pudo cargar el catálogo.';$('g').innerHTML='';$('info').hidden=false;return}
  // en oferta: se vende al precio de oferta y se guarda el de antes para mostrarlo tachado
  for(const p of P)if(p.oferta&&p.precio_oferta!=null&&+p.precio_oferta>0){p.antes=+p.precio;p.precio=+p.precio_oferta;p.of=true}
+ // nuevo: apareció en el catálogo hace menos de 7 días (después se apaga solo)
+ for(const p of P)p.nv=!!p.nuevo_ts&&Date.now()-Date.parse(p.nuevo_ts)<7*864e5;
  const{data}=await sb.from('sectores').select('id,nombre').order('nombre');SEC=data||[];pintaChips();
- r();$('u').textContent=P.length+' productos';pintaCar()}
-const color=p=>p.of?' oferta':p.marca=='sube'?' sube':p.marca=='baja'?' baja':p.nuevo_ts&&Date.now()-Date.parse(p.nuevo_ts)<7*864e5?' nuevo':'';
+ r();$('u').textContent=P.length+' productos';$('info').hidden=false;pintaCar()}
+const color=p=>p.of?' oferta':p.marca=='sube'?' sube':p.marca=='baja'?' baja':p.nv?' nuevo':'';
 function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
- const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return(!sec||(sec=='of'?p.of:p.sector_id==sec))&&w.every(x=>s.includes(x))});
+ const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return(!sec||(sec=='of'?p.of:sec=='nv'?p.nv:p.sector_id==sec))&&w.every(x=>s.includes(x))});
  // Primero todo lo que tiene stock (en orden alfabético) y después lo que está sin stock
  F.sort((a,b)=>(b.stock>0)-(a.stock>0));const n1=F.findIndex(p=>!(p.stock>0));
  FL=F;pintaAbc($('abc'),F);if(P.length)$('u').textContent=$('q').value.trim()||sec?`${F.length} de ${P.length}`:P.length+' productos';
@@ -140,9 +148,11 @@ function gestoAbc(el,ir){let ult='',t;const ver=document.createElement('div');ve
 let FL=[],SEC=[],sec=null;
 // Botones de sectores: solo los que tienen productos en el catálogo
 // OFERTAS va siempre primero y solo aparece si hay productos en oferta (con la franja que invita a entrar)
-function pintaChips(){const hay=new Set(P.map(p=>p.sector_id)),L=SEC.filter(x=>hay.has(x.id)),nOf=P.filter(p=>p.of).length;if(sec=='of'?!nOf:!L.some(x=>x.id==sec))sec=null;
- $('chips').innerHTML=(nOf?`<button type="button" class="of${sec=='of'?' on':''}" onclick="eligeSec('of')">🔥 OFERTAS (${nOf})</button>`:'')+`<button type="button" class="${sec?'':'on'}" onclick="eligeSec(null)">Todos</button>`+L.map(x=>`<button type="button" class="${sec==x.id?'on':''}" onclick="eligeSec(${x.id})">${esc(x.nombre)}</button>`).join('');
- $('chips').hidden=!L.length&&!nOf;
+// NUEVOS PRODUCTOS va al lado, en amarillo, y solo aparece si hay productos nuevos (7 días)
+function pintaChips(){const hay=new Set(P.map(p=>p.sector_id)),L=SEC.filter(x=>hay.has(x.id)),nOf=P.filter(p=>p.of).length,nNv=P.filter(p=>p.nv).length;if(sec=='of'?!nOf:sec=='nv'?!nNv:!L.some(x=>x.id==sec))sec=null;
+ $('chips').innerHTML=(nOf?`<button type="button" class="of${sec=='of'?' on':''}" onclick="eligeSec('of')">🔥 OFERTAS (${nOf})</button>`:'')+(nNv?`<button type="button" class="nv${sec=='nv'?' on':''}" onclick="eligeSec('nv')">✨ NUEVOS PRODUCTOS (${nNv})</button>`:'')+`<button type="button" class="${sec?'':'on'}" onclick="eligeSec(null)">Todos</button>`+L.map(x=>`<button type="button" class="${sec==x.id?'on':''}" onclick="eligeSec(${x.id})">${esc(x.nombre)}</button>`).join('');
+ $('chips').hidden=!L.length&&!nOf&&!nNv;
+ $('franjaNv').hidden=!nNv||sec=='nv';$('franjaNv').innerHTML=`✨ ¡Llegaron ${nNv} producto${nNv==1?'':'s'} nuevo${nNv==1?'':'s'}! <span>Ver nuevos ›</span>`;
  $('franja').hidden=!nOf||sec=='of';$('franja').innerHTML=`🔥 ¡Hay ${nOf} producto${nOf==1?'':'s'} en oferta! <span>Ver ofertas ›</span>`;hh()}
 function eligeSec(id){sec=id;pintaChips();busca();$('chips').querySelector('.on')?.scrollIntoView({inline:'center',block:'nearest'})}
 // Buscar: muestra los resultados desde arriba y el contador de coincidencias
