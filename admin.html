@@ -186,7 +186,7 @@ dialog{overflow:auto}
   <div class="mqd"><svg id="mdib" viewBox="0 0 260 320" role="img" aria-label="Dibujo del mosquitero"></svg><p class="m" id="mdibt"></p></div>
   <div class="mqm"><b>Materiales (1 mosquitero)</b><table><tbody id="mmat"></tbody></table><div id="mcost"></div></div>
  </div>
- <div class="c"><b>Mosquiteros del presupuesto</b>
+ <div class="c"><div class="r" style="justify-content:space-between;align-items:center"><b>Mosquiteros del presupuesto</b><div class="r" style="gap:8px"><button class="s" id="mver" hidden onclick="verMq(-1)">Ver materiales de todos</button><button class="s" onclick="costoMq()">Costo total</button></div></div>
   <div class="w"><table><thead><tr><th class="n">Cant.</th><th>Mosquitero</th><th class="n hide-sm">Costo u.</th><th class="n">Precio u.</th><th class="n">Subtotal</th><th></th></tr></thead><tbody id="mlis"></tbody></table></div>
   <div id="mbar"></div>
   <div class="mini" style="justify-content:flex-end"><span>Colocación (opcional)</span><input id="mcol" inputmode="decimal" placeholder="0" oninput="MQ.colocacion=num(this.value)||0;guardaMq();pintaListaMq()"></div>
@@ -199,7 +199,9 @@ dialog{overflow:auto}
  <p class="m">El cliente ve en el PDF cada mosquitero con la medida de la ventana, el precio y el total (y la colocación si la cargas). Tus costos y la ganancia solo se ven aquí. El perfil se cobra por los metros que usa cada mosquitero (precio de la barra ÷ 6 m); abajo de la lista se ve cuántas barras hay que cortar en total. Los presupuestos se guardan en "Presupuestos de mosquiteros guardados", aparte del Historial de la ferretería, y no descuentan stock.<br>
  <b>Fijo:</b> marca la tilde cuando la medida que escribes es la del mosquitero (se cotiza tal cual). Sin la tilde, es un corredizo: escribes la medida de la ventana (por ejemplo 1,50 × 1,10) y eliges en "Hojas de la ventana" si es de 2, 3 o 4 hojas; se cotiza una hoja (el ancho dividido por las hojas). En el PDF sale la medida de la ventana y la de la hoja.<br>
  <b>Reposición de tejido:</b> en "Qué se cotiza" elige "Reposición de tejido". Escribes el ancho × alto del mosquitero (tal cual) y se cobra solo el tejido y el burlete. El tejido se cobra por todo el ancho del rollo (1,20 m) × el alto, con el desperdicio; si el ancho pasa 1,20 m, se gira y se corta el ancho. Si lleva travesaño, el tejido va dividido en paños y se pueden cotizar mosquiteros grandes. Lleva su propia ganancia (120 % de fábrica, se cambia en "Precios de mosquiteros").<br>
- <b>Tejido:</b> cada mosquitero paga su tejido como 1,20 m (ancho del rollo) × su alto, aunque en el taller se aprovechen los recortes.</p>
+ <b>Tejido:</b> cada mosquitero paga su tejido como 1,20 m (ancho del rollo) × su alto, aunque en el taller se aprovechen los recortes. Si el tejido no entra en el rollo, se cobra igual (paños de 1,20 empalmados) y sale un aviso en rojo ⚠ en el formulario y en la lista.<br>
+ <b>Ver materiales:</b> la flecha ▾ de cada renglón muestra sus materiales y costos sin abrir "Editar"; "Ver materiales de todos" los abre todos juntos.<br>
+ <b>Costo total:</b> arriba de la lista y en cada presupuesto guardado. Suma el tejido, el burlete, las barras de perfil a comprar y los accesorios de todo el presupuesto, con los precios de hoy.</p>
 </section>
 
 <section id="t-ped" hidden>
@@ -327,6 +329,12 @@ dialog{overflow:auto}
  <p class="m" style="margin:0;font-size:14px">Precio de costo de cada material. Se guardan en Supabase y se usan en todos los presupuestos de mosquiteros.</p>
  <div id="mqcfg"></div>
  <div class="acc"><button type="button" class="s" onclick="$('dmq').close()">Cancelar</button><button type="button" onclick="guardaPreciosMq()">Guardar</button></div>
+</form></dialog>
+
+<dialog id="dcmq"><form method="dialog" onsubmit="return false">
+ <h2 id="cmqt">Costo total</h2>
+ <div id="cmqb"></div>
+ <div class="acc"><button type="button" onclick="$('dcmq').close()">Cerrar</button></div>
 </form></dialog>
 
 <dialog id="dver"><form method="dialog" onsubmit="return false">
@@ -1031,6 +1039,12 @@ function tejidoMq(a,h,tr=[],porAlto){const corta=(p)=>porAlto?(a<=1.2?p:p<=1.2?a
  if(e!=null||!tr.length)return e;
  const t=[0,...[...tr].sort((x,z)=>x-z),h],ps=t.slice(1).map((v,i)=>v-t[i]),L=ps.map(corta);
  return L.some(v=>v==null)?null:L.reduce((x,v)=>x+v,0)}
+// Cuando el tejido no entra en el rollo de 1,20, igual se cobra (y se avisa): cada paño se arma con tiras de 1,20 empalmadas,
+// cobrando 1,20 × el largo de cada tira (lo que gaste menos rollo, girándolo o no). Con travesaño se calcula por paño.
+function tejidoFzMq(a,h,tr=[]){const t=[0,...[...tr].sort((x,z)=>x-z),h],ps=tr.length?t.slice(1).map((v,i)=>v-t[i]):[h];
+ return ps.reduce((s,p)=>s+Math.min(Math.ceil(a/1.2-1e-9)*p,Math.ceil(p/1.2-1e-9)*a),0)}
+// Aviso (no frena el presupuesto) cuando el tejido no entra en el rollo
+const avTejMq=(a,h,nt,lt,fi)=>`OJO: el tejido no entra en el rollo de 1,20 m (mide ${mtr(a)} × ${mtr(h)} m${nt?', aun dividido por los travesaños':''}). Se cobra igual: ${mmTxt(lt)} mm de rollo, con paños empalmados.`+(nt?'':' Si lleva travesaño, márcalo.')+(fi?' Está marcada la tilde "Fijo": si es corredizo, desmárcala.':'');
 // Barras de 6 m necesarias para cortar las piezas (cada corte suma la sierra; cada barra pierde el despunte)
 function barrasMq(piezas,c){const L=6-(+c.despunte||0)/1000,s=(+c.sierra||0)/1000,b=[];
  for(const x of [...piezas].sort((a,z)=>z-a)){if(x>L)return{err:`una pieza de ${mtr(x)} m no entra en una barra`};const i=b.findIndex(r=>r+x+s<=L+1e-9);i<0?b.push(x+s):b[i]+=x+s}
@@ -1048,21 +1062,21 @@ function calcMq(items,c=CM||{}){const g=+c.ganancia||0,gT=c.ganancia_tejido!=nul
   if(it.ti=='tope'){const h=it.al;if(h>0)for(let q=0;q<it.ca;q++)(perf['tope_'+co0]??=[]).push(h);
    R.items.push({...it,a:0,h,mat:[['Perfil tope',mmTxt(h)+' mm',0,'tope_'+co0,h]],err:!(h>0)?'Falta el alto del tope':h<.2?'La medida es muy chica: va en milímetros (por ejemplo 2000 para 2 m).':null});return}
   // reposición de tejido: solo tejido (ancho del rollo × largo cortado, con desperdicio) y burlete, con la medida tal cual
-  if(it.ti=='tejido'){const a=it.an,h=it.al,nt=ntrMq(it),lt=tejidoMq(a,h,altTrMq(it,h),true),bu=2*a+2*h+2*nt*a;
-   R.items.push({...it,a,h,lt,mat:[['Tejido (rollo 1,20 m)',lt==null?'no entra':mmTxt(lt)+' mm',lt==null?0:lt*(+c.tejido||0)/30],['Burlete',mmTxt(bu)+' mm',bu*(+c.burlete||0)/100]],
-    err:!(a>0&&h>0)?'Falta el ancho o el alto':it.an<.2||it.al<.2?'La medida es muy chica: va en milímetros (por ejemplo 1500 para 1,50 m).':lt==null?`El tejido no entra en el rollo de 1,20 m: mide ${mtr(a)} × ${mtr(h)} m.`+(nt?' Aun dividido por los travesaños, algún paño pasa 1,20 m de los dos lados.':' Si lleva travesaño, márcalo: el tejido va dividido y se puede cotizar.'):null});return}
+  if(it.ti=='tejido'){const a=it.an,h=it.al,nt=ntrMq(it),trs=altTrMq(it,h),l0=tejidoMq(a,h,trs,true),nf=l0==null&&a>0&&h>0,lt=nf?tejidoFzMq(a,h,trs):l0||0,bu=2*a+2*h+2*nt*a;
+   R.items.push({...it,a,h,lt,av:nf?avTejMq(a,h,nt,lt):null,mat:[['Tejido (rollo 1,20 m)',mmTxt(lt)+' mm'+(nf?' ⚠':''),lt*(+c.tejido||0)/30,null,null,'tejido',lt],['Burlete',mmTxt(bu)+' mm',bu*(+c.burlete||0)/100,null,null,'burlete',bu]],
+    err:!(a>0&&h>0)?'Falta el ancho o el alto':it.an<.2||it.al<.2?'La medida es muy chica: va en milímetros (por ejemplo 1500 para 1,50 m).':null});return}
   const reb=it.ab=='pvr',ent=it.fi||reb,a=ent?it.an:it.an/hoMq(it),h=it.al+(ent?0:supMq(c)),co=colMq(it.co)[0],nt=ntrMq(it),no=ntoMq(it),
    cm=reb?(it.mo=='comp'?[h,a,h]:[h]):[],m={marco:[a,a,h,h,...cm],travesano:Array(nt).fill(a),tope:Array(no).fill(h)};
   if(a>0&&h>0)for(const k in m)for(let q=0;q<it.ca;q++)(perf[k+'_'+co]??=[]).push(...m[k]);
-  const lt=tejidoMq(a,h,altTrMq(it,h),true),per=2*a+2*h,mat=[],ec=reb&&it.mo=='comp'?2:0;  // ec: escuadras extra del marco en C
+  const trs=altTrMq(it,h),l0=tejidoMq(a,h,trs,true),nf=l0==null&&a>0&&h>0,lt=nf?tejidoFzMq(a,h,trs):l0||0,per=2*a+2*h,mat=[],ec=reb&&it.mo=='comp'?2:0;  // ec: escuadras extra del marco en C
   mat.push(['Perfil marco',mmTxt(per)+' mm',0,'marco_'+co,per]);if(nt)mat.push([nt>1?`Perfil travesaño (${nt})`:'Perfil travesaño',mmTxt(nt*a)+' mm',0,'travesano_'+co,nt*a]);if(no)mat.push([no>1?`Perfil tope (${no})`:'Perfil tope',mmTxt(no*h)+' mm',0,'tope_'+co,no*h]);
-  mat.push(['Tejido',lt==null?'no entra':mmTxt(lt)+' mm',lt==null?0:lt*(+c.tejido||0)/30],['Burlete',mmTxt(per+2*nt*a)+' mm',(per+2*nt*a)*(+c.burlete||0)/100],['Escuadras',4+ec,(4+ec)*(+c.escuadra||0)],
-   ['Tornillos',8+2*ec+2*nt,(8+2*ec)*(+c.tornillo||0)+2*nt*(+c.tornillo_trav||0)]);
-  if(reb&&it.pa)mat.push(['Pasador',1,+c.pasador||0]);
+  mat.push(['Tejido',mmTxt(lt)+' mm'+(nf?' ⚠':''),lt*(+c.tejido||0)/30,null,null,'tejido',lt],['Burlete',mmTxt(per+2*nt*a)+' mm',(per+2*nt*a)*(+c.burlete||0)/100,null,null,'burlete',per+2*nt*a],['Escuadras',4+ec,(4+ec)*(+c.escuadra||0),null,null,'acc',4+ec],
+   ['Tornillos',8+2*ec+2*nt,(8+2*ec)*(+c.tornillo||0)+2*nt*(+c.tornillo_trav||0),null,null,'acc',8+2*ec+2*nt]);
+  if(reb&&it.pa)mat.push(['Pasador',1,+c.pasador||0,null,null,'acc',1]);
   // rebatible: contramarco del mismo perfil del marco (un lateral, o en C: laterales y parte superior) y bisagras tipo libro
-  if(reb){const lc=cm.reduce((t,v)=>t+v,0);mat.push([it.mo=='comp'?'Contramarco en C (perfil marco)':'Contramarco lateral (perfil marco)',mmTxt(lc)+' mm',0,'marco_'+co,lc],['Bisagras tipo libro',it.nb,it.nb*(+c.bisagra||0)])}
-  if(!ent)mat.push(['Patines',4,2*(+c.patin_sup||0)+2*(+c.patin_inf||0)]);  // el fijo no corre: no lleva patines
-  R.items.push({...it,a,h,lt,mat,err:!(a>0&&h>0)?'Falta el ancho o el alto':it.an<.2||it.al<.2?`La medida es muy chica: va en milímetros (por ejemplo 1500 para 1,50 m).`:lt==null?`El tejido no entra en el rollo de 1,20 m: el mosquitero mide ${mtr(a)} × ${mtr(h)} m y las dos medidas pasan 1,20.`+(nt?' Aun dividido por los travesaños, algún paño pasa 1,20 m de los dos lados.':' Si lleva travesaño, márcalo: el tejido va dividido y se puede cotizar.')+(it.fi?' Está marcada la tilde "Fijo": si es corredizo, desmárcala y el ancho se divide por las hojas de la ventana.':''):null})});
+  if(reb){const lc=cm.reduce((t,v)=>t+v,0);mat.push([it.mo=='comp'?'Contramarco en C (perfil marco)':'Contramarco lateral (perfil marco)',mmTxt(lc)+' mm',0,'marco_'+co,lc],['Bisagras tipo libro',it.nb,it.nb*(+c.bisagra||0),null,null,'acc',it.nb])}
+  if(!ent)mat.push(['Patines',4,2*(+c.patin_sup||0)+2*(+c.patin_inf||0),null,null,'acc',4]);  // el fijo no corre: no lleva patines
+  R.items.push({...it,a,h,lt,mat,av:nf?avTejMq(a,h,nt,lt,it.fi):null,err:!(a>0&&h>0)?'Falta el ancho o el alto':it.an<.2||it.al<.2?`La medida es muy chica: va en milímetros (por ejemplo 1500 para 1,50 m).`:null})});
  for(const k in perf){if(!perf[k].length)continue;const b=barrasMq(perf[k],c);if(b.err){R.err=`Perfil ${nomBarraMq(k)}: ${b.err}`;continue}
   const tot=perf[k].reduce((t,x)=>t+x,0);R.barras[k]={...b,metros:tot,costo:b.n*barraMq(c,k)};
 }
@@ -1079,7 +1093,7 @@ function pintaMq(){const f=formMq(),so=f.ti=='tope',te=f.ti=='tejido';
  const lista=MQE<0?[...MQ.items,f]:MQ.items.map((x,i)=>i==MQE?f:x),R=calcMq(lista),it=R.items[MQE<0?lista.length-1:MQE];
  dibujaMq(f);
  $('mmat').innerHTML=it.mat.map(l=>`<tr><td>${l[0]}</td><td class="n">${l[1]}</td><td class="n">${money(l[2])}</td></tr>`).join('');
- $('mcost').innerHTML=it.err||R.err?`<p class="falta">${esc(it.err||R.err)}</p>`:`<div class="r" style="justify-content:space-between;font-size:13px"><span class="m">Costo</span><span>${money(it.costo)}</span></div>
+ $('mcost').innerHTML=it.err||R.err?`<p class="falta">${esc(it.err||R.err)}</p>`:(it.av?`<p class="falta">⚠ ${esc(it.av)}</p>`:'')+`<div class="r" style="justify-content:space-between;font-size:13px"><span class="m">Costo</span><span>${money(it.costo)}</span></div>
   <div class="tot">${money(it.precio)} <span class="m" style="font-size:12px">c/u con ${fmt(it.gan)} %</span></div>
 `}
 function dibujaMq(f){if(f.ti=='tope'){const h=f.al,[,cn,K]=colMq(f.co);if(!(h>0)){$('mdib').innerHTML='<text x="130" y="160" text-anchor="middle" fill="var(--m)" font-size="13">Ingresa el alto</text>';$('mdibt').textContent='';return}
@@ -1115,23 +1129,31 @@ function dibujaMq(f){if(f.ti=='tope'){const h=f.al,[,cn,K]=colMq(f.co);if(!(h>0)
  $('mdib').innerHTML=s;$('mdibt').textContent=te?`Reposición de tejido · ${mtr(a)} × ${mtr(h)} m`+(ntrMq(f)?` · dividido en ${ntrMq(f)+1} paños`:''):reb?`${cn} · rebatible de ${mtr(a)} × ${mtr(h)} m · ${f.mo=='comp'?'marco en C':'lateral'} + ${f.nb} bisagras`:f.fi?`${cn} · fijo de ${mtr(a)} × ${mtr(h)} m`:`${cn} · hoja de ${mtr(a)} × ${mtr(h)} m · ventana de ${hoMq(f)} hojas ${mtr(f.an)} × ${mtr(h)} m`+(supMq()?` · se cotiza con ${Math.round((h+supMq())*1000)} mm de alto`:'')}
 function agregaMq(){const f=formMq(),lista=MQE<0?[...MQ.items,f]:MQ.items.map((x,i)=>i==MQE?f:x),R=calcMq(lista),it=R.items[MQE<0?lista.length-1:MQE];
  if(it.err||R.err)return avisa(it.err||R.err);
- if(MQE<0)MQ.items.push(f);else MQ.items[MQE]=f;guardaMq();limpiaFormMq();pintaListaMq()}
+ if(MQE<0)MQ.items.push(f);else MQ.items[MQE]=f;guardaMq();limpiaFormMq();pintaListaMq();if(it.av)avisa('Se agregó a la lista y se cobra el tejido.\n\n'+it.av)}
 function limpiaFormMq(){MQE=-1;for(const i of['mub','man','mal','mtra'])$(i).value='';$('mca').value=1;$('mtrc').checked=false;$('mtr').value=1;$('mfi').checked=false;$('mho').value='2';$('mti').value='';$('mab').value='';$('mmo').value='lat';$('mbi').value=4;$('mpa').checked=false;$('mton').value=1;$('mto').checked=$('mli').value!='Herrero';
  $('mag').textContent='Agregar a la lista';$('mcan').hidden=true;pintaMq()}
 function editaMq(i){const x=MQ.items[i];MQE=i;$('mti').value=x.ti||'';$('mab').value=x.ab||'';$('mmo').value=x.mo||'lat';$('mbi').value=x.nb||4;$('mpa').checked=!!x.pa;$('mub').value=x.ub;$('mli').value=x.li;$('mco').value=x.co||'blanco';$('mfi').checked=!!x.fi;$('mho').value=String(hoMq(x));$('man').value=x.an?Math.round(x.an*1000):'';$('mal').value=Math.round(x.al*1000);$('mca').value=x.ca;
  $('mtrc').checked=ntrMq(x)>0;$('mtr').value=ntrMq(x)||1;$('mtra').value=(Array.isArray(x.tra)?x.tra:x.tra?[x.tra]:[]).map(t=>Math.round(t*1000)).join(' ');$('mto').checked=ntoMq(x)>0;$('mton').value=ntoMq(x)||1;$('mag').textContent='Guardar cambios';$('mcan').hidden=false;
  pintaMq();$('t-mos').scrollIntoView({behavior:'smooth'})}
-function quitaMq(i){MQ.items.splice(i,1);if(MQE==i)limpiaFormMq();else if(MQE>i)MQE--;guardaMq();pintaListaMq();pintaMq()}
+function quitaMq(i){MQ.items.splice(i,1);MQV.clear();if(MQE==i)limpiaFormMq();else if(MQE>i)MQE--;guardaMq();pintaListaMq();pintaMq()}
 async function nuevoMq(){if(cambiosMq()&&!await confirma('El presupuesto actual tiene cambios sin guardar. ¿Empezar uno nuevo igual?'))return;
- MQ={id:null,cliente:'',tel:'',dir:'',colocacion:0,items:[]};guardaMq();$('mmed').checked=true;for(const i of['mcl','mtel','mdir','mcol'])$(i).value='';limpiaFormMq();pintaListaMq();pintaHistMq()}
+ MQ={id:null,cliente:'',tel:'',dir:'',colocacion:0,items:[]};MQV.clear();guardaMq();$('mmed').checked=true;for(const i of['mcl','mtel','mdir','mcol'])$(i).value='';limpiaFormMq();pintaListaMq();pintaHistMq()}
 const descMq=x=>x.ti=='tejido'?`Reposición de tejido mosquitero — medida ${mtr(x.an)} × ${mtr(x.al)} m`:x.ti=='tope'?`Tope de mosquitero línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — alto ${mtr(x.al)} m`:`Mosquitero ${x.ab=='pvr'?'rebatible ':x.fi?'fijo ':''}línea ${x.li}, ${colMq(x.co)[1].toLowerCase()} — ${x.fi||x.ab=='pvr'?'medida':'ventana'} ${mtr(x.an)} × ${mtr(x.al)} m`,extraMq=x=>[x.ub,x.ab=='pvr'&&(x.mo=='comp'?'marco en C':'lateral')+` + ${x.nb} bisagras`,x.ab=='pvr'&&x.pa&&'con pasador',!x.ti&&!x.fi&&x.ab!='pvr'&&hoMq(x)>2&&`ventana de ${hoMq(x)} hojas`,ntrMq(x)==1&&'con travesaño',ntrMq(x)>1&&`con ${ntrMq(x)} travesaños`,ntoMq(x)==1&&'con tope',ntoMq(x)>1&&`con ${ntoMq(x)} topes`].filter(Boolean).join(' · ');
 // Código de cada renglón: V1, V2… (ventanas), PV1… (puerta-ventanas), T1… (topes de repuesto), R1… (reposición de tejido)
 const codMq=items=>{const n={};return items.map(x=>{const k=x.ti=='tejido'?'R':x.ti=='tope'?'T':x.ab=='pvr'?'PVR':x.ab=='pv'?'PV':'V';n[k]=(n[k]||0)+1;return k+n[k]})};
+// Materiales de un mosquitero (por unidad y por la cantidad), para verlos en la lista sin abrir "Editar"
+const matMq=x=>`<table style="font-size:12px;width:100%"><thead><tr><th>Material</th><th class="n">1 u.</th><th class="n">Costo 1 u.</th>${x.ca>1?`<th class="n">× ${x.ca}</th>`:''}</tr></thead><tbody>
+ ${x.mat.map(l=>`<tr><td>${esc(l[0])}</td><td class="n">${esc(String(l[1]))}</td><td class="n">${money(l[2])}</td>${x.ca>1?`<td class="n">${money(l[2]*x.ca)}</td>`:''}</tr>`).join('')}
+ <tr><td colspan="2"><b>Costo</b> <span class="m">· vende ${money(x.precio)} c/u (${fmt(x.gan)} %)</span></td><td class="n"><b>${money(x.costo)}</b></td>${x.ca>1?`<td class="n"><b>${money(x.costo*x.ca)}</b></td>`:''}</tr></tbody></table>`;
+let MQV=new Set();  // renglones con los materiales a la vista
+function verMq(i){i<0?(MQV.size?MQV.clear():MQ.items.forEach((_,j)=>MQV.add(j))):MQV.has(i)?MQV.delete(i):MQV.add(i);pintaListaMq()}
 function pintaListaMq(){const R=calcMq(MQ.items),cod=codMq(R.items);
- $('mlis').innerHTML=R.items.map((x,i)=>`<tr><td class="n"><b>${x.ca}</b></td><td><div class="nom"><span class="tag">${cod[i]}</span> ${esc(descMq(x))}</div><div class="m" style="font-size:12px">${esc(extraMq(x))}</div></td>
+ $('mlis').innerHTML=R.items.map((x,i)=>`<tr><td class="n"><b>${x.ca}</b></td><td><div class="nom"><span class="tag">${cod[i]}</span> ${esc(descMq(x))}</div><div class="m" style="font-size:12px">${esc(extraMq(x))}</div>${x.av?`<div class="falta">⚠ El tejido no entra en el rollo de 1,20: se cobra igual (${mmTxt(x.lt)} mm)</div>`:''}${x.err?`<div class="falta">${esc(x.err)}</div>`:''}</td>
   <td class="n hide-sm m">${money(x.costo)}</td><td class="n">${money(x.precio)}</td><td class="n"><b>${money(x.sub)}</b></td>
-  <td class="n"><div class="acc" style="flex-wrap:nowrap"><button class="s" onclick="editaMq(${i})">Editar</button><button class="s" title="Quitar" onclick="quitaMq(${i})">✕</button></div></td></tr>`).join('')
+  <td class="n"><div class="acc" style="flex-wrap:nowrap"><button class="s" title="Ver materiales" onclick="verMq(${i})">${MQV.has(i)?'▴':'▾'}</button><button class="s" onclick="editaMq(${i})">Editar</button><button class="s" title="Quitar" onclick="quitaMq(${i})">✕</button></div></td></tr>`
+  +(MQV.has(i)?`<tr><td colspan="6" style="background:var(--bg);padding:6px 4px">${matMq(x)}</td></tr>`:'')).join('')
   ||'<tr><td colspan="6" class="m">Carga las medidas arriba y pulsa "Agregar a la lista".</td></tr>';
+ $('mver').hidden=!R.items.length;$('mver').textContent=MQV.size?'Ocultar materiales':'Ver materiales de todos';
  // Perfilería que lleva todo el presupuesto (para saber cuánto comprar): metros por perfil y color y barras de 6 m
  const PB=Object.entries(R.barras).sort(([a],[b])=>Object.keys(MQPER).indexOf(a.split('_')[0])-Object.keys(MQPER).indexOf(b.split('_')[0])||a.localeCompare(b));
  $('mbar').innerHTML=PB.length?`<div style="margin-top:10px"><b style="font-size:14px">Perfilería del presupuesto</b> <span class="m" style="font-size:12px">· para saber cuánto comprar (solo lo ves vos)</span>
@@ -1139,6 +1161,31 @@ function pintaListaMq(){const R=calcMq(MQ.items),cod=codMq(R.items);
   ${PB.map(([k,b])=>{const[p,c]=k.split('_');return`<tr><td style="text-transform:capitalize">${MQPER[p]}</td><td>${colMq(c)[1]}</td><td class="n">${fmt(Math.round(b.metros*1000))} mm <span class="m">(${mtr(b.metros)} m)</span></td><td class="n"><b>${b.n}</b></td><td class="n hide-sm m">${mtr(b.sobra)} m</td></tr>`}).join('')}
   </tbody></table></div>${R.err?`<p class="falta">${esc(R.err)}</p>`:''}</div>`:(R.err?`<p class="falta">${esc(R.err)}</p>`:'');
  numMq();const col=+MQ.colocacion||0;$('mtot').innerHTML=R.items.length?`Total: <b>${money(R.total)}</b>${col?`<div class="m" style="font-size:14px">Colocación ${money(col)} · Con colocación <b>${money(R.total+col)}</b></div>`:''}`:''}
+// Costo total de materiales de un presupuesto: tejido, burlete, perfiles (barras de 6 m enteras) y accesorios, con los precios de hoy
+function costoTotMq(items,tit,col=0,vg=null){const R=calcMq(items),c=CM||{},A={},row=(a,b,d,e='')=>`<tr><td>${a}</td><td class="n">${b}</td><td class="n">${d}</td>${e}</tr>`;let tej=0,bur=0,cTej=0,cBur=0,cPerM=0;
+ for(const x of R.items)for(const l of x.mat){const q=x.ca;if(l[5]=='tejido'){tej+=l[6]*q;cTej+=l[2]*q}else if(l[5]=='burlete'){bur+=l[6]*q;cBur+=l[2]*q}else if(l[3])cPerM+=l[2]*q;else{const k=l[0],o=A[k]??={n:0,c:0};o.n+=(l[6]??(+l[1]||0))*q;o.c+=l[2]*q}}
+ const PB=Object.entries(R.barras),cAcc=Object.values(A).reduce((t,o)=>t+o.c,0),gasto=cTej+cBur+cPerM+cAcc,venta=vg??R.total,gan=venta-gasto,pc=(n,d)=>d>0?fmt(red(n/d*100,1))+' %':'-';
+ const av=R.items.filter(x=>x.av||x.err).length;
+ $('cmqt').textContent=tit;
+ $('cmqb').innerHTML=`<div class="w"><table style="font-size:13px"><thead><tr><th>Material</th><th class="n">Cantidad</th><th class="n">Costo</th></tr></thead><tbody>
+  ${row('<b>Tejido</b>',`${fmt(Math.round(tej*1000))} mm<div class="m" style="font-size:11px">${fmt(red(tej/30,2))} rollos</div>`,money(cTej))}
+  ${row('<b>Burlete</b>',`${fmt(Math.round(bur*1000))} mm<div class="m" style="font-size:11px">${fmt(red(bur/100,2))} rollos</div>`,money(cBur))}
+  ${PB.map(([k,b])=>row(`<b>Perfil</b> ${esc(nomBarraMq(k))}`,`${mtr(b.metros)} m<div class="m" style="font-size:11px">${fmt(red(b.metros/6,2))} barras · comprar ${b.n}</div>`,money(b.metros*barraMq(c,k)/6))).join('')}
+  ${Object.entries(A).map(([k,o])=>row(esc(k),fmt(o.n),money(o.c))).join('')}
+  <tr><td colspan="2"><b>Total de materiales</b></td><td class="n"><b>${money(gasto)}</b></td></tr></tbody></table></div>
+  <div style="margin-top:12px;border:2px solid var(--b);border-radius:10px;padding:10px 12px;font-size:15px">
+   <div class="r" style="justify-content:space-between"><span>Se vendió en${vg!=null&&Math.round(vg)!=Math.round(R.total)?`<div class="m" style="font-size:12px">lo que se le cobró (con los precios de hoy daría ${money(R.total)})</div>`:''}</span><b>${money(venta)}</b></div>
+   <div class="r" style="justify-content:space-between"><span>Gasto en materiales</span><b style="color:var(--no)">− ${money(gasto)}</b></div>
+   <div class="r" style="justify-content:space-between;border-top:1px solid var(--b);margin-top:6px;padding-top:6px;font-size:17px"><span><b>Ganancia total</b><div class="m" style="font-size:12px">descontando los materiales</div></span><b style="color:var(--ok,#1a7f37)">${money(gan)}</b></div>
+   <div class="m" style="font-size:12px;text-align:right">Es el ${pc(gan,gasto)} sobre lo gastado · el ${pc(gan,venta)} de lo que se cobra</div>
+   ${col?`<div class="r" style="justify-content:space-between;margin-top:6px"><span>+ Colocación</span><b>${money(col)}</b></div>
+   <div class="r" style="justify-content:space-between;font-size:17px"><b>Ganancia total con colocación</b><b style="color:var(--ok,#1a7f37)">${money(gan+col)}</b></div>`:''}
+  </div>
+  ${R.err?`<p class="falta">${esc(R.err)}</p>`:''}${av?`<p class="falta">⚠ ${av} renglón(es) con aviso: revisalos en la lista.</p>`:''}
+  <p class="m" style="font-size:12px;margin:8px 0 0">Los perfiles se cuentan por los metros que se usan (por ejemplo 1,5 barras), igual que en el precio de cada mosquitero; lo que sobra de las barras queda en el taller para otros trabajos. "Comprar" es solo para saber cuántas barras enteras hacen falta. El tejido se cuenta como 1,20 m × lo que se corta de cada mosquitero. Calculado con los precios de hoy.</p>`;
+ $('dcmq').showModal()}
+const costoMq=()=>MQ.items.length?costoTotMq(MQ.items,MQ.id?`Costo total · Nº ${MQ.id}${MQ.cliente?' · '+MQ.cliente:''}`:'Costo total · presupuesto actual',+MQ.colocacion||0):avisa('Agrega al menos un mosquitero.');
+function costoHistMq(id){const x=HMQ.find(h=>h.id==id);if(!x)return;costoTotMq((x.items||[]).map(({precio,sm,...i})=>i),`Costo total · Nº ${x.id} · ${x.cliente||'-'}`,+x.colocacion||0,+x.total)}
 // Detalle de cada renglón en el PDF (medidas en mm)
 const mmTxt=v=>String(Math.round(v*1000));
 const tituloPdfMq=x=>x.ti=='tejido'?'Reposición de tejido mosquitero':x.ti=='tope'?`Tope de mosquitero (repuesto) línea ${x.li}`:`Mosquitero ${x.ab=='pvr'?'rebatible':x.fi?'fijo':'corredizo'} línea ${x.li}`;
@@ -1284,7 +1331,7 @@ function pintaHistMq(){const b=norm($('mhb').value.trim()),L=HMQ.filter(x=>!b||n
  $('mhis').innerHTML=L.map(x=>`<tr${x.id==MQ.id?' style="background:rgba(189,23,23,.08)"':''}><td><b>${x.id}</b></td><td><div class="nom">${esc(x.cliente||'-')}</div>
   <div class="m" style="font-size:12px">${esc([fechaMq(x.fecha),x.telefono,x.direccion,(x.items||[]).reduce((t,i)=>t+(+i.ca||0),0)+' mosquitero(s)'].filter(Boolean).join(' · '))}</div></td>
   <td class="n">${money(+x.total+(+x.colocacion||0))}${+x.colocacion?'<div class="m" style="font-size:11px">con colocación</div>':''}</td>
-  <td class="n"><div class="acc" style="flex-wrap:nowrap"><button class="s" onclick="abreHistMq(${x.id})">Abrir</button><button class="s" title="Borrar" onclick="borraHistMq(${x.id})">✕</button></div></td></tr>`).join('')
+  <td class="n"><div class="acc" style="flex-wrap:nowrap"><button class="s" onclick="abreHistMq(${x.id})">Abrir</button><button class="s" onclick="costoHistMq(${x.id})">Costo total</button><button class="s" title="Borrar" onclick="borraHistMq(${x.id})">✕</button></div></td></tr>`).join('')
   ||`<tr><td colspan="4" class="m">${HMQ.length?'Ningún presupuesto coincide con la búsqueda.':'Todavía no guardaste presupuestos de mosquiteros.'}</td></tr>`}
 // Abre un presupuesto guardado para verlo, cambiarlo o volver a sacar el PDF (se recalcula con los precios de hoy)
 async function abreHistMq(id){const x=HMQ.find(h=>h.id==id);if(!x)return;
