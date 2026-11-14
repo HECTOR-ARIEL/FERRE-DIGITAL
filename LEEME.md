@@ -87,20 +87,27 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Cuando llega la mercadería: sube la misma nota completa en "Importar cantidades" para sumar el stock (corregida con lo que llegó).
 - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la tabla de pedidos).
 
-## Compra por cantidad fija y Plata a separar (pestaña Pedido)
-- Para productos que se compran de a muchas unidades (bultos de fichas, canillas de a 100): en Productos > editar, activa **🔒 Compra por cantidad fija** y escribe de a cuántas se compra y cuándo avisar. La primera vez hay que ejecutar otra vez `supabase.sql`.
-- Esos productos no entran en el pedido común. Cada venta suma a **Plata a separar** (unidades vendidas × costo actual), y la cuenta empieza en cero al activar el candado. Los pedidos web cuentan recién al pasarlos a presupuesto; los productos anulados se descuentan. Borrar el Historial no afecta la cuenta.
-- Arriba de Pedido se ve cuánto se paga ahora al proveedor, cuánto se guarda para los bultos y el total a apartar.
-- Cuando el stock llega al aviso, sale **Hay que pedir**. Se compra por el Excel aparte y se toca **Ya lo compré**: la cuenta vuelve a cero. El stock se suma con "Importar cantidades".
+## Cajas cerradas (pestaña Pedido)
+- Para productos que se compran sí o sí por caja entera (cinta Lusqtoff de a 100, silicona de a 48, fichas de a 500…): en Productos > editar, activa **📦 Caja cerrada**, escribe cuántas unidades trae la caja y con cuántas pedirla.
+- Cada venta guarda su costo solo (unidades vendidas × costo actual) en la Caja, dentro del sobre mercadería: **"Guardado para cajas cerradas"**. No hay que separar nada a mano. Los pedidos web cuentan al pasarlos a presupuesto; lo anulado se descuenta.
+- Cuando el stock llega a ese número, **la caja entera entra sola en el pedido a Uski** (aunque no se haya vendido en esta semana, por ejemplo si no llegó). Al marcar el pedido como enviado, lo guardado de esa caja vuelve a cero y queda "ya pedida" hasta que llega.
+- Arriba de Pedido se ve **la plata del pedido**: reponer lo vendido, cajas cerradas (se pagan con lo guardado) y lo **de más** (bultos redondeados y agregados a mano, que agrandan el stock), y si te alcanza con lo libre.
+- Si una caja la compraste por fuera del pedido, tocá **La compré aparte**.
+
+## Compra en el momento (Mi madre / Exult)
+- Productos que no tenés en el depósito y comprás cuando se venden (poliuretano a Mi madre; cable canal, cajas rectangulares y cinta Tacsa a Exult): en Productos > editar, en **Cómo se repone** elegí "Lo compro en el momento a Mi madre" o "a Exult".
+- No necesitan stock: en el catálogo siempre se pueden pedir. No van en el pedido a Uski.
+- Cuando se venden, aparecen en Caja > **Para comprar en el momento**. Con **Ya lo compré** escribís lo que pagaste: se carga la compra (sale del sobre mercadería) y sale de la lista. Si se anula la venta, sale solo de la lista.
 
 ## Caja (pestaña Caja)
-- La primera vez hay que ejecutar otra vez `supabase.sql`. Después se cargan el **saldo inicial** y las **deudas** que ya existen, cliente por cliente.
-- **Entró plata**: se divide por 1,3 (se puede cambiar): capital para mercadería y ganancia. Si es pago de una deuda, se marca la tilde. Si el cliente queda debiendo, se escribe cuánto.
-- **Compré mercadería**: sale del capital. Si no alcanza, avisa; la ganancia no se toca y, si se guarda igual, el capital queda en negativo. Las compras de bulto llevan su tilde.
-- **Gasto** y **Retiro**: salen de la ganancia. Cada gasto lleva su tipo: Gastos fijos, Automotor u Otros.
-- En **Movimientos**, el botón **Gastos** muestra cuánto se gastó en cada tipo (🚗 Automotor, Gastos fijos, Otros). Tocando un tipo se ven solo esos gastos. Arriba se elige el período: esta semana, este mes, el mes pasado o todo.
+- **Dos sobres**: lo que entra se divide por 1,3 (se puede cambiar). Una parte va al **sobre mercadería** y el resto al **sobre ganancia**. El sobre mercadería muestra lo **libre** y lo **guardado para cajas cerradas**. **Total en la mano** = los dos sobres: contalo y compará con la plata que tenés. Los sobres siguen solos de una semana a otra: no hace falta poner la caja en cero.
+- **Entró plata**: si es pago de una deuda, se marca la tilde. Si el cliente queda debiendo, se escribe cuánto.
+- **Compra**: se elige el proveedor (Uski, Mi madre, Exult u Otro) y sale del sobre mercadería.
+- **Uski**: cuando llega el pedido, tocá **Llegó pedido de Uski** y cargá la factura (lo que llegó de verdad, sin los faltantes). Cada pago a Uski (**Pagarle a Uski**, todo junto o en partes) baja lo que le debés. Se ve **Le debés a Uski** y **Tenés para el próximo pedido** (lo libre menos lo que le debés).
+- **Gasto** y **Retiro**: salen del sobre ganancia. Cada gasto lleva su tipo: Gastos fijos, Automotor u Otros.
+- **Semana** (sábado a viernes, o las fechas que elijas): como la hoja de papel. Cobrado, ÷ 1,3 = mercadería vendida, ganancia bruta, gastos, **ganancia de la semana**, reposición en el momento y **lo que queda de lo vendido para Uski**. El pago a Uski no se resta ahí porque es del pedido anterior.
+- En **Movimientos**, el botón **Gastos** muestra cuánto se gastó en cada tipo. Arriba se elige el período: esta semana, este mes, el mes pasado o todo.
 - **Clientes**: cada cliente con cuenta tiene su ficha (botón **Ver**) con el saldo y el historial. Ahí se carga cuánto se le llevó y cuánto pagó; lo que paga entra a la caja. Para agregar uno con lo que ya debe, **+ Cliente con deuda**. Si una deuda quedó mal, se arregla con **Corregir saldo a** en su ficha (no mueve la plata de la caja). **Eliminar cliente** borra la cuenta y su deuda; lo que ya pagó sigue en la Caja, sin el nombre.
-- **Qué hacer con el capital**: primero reponer lo vendido, después los bultos; lo demás queda de reserva. El costo de lo vendido se cuenta solo desde los presupuestos nuevos.
 - Si algo se cargó mal, se borra con ✕ y los saldos se recalculan. La división es una estimación: el porcentaje real varía por producto.
 
 ## Clientes y cómo pagó
@@ -168,15 +175,12 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 - **Reposición de tejido**: en "Qué se cotiza" se elige "Reposición de tejido" para cobrar solo el **tejido y el burlete** (sin perfil ni accesorios). Se escribe el ancho × alto del mosquitero tal cual (no se divide). El tejido se cobra por **todo el ancho del rollo (1,20 m) × el alto**, así se cobra también el desperdicio; si el ancho pasa 1,20 m, se gira y se corta el ancho. El burlete va por el contorno (y los dos lados de cada travesaño). Tiene su propia **Ganancia de la reposición de tejido** (120 % de fábrica) en "Precios de mosquiteros". En el PDF sale "Reposición de tejido mosquitero" con la medida, con código R1, R2…
 - **Tejido de cada mosquitero**: se cobra todo el ancho del rollo (1,20 m) × el alto del mosquitero, aunque en el taller se aprovechen los recortes (por ejemplo, dos de 0,50 × 1,00 se cobran 1 m de rollo cada uno). Si el ancho pasa 1,20 m, se gira y se cobra el ancho.
 - **Tejido con travesaño**: cuando el mosquitero (o la reposición) lleva travesaño, el tejido va dividido en paños. Si el paño entero no entra en el rollo de 1,20 m, se cotiza paño por paño, así se pueden cotizar mosquiteros grandes (por ejemplo 1,50 × 2,00 con travesaño al medio: dos paños de 1,50 × 1,00).
-- **Si el tejido no entra en el rollo** (las dos medidas pasan 1,20 m, o algún paño aun con travesaño): **se cobra igual** y sale un aviso en rojo ⚠ (en el formulario, al agregarlo y en la lista). Se cobra como paños de 1,20 empalmados: 1,20 × el largo de cada tira (lo que gaste menos rollo). Ya no frena el presupuesto, así ningún mosquitero queda sin cobrar el tejido.
 - **El perfil se cobra por metro usado**: precio de la barra ÷ 6 m × los metros que lleva cada mosquitero (no se cobra la barra entera).
   Debajo de la lista está la tabla **Perfilería del presupuesto** (solo en pantalla): por cada perfil (marco, travesaño, tope) y color, los mm que se usan en todo el presupuesto, cuántas barras de 6 m comprar (con sierra y despunte) y cuánto sobra. El contramarco del rebatible cuenta dentro del marco.
 - **Abertura**: ventana, puerta-ventana o puerta-ventana rebatible. Cada renglón lleva un código: **V1, V2…** (ventanas), **PV1, PV2…** (puerta-ventanas), **PVR1…** (rebatibles) y **T1…** (topes de repuesto); se ve en la lista y en el PDF.
 - **PDF**: después del cliente va un saludo y un recuadro por renglón: arriba el código y la ubicación (por ejemplo "V1 — COCINA"); a la izquierda el dibujo con su color y las medidas en mm; a la derecha línea, color, medida de la ventana y de la hoja, travesaños y topes; abajo UDS, precio unitario y total. Al pie, "Página X de Y".
 - **Vista previa**: abre el PDF en otra pestaña sin guardar el presupuesto (arriba dice "Vista previa (sin guardar)"). Si algo no está bien, se corrige en el formulario y se vuelve a ver.
 - **Guardar y generar PDF**: primero lo guarda (con número) y después saca el PDF. Cada mosquitero sale con la medida de la ventana (ancho total × alto), cantidad, precio y subtotal, el total y, si cargas **Colocación**, el total con colocación. Si no hay colocación, dice "Colocación: No incluida". Junto al total va el recuadro "Toma de medidas y envío incluidos", que se saca desmarcando esa tilde antes de generar el PDF. Al final van los **Términos y condiciones** (plazo de entrega y formas de pago). Tus costos y la ganancia no aparecen.
-- **Ver materiales**: en la lista, la flecha ▾ de cada renglón despliega sus materiales (medida y costo por unidad y por la cantidad) sin tener que pulsar Editar. **Ver materiales de todos** los abre todos juntos.
-- **Costo total**: botón arriba de la lista (presupuesto abierto) y en cada presupuesto guardado. Muestra todo lo que se gasta en materiales: tejido (mm y rollos), burlete, perfil por los metros que se usan (por ejemplo 1,5 barras; lo que sobra queda en el taller) con las barras enteras a comprar como dato, escuadras, tornillos, patines, bisagras, pasadores, el total de materiales, la venta y la ganancia. Se calcula con los precios de hoy.
 - **Presupuestos de mosquiteros guardados** (abajo): lista con número, fecha, cliente, teléfono, dirección y total, con buscador. **Abrir** lo carga para verlo, cambiarlo o volver a sacar el PDF (al guardarlo otra vez se actualiza el mismo número). Si los precios cambiaron desde que se guardó, avisa cuánto daba antes y cuánto da ahora. ✕ lo borra.
 - **Nuevo presupuesto** empieza uno en blanco (si el actual tiene cambios sin guardar, pregunta antes). Arriba se ve si el presupuesto está guardado o tiene cambios sin guardar.
 
