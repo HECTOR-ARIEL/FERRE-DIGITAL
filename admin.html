@@ -215,7 +215,6 @@ dialog{overflow:auto}
  <div class="c acc"><span class="m" id="notainfo" style="margin-right:auto;align-self:center"></span><button class="s" id="benv" onclick="marcarEnviado()">Marcar pedido como enviado</button><button class="s" id="botra" onclick="$('fp').click()">Usar otro archivo…</button><button id="bnota" onclick="notaGuardada()">Completar nota de pedido (Excel)</button>
   <input id="fp" type="file" accept=".xlsx" hidden onchange="completarNota(this.files[0])"></div>
  <p class="m"><b>Cómo se calcula:</b> se pide solo lo vendido (lo que se descontó del stock). Lo que faltó (lo que pidieron y no había) se muestra aparte y no se pide solo: si lo quieres, escribe la cantidad a mano. Los productos anulados en el Historial no se cuentan. Los productos que en la nota del proveedor dicen "MINIMO 6", "MIN 10"… se piden por bulto completo, y solo si el stock quedó por debajo de 5 (o de la mitad del bulto en los de 20 o más). Puedes cambiar cualquier cantidad antes de completar la nota.<br>
- <b>Cajas cerradas:</b> se piden enteras y solas cuando el stock llega a su número; se pagan con lo guardado. <b>Compra en el momento</b> (Mi madre / Exult): no van a Uski.<br>
  <b>Tus cambios quedan guardados:</b> lo que edites, pongas en 0 o agregues con la lupa se guarda solo y se ve igual en la PC y en el teléfono, aunque recargues. Los productos que tocaste dicen <b>"Editado por vos"</b> con la cantidad calculada; si después se venden más, te avisa, pero se respeta tu número. Con <b>↺</b> vuelves a lo calculado. Al marcar el pedido como enviado, los cambios se borran y el próximo arranca limpio.<br>
  <b>Completar nota de pedido:</b> se usa automáticamente la última nota que importaste en Productos &gt; "Importar Excel" (la misma de los precios actuales). Se escriben las cantidades en su columna "Cantidad" y se descarga una copia completa, con el mismo formato. Con "Usar otro archivo…" puedes elegir otra a mano.<br>
  <b>Marcar pedido como enviado:</b> hazlo después de mandar la nota. El próximo pedido empieza a contar desde ahí.<br>
@@ -224,21 +223,14 @@ dialog{overflow:auto}
 <section id="t-caja" hidden>
  <div class="c aviso" id="cjav" hidden></div>
  <div id="cjres"></div>
- <div class="c r"><button style="flex:1" onclick="abreCaja('cobro')">Entró plata</button><button style="flex:1" onclick="abreCaja('compra')">Compra</button><button style="flex:1" onclick="abreCaja('gasto')">Gasto</button><button style="flex:1" onclick="abreCaja('retiro')">Retiro</button><button style="flex:1" class="s" onclick="abreCaja('factura')">Llegó pedido de Uski</button></div>
- <div class="c" id="cjmom" hidden></div>
- <div class="c" id="cjusk"></div>
- <div class="c" id="cjsemr"></div>
+ <div class="c"><b>Qué hacer con el capital</b><div id="cjcap"></div></div>
+ <div class="c r"><button style="flex:1" onclick="abreCaja('cobro')">Entró plata</button><button style="flex:1" onclick="abreCaja('compra')">Compré mercadería</button><button style="flex:1" onclick="abreCaja('gasto')">Gasto</button><button style="flex:1" onclick="abreCaja('retiro')">Retiro</button></div>
  <div class="c"><div class="r" style="justify-content:space-between;align-items:center"><b>Clientes</b><input id="cjcq" type="search" autocomplete="off" placeholder="🔎 Buscar cliente" aria-label="Buscar cliente" oninput="filtraLista('cjdeu',this.value)" style="flex:1;min-width:140px;max-width:300px"><button class="s" onclick="abreCaja('deuda')">+ Cliente con deuda</button></div><div id="cjdeu"></div></div>
  <div class="c"><div class="r" style="justify-content:space-between;align-items:center"><b>Movimientos</b><select id="cjver" onchange="pintaCaja()" style="width:auto" title="Qué movimientos mostrar"><option value="sem">Esta semana</option><option value="mes">Este mes</option><option value="mpa">Mes pasado</option><option value="">Todos</option></select></div>
   <div class="seg" id="cjfil" role="tablist"><button type="button" data-f="" class="on" onclick="filCaja(this)">Todos</button><button type="button" data-f="cobro" onclick="filCaja(this)">Pagos</button><button type="button" data-f="compra" onclick="filCaja(this)">Compras</button><button type="button" data-f="gasto" onclick="filCaja(this)">Gastos</button><button type="button" data-f="fiado" onclick="filCaja(this)">Saldos</button></div>
   <div id="cjgas" hidden></div><p class="m" id="cjsem" style="font-size:13px;margin:6px 0"></p><div class="w"><table><tbody id="cjmov"></tbody></table></div></div>
  <div class="c r" style="align-items:center"><span class="m" style="flex:1;min-width:200px">Lo que entra se divide por <input id="cjdiv" inputmode="decimal" style="width:70px;display:inline-block" onchange="guardaDivisor()"> para separar capital y ganancia.</span><button class="s" onclick="abreCaja('inicial')">Poner la caja en 0 / corregir saldo</button></div>
- <p class="m"><b>Cómo funciona:</b> todo lo que entra se divide en dos sobres: <b>mercadería</b> (solo para comprar mercadería) y <b>ganancia</b> (de ahí salen gastos y retiros). Los sobres siguen solos de una semana a otra: no hace falta poner la caja en cero.<br>
- <b>Cajas cerradas:</b> cada venta de un producto de caja cerrada guarda su costo dentro del sobre mercadería ("guardado para cajas cerradas"). Lo libre es lo que podés usar para el pedido.<br>
- <b>Uski:</b> cuando llega el pedido, tocá "Llegó pedido de Uski" y cargá la factura (lo que llegó de verdad, sin los faltantes). Cada pago a Uski, todo junto o en partes, la baja.<br>
- <b>Compras en el momento:</b> los productos marcados "Lo compro en el momento a Mi madre / Exult" aparecen en "Para comprar en el momento" cuando se venden. Con "Ya lo compré" cargás lo que pagaste y sale del sobre mercadería.<br>
- <b>Semana:</b> como la hoja de papel: cobrado ÷ 1,3, ganancia, gastos, reposición en el momento y lo que queda para Uski. El pago a Uski no se resta ahí porque es del pedido anterior.<br>
- Si cargaste algo mal, bórralo con ✕ y se corrige todo. La división es una estimación porque el porcentaje real cambia en cada producto.</p>
+ <p class="m"><b>Cómo funciona:</b> todo lo que entra se divide: una parte va al capital (solo para comprar mercadería) y el resto a la ganancia (de ahí salen gastos y retiros). El costo de lo vendido se cuenta solo desde los presupuestos; lo que tenga compra por cantidad va en Plata a separar. Si cargaste algo mal, bórralo con ✕ y se corrige todo. La cuenta es una estimación porque el porcentaje real cambia en cada producto.</p>
 </section>
 <section id="t-rec" hidden>
  <div class="c"><b>Comparar lo que pedimos con lo que llegó</b>
@@ -304,7 +296,7 @@ dialog{overflow:auto}
  <h2 id="cjt"></h2><datalist id="cjlis"></datalist>
  <label id="cjlcl">Cliente<input id="cjcl" list="cjlis" autocomplete="off" oninput="avisaCaja()"></label>
  <label id="cjlte">Teléfono (opcional)<input id="cjte" inputmode="tel" autocomplete="off"></label>
- <label id="cjlpr">Proveedor<select id="cjpr"><option>Uski</option><option>Mi madre</option><option>Exult</option><option>Otro</option></select></label>
+ <label id="cjlpr">Proveedor<select id="cjpr"><option>Proveedor del Excel</option><option>Exult</option><option>Mi madre</option><option>Otro</option></select></label>
  <label id="cjlga">Tipo de gasto<select id="cjga"><option>Gastos fijos</option><option>Automotor</option><option>Otros</option></select></label>
  <label id="cjlde">Aclaración (opcional)<input id="cjde" autocomplete="off"></label>
  <label><span id="cjmt">Monto</span><input id="cjm" inputmode="decimal" oninput="avisaCaja()"></label>
@@ -381,11 +373,9 @@ dialog{overflow:auto}
  <div class="g3"><label>Stock<input id="fsto" inputmode="decimal"></label><label id="lsec" style="grid-column:span 2">Sector<select id="fsec"></select></label></div>
  <div class="g3" id="lmin"><label>Compra mínima<input id="fmin" inputmode="decimal" placeholder="Por unidad"></label>
   <div style="grid-column:span 2;display:grid;gap:4px;align-content:end"><button type="button" class="s" id="fminb" onclick="$('fmin').value=this.dataset.n"></button><span class="m" style="font-size:12px">Vacío = se vende por unidad. Con número, el cliente no puede pedir menos.</span></div></div>
- <label id="lrep">Cómo se repone<select id="frep" autocomplete="off" onchange="$('lcomp').hidden=!COMP_OK||!!this.value"><option value="">Con el pedido a Uski</option><option value="madre">Lo compro en el momento a Mi madre</option><option value="exult">Lo compro en el momento a Exult</option></select>
-  <span class="m" style="font-size:12px">"En el momento": no necesita stock (en el catálogo siempre se puede pedir), no va en el pedido a Uski y al venderlo aparece en Caja &gt; "Para comprar en el momento".</span></label>
- <div id="lcomp"><label class="chk"><input id="fcomp" type="checkbox" onchange="$('lcompd').hidden=!this.checked"> 📦 Caja cerrada (se compra la caja entera)</label>
-  <div id="lcompd" hidden><div class="g3"><label>Unidades por caja<input id="fcca" inputmode="decimal" placeholder="100"></label><label>Pedir cuando queden<input id="fcav" inputmode="decimal" placeholder="20"></label></div>
-   <span class="m" style="font-size:12px">Cada venta guarda su costo en la Caja ("Guardado para cajas cerradas"). Cuando el stock llega a ese número, la caja entera entra sola en el pedido a Uski.</span></div></div>
+ <div id="lcomp"><label class="chk"><input id="fcomp" type="checkbox" onchange="$('lcompd').hidden=!this.checked"> 🔒 Compra por cantidad fija</label>
+  <div id="lcompd" hidden><div class="g3"><label>Se compra de a<input id="fcca" inputmode="decimal" placeholder="500"></label><label>Avisar cuando queden<input id="fcav" inputmode="decimal" placeholder="50"></label></div>
+   <span class="m" style="font-size:12px">No entra en el pedido común. Lo vendido se suma en Pedido &gt; "Plata a separar".</span></div></div>
  <label class="chk"><input id="fact" type="checkbox"> Visible en el catálogo</label>
  <p class="m" id="fclave" style="margin:0;font-size:13px"></p>
  <div class="acc"><button type="button" class="danger" id="fdel" onclick="eliminar()">Eliminar</button>
@@ -430,7 +420,7 @@ const hh=()=>document.documentElement.style.setProperty('--hh',document.querySel
 new ResizeObserver(()=>document.documentElement.style.setProperty('--tb',document.querySelector('#t-prod .top').offsetHeight+'px')).observe(document.querySelector('#t-prod .top'));
 // Al acercarse al final de la lista se cargan 100 productos más, sin botón
 const masObs=new IntersectionObserver(e=>{if(e[0].isIntersecting&&!$('mas').hidden){lim+=100;renderP()}},{rootMargin:'800px'});
-let COMP_OK=false,REP_OK=false,P=[],L=JSON.parse(leeLS('borrador')||'[]'),ed=null,nuevaImg=null,quitarImg=false,lim=100,enPap=false;const sel=new Set();
+let COMP_OK=false,P=[],L=JSON.parse(leeLS('borrador')||'[]'),ed=null,nuevaImg=null,quitarImg=false,lim=100,enPap=false;const sel=new Set();
 const PH='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44"><path d="M12 30l7-8 5 6 3-3 5 5" fill="none" stroke="#b5c2bf" stroke-width="2"/><circle cx="28" cy="16" r="3" fill="#b5c2bf"/></svg>');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dos=n=>{n=Math.round(Number(n)*100)/100;return(n||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})};  // n||0 evita el "-0,00"
@@ -491,7 +481,6 @@ async function load(silencio){try{P=await todos(()=>sb.from('productos').select(
  MIN_OK=!P.length||'minimo'in P[0];  // false si todavía no se ejecutó el SQL de compra mínima
  COD_OK=!P.length||'cod_prov'in P[0];  // false si todavía no se ejecutó el SQL de renombrados
  COMP_OK=!!P.length&&'compra_cant'in P[0];  // false si todavía no se ejecutó el SQL de compra por cantidad
- REP_OK=!!P.length&&'repone'in P[0];  // false si todavía no se ejecutó el SQL de compra en el momento
  OF_OK=!!P.length&&'oferta'in P[0];  // false si todavía no se ejecutó el SQL de ofertas
  await cargaSectores();cargaCli();
  // los precios del presupuesto en curso se actualizan con los de la base
@@ -588,7 +577,7 @@ function ultCod(){const C=P.filter(p=>/^\D*\d+$/.test(String(p.codigo||'').trim(
  return{c,sig:c.slice(0,-n.length)+String(+n+1).padStart(n.length,'0')}}
 function editar(id){ed=id?P.find(p=>p.id==id):{codigo:'',nombre:'',costo:0,ganancia:num($('gn').value)??0,stock:0,activo:true,imagen:null};
  nuevaImg=null;quitarImg=false;$('dt').textContent=id?'Editar producto':'Nuevo producto';
- $('lrep').hidden=!REP_OK;$('frep').value=ed.repone||'';$('lcomp').hidden=!COMP_OK||!!ed.repone;$('fcomp').checked=+ed.compra_cant>0;$('lcompd').hidden=!(+ed.compra_cant>0);$('fcca').value=+ed.compra_cant>0?fmtIn(ed.compra_cant):'';$('fcav').value=+ed.compra_cant>0?fmtIn(ed.compra_aviso||0):'';
+ $('lcomp').hidden=!COMP_OK;$('fcomp').checked=+ed.compra_cant>0;$('lcompd').hidden=!(+ed.compra_cant>0);$('fcca').value=+ed.compra_cant>0?fmtIn(ed.compra_cant):'';$('fcav').value=+ed.compra_cant>0?fmtIn(ed.compra_aviso||0):'';
  $('fcod').value=ed.codigo||'';{const u=!ed.codigo&&ultCod();$('fcodu').innerHTML=u?`(último código creado: <b>${esc(u.c)}</b> · siguiente: <a href="#" onclick="$('fcod').value='${esc(u.sig)}';return false" title="Usar este código">${esc(u.sig)}</a>)`:''}$('fdes').value=ed.nombre;$('fcos').value=fmtIn(ed.costo);$('fgan').value=fmtIn(ed.ganancia);$('fsto').value=fmtIn(ed.stock);$('fact').checked=ed.activo;$('fsec').value=ed.sector_id??(id?'':$('fs').value.replace('-',''));$('lsec').hidden=!S.ok;
  const bd=minDesc(ed.clave||ed.nombre);$('fmin').value=ed.minimo>0?fmtIn(ed.minimo):'';$('lmin').hidden=!MIN_OK;
  $('fminb').hidden=!bd;$('fminb').dataset.n=bd;$('fminb').textContent=`Usar el de la descripción (${bd})`;
@@ -625,8 +614,7 @@ async function guardarProd(e){e.preventDefault();
   if(on&&go>=o.ganancia&&!await confirma(`La ganancia en oferta (${fmt(go)} %) no es menor que la normal (${fmt(o.ganancia)} %): el precio no baja. ¿Guardar igual?`))return;
   if(on&&go<=0&&!await confirma('Con esa ganancia lo vendés al costo o a pérdida. ¿Guardar igual?'))return;
   o.oferta=on;o.ganancia_oferta=on?go:ed.ganancia_oferta??null}
- if(REP_OK){o.repone=$('frep').value||null;if(o.repone)$('fcomp').checked=false}
- if(COMP_OK){const on=$('fcomp').checked,ca=num($('fcca').value),av=num($('fcav').value);if(on&&!(ca>0))return avisa('Escribe cuántas unidades trae la caja cerrada.');
+ if(COMP_OK){const on=$('fcomp').checked,ca=num($('fcca').value),av=num($('fcav').value);if(on&&!(ca>0))return avisa('Escribe de a cuántas unidades se compra este producto.');
   o.compra_cant=on?ca:null;o.compra_aviso=on?Math.max(0,av??0):null;if(!on){o.compra_vendido=0;o.compra_pendiente=false}}
  const b=$('fsave');b.disabled=true;
  try{const vieja=ed.imagen;
@@ -757,16 +745,14 @@ async function ultimaNota(){const{data,error}=await sb.storage.from('notas').lis
 
 /* ---------- presupuesto ---------- */
 // stock actual de un producto y cuánto se puede entregar de una línea
-// Los que se compran en el momento (Mi madre / Exult) no usan stock: siempre hay
-const stockDe=id=>{const p=P.find(p=>p.id==id);return p?.repone?1e9:Math.max(0,+(p?.stock??0))};
-const NOMREP={madre:'Mi madre',exult:'Exult'};
+const stockDe=id=>Math.max(0,+(P.find(p=>p.id==id)?.stock??0));
 // En un pedido web, lo que el cliente ya reservó (l.res) cuenta como disponible para su presupuesto
 const stockL=l=>stockDe(l.id)+(SOL&&+l.res||0);
 const disp=l=>Math.min(l.cantidad,stockL(l));
 let ult=null,H=[];
 // Resultados de la búsqueda: si el producto ya está en el presupuesto, su cantidad se cambia ahí mismo
 function renderB(){const q=$('qb').value.trim(),F=q?filtra(q).slice(0,30):[];
- $('bt').innerHTML=F.map(p=>{const l=L.find(x=>x.id==p.id);return `<tr id="b${p.id}" class="pick" onclick="add(${p.id})" title="Tocar para agregar"><td>${thumb(p.imagen)}<td>${p.codigo?`<span class="cod">${esc(p.codigo)}</span><br>`:''}${esc(p.nombre)}<td class="n">${enOf(p)?`<span class="antes">${money(p.precio)}</span><br>${money(p.precio_oferta)}<br><span class="tof" style="margin:0">OFERTA</span>`:money(p.precio)}<br>${p.repone?`<span class="m" style="font-size:12px">Se compra a ${NOMREP[p.repone]}</span>`:p.stock>0?`<span class="m" style="font-size:12px">Stock ${fmt(p.stock)}</span>`:'<span class="falta">Sin stock</span>'}<td class="n">${l?`<input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" title="Cantidad en el presupuesto (Enter para volver a buscar)" onclick="event.stopPropagation()" onfocus="this.select()" onkeydown="if(event.key=='Enter'){event.preventDefault();$('qb').focus();$('qb').select()}" onchange="setCant(${p.id},this.value)">`:'<span class="mas">+</span>'}</tr>`}).join('')
+ $('bt').innerHTML=F.map(p=>{const l=L.find(x=>x.id==p.id);return `<tr id="b${p.id}" class="pick" onclick="add(${p.id})" title="Tocar para agregar"><td>${thumb(p.imagen)}<td>${p.codigo?`<span class="cod">${esc(p.codigo)}</span><br>`:''}${esc(p.nombre)}<td class="n">${enOf(p)?`<span class="antes">${money(p.precio)}</span><br>${money(p.precio_oferta)}<br><span class="tof" style="margin:0">OFERTA</span>`:money(p.precio)}<br>${p.stock>0?`<span class="m" style="font-size:12px">Stock ${fmt(p.stock)}</span>`:'<span class="falta">Sin stock</span>'}<td class="n">${l?`<input type="number" class="qty" min="0" step="any" inputmode="decimal" value="${l.cantidad}" title="Cantidad en el presupuesto (Enter para volver a buscar)" onclick="event.stopPropagation()" onfocus="this.select()" onkeydown="if(event.key=='Enter'){event.preventDefault();$('qb').focus();$('qb').select()}" onchange="setCant(${p.id},this.value)">`:'<span class="mas">+</span>'}</tr>`}).join('')
   ||(q?'<tr><td class="m">Sin resultados</tr>':'')}
 // Cantidad de una línea: se acepta 0 (por ejemplo, un producto sin stock que igual quieres que figure)
 function setCant(id,v){const l=L.find(x=>x.id==id);if(!l)return;const n=num(v);l.cantidad=n>0?n:0;rl();renderB()}
@@ -883,7 +869,7 @@ async function save(){const tel0=$('cltel').value.trim()||W.find(x=>x.id==SOL)?.
  // El presupuesto ya está guardado y el stock descontado. La pantalla se actualiza con el stock que
  // devolvió la base (sin otra consulta): en el iPhone, la descarga del PDF puede cortar las consultas en curso.
  const res=sol?Object.fromEntries(L.map(l=>[l.id,+l.res||0])):{};
- for(const l of data.lineas||[]){const p=P.find(x=>x.id==l.id);if(p&&p.repone)p.repone_pend=(+p.repone_pend||0)+(+l.disponible||0);else if(p)p.stock=+p.stock+(res[l.id]||0)-(+l.disponible||0)}
+ for(const l of data.lineas||[]){const p=P.find(x=>x.id==l.id);if(p)p.stock=+p.stock+(res[l.id]||0)-(+l.disponible||0)}
  ult={...data,cliente:cl,fecha:new Date().toISOString()};
  // Si venía de un pedido web, la base ya lo marcó como presupuestado con este número
  if(sol){SOL=null;guardaLS('sol','');pintaSol();cuentaWeb()}
@@ -1399,60 +1385,30 @@ const GTIP=['Automotor','Gastos fijos','Otros'],tipoGasto=m=>{const t=String(m.d
 function filGasto(g){CJG=CJG==g?'':g;pintaCaja()}
 function filCaja(b){CJF=b.dataset.f;CJG='';document.querySelectorAll('#cjfil button').forEach(x=>x.classList.toggle('on',x==b));pintaCaja()}
 let CJ={mov:[],cfg:{divisor:1.3,costo_vendido:0},ok:false},CJT='';
-const CJTIT={cobro:'Entró plata',compra:'Compra de mercadería',gasto:'Gasto',retiro:'Retiro',inicial:'Poner la caja en (0 = arrancar de cero)',deuda:'Cliente con deuda',factura:'Llegó el pedido de Uski'};
-const CJNOM={cobro:'Entró plata',fiado:'Deuda',compra:'Compra',gasto:'Gasto',retiro:'Retiro',inicial:'Saldo inicial',factura:'Factura'};
-// Proveedor de una compra o factura: lo que va antes de ": " en el detalle ("Proveedor del Excel" era Uski)
-const PROVS=['Uski','Mi madre','Exult'],provDe=m=>{const t=norm(String(m.detalle||'').split(':')[0].trim());return t=='proveedor del excel'?'Uski':PROVS.find(p=>norm(p)==t)||'Otro'};
+const CJTIT={cobro:'Entró plata',compra:'Compré mercadería',gasto:'Gasto',retiro:'Retiro',inicial:'Poner la caja en (0 = arrancar de cero)',deuda:'Cliente con deuda'};
+const CJNOM={cobro:'Entró plata',fiado:'Deuda',compra:'Compra',gasto:'Gasto',retiro:'Retiro',inicial:'Saldo inicial'};
 // semana de sábado a viernes
 const iniSemana=()=>{const d=new Date;d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+1)%7));return d};
 const sumaCj=(k,f=()=>true)=>CJ.mov.filter(f).reduce((s,m)=>s+(+m[k]||0),0);
 function saldosCaja(){const M=new Map();for(const m of CJ.mov){if(!m.cliente)continue;const k=norm(m.cliente),x=M.get(k)||{nombre:m.cliente,saldo:0};x.saldo+=+m.deuda;M.set(k,x)}return[...M.values()].sort((a,b)=>b.saldo-a.saldo||a.nombre.localeCompare(b.nombre))}
 const saldoTxt=v=>v>.009?money(v):v<-.009?'A favor '+money(-v):'Al día';
-const bultosCaja=()=>P.filter(p=>+p.compra_cant>0&&!p.borrado&&!p.repone).reduce((s,p)=>s+(+p.compra_vendido||0)*(+p.costo||0),0);
+const bultosCaja=()=>P.filter(p=>+p.compra_cant>0&&!p.borrado).reduce((s,p)=>s+(+p.compra_vendido||0)*(+p.costo||0),0);
 async function frescoComp(){if(!COMP_OK)return;const{data}=await sb.from('productos').select('id,stock,costo,compra_cant,compra_aviso,compra_vendido,compra_pendiente').not('compra_cant','is',null);for(const x of data||[])Object.assign(P.find(p=>p.id==x.id)||{},x)}
-// Lo que hay que comprar en el momento (las ventas pueden venir de otro equipo)
-async function frescoRep(){if(!REP_OK)return;const{data}=await sb.from('productos').select('id,repone,repone_pend').not('repone','is',null);for(const x of data||[])Object.assign(P.find(p=>p.id==x.id)||{},x)}
-// Compra en el momento: se carga lo que se pagó (sale del sobre mercadería) y el producto sale de la lista
-async function compraMom(id){const p=P.find(x=>x.id==id);if(!p)return;const n=+p.repone_pend||0,pr=NOMREP[p.repone];
- const v=await pide(`${pr}: ${fmt(n)} × ${p.nombre}\n\n¿Cuánto pagaste?`,fmtIn(red(n*(+p.costo||0),2)));if(v==null)return;const m=num(v);if(!(m>0))return avisa('Escribe cuánto pagaste.');
- const{error}=await sb.from('caja_mov').insert({tipo:'compra',detalle:`${pr}: ${fmt(n)} × ${p.nombre}`,monto:m,capital:-m});if(error)return avisa(msg(error));
- const r=await sb.from('productos').update({repone_pend:0}).eq('id',id);if(r.error)avisa('La compra quedó cargada, pero no se pudo sacar de la lista: '+msg(r.error));else p.repone_pend=0;
- toast('Compra cargada');cargaCaja()}
-async function sacaMom(id){const p=P.find(x=>x.id==id);if(!p||!await confirma(`¿Sacar ${p.nombre} de la lista sin cargar ninguna compra?`))return;
- const r=await sb.from('productos').update({repone_pend:0}).eq('id',id);if(r.error)return avisa(msg(r.error));p.repone_pend=0;pintaCaja()}
 async function cargaCaja(){$('cjav').hidden=true;
- try{const[m,c]=await Promise.all([todos(()=>sb.from('caja_mov').select('*').order('id',{ascending:false})),sb.from('caja_config').select('*').eq('id',1).maybeSingle(),frescoComp(),frescoRep()]);
+ try{const[m,c]=await Promise.all([todos(()=>sb.from('caja_mov').select('*').order('id',{ascending:false})),sb.from('caja_config').select('*').eq('id',1).maybeSingle(),frescoComp()]);
   if(c.error)throw c.error;CJ={mov:m,cfg:c.data||{divisor:1.3,costo_vendido:0},ok:true};pintaCaja()}
  catch(e){CJ.ok=false;$('cjav').hidden=false;$('cjav').textContent=/caja_/.test(msg(e))?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(e)}}
-// Dos sobres: mercadería (capital) y ganancia. El de mercadería se ve partido: libre y guardado para cajas cerradas.
-// Uski: cuenta como la de un cliente (factura cuando llega el pedido, pagos que la bajan).
-// Semana: como la hoja de papel; el pago a Uski no se resta acá porque es del pedido anterior.
-function pintaCaja(){const cap=sumaCj('capital'),gan=sumaCj('ganancia'),D=saldosCaja(),deben=D.reduce((s,x)=>s+Math.max(0,x.saldo),0),bul=bultosCaja(),lib=cap-bul;
- const dato=(t,v,neg,sub,fondo)=>`<div style="flex:1;min-width:150px;padding:12px;background:${fondo||'var(--c)'};border:1px solid var(--b);border-radius:10px"><div class="m" style="font-size:12px">${t}</div><div style="font-size:21px;font-weight:600${neg?';color:var(--no)':''}">${money(v)}</div>${sub?`<div class="m" style="font-size:11px">${sub}</div>`:''}</div>`;
- const fila=(t,v,o={})=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;border-top:1px solid var(--b);padding:7px 0;font-size:15px"><span${o.m?' class="m"':''}>${t}${o.sub?`<span class="m" style="display:block;font-size:12px">${o.sub}</span>`:''}</span><b style="white-space:nowrap${o.c?';color:'+o.c:''}${o.n?';font-weight:400':''}">${v}</b></div>`;
- // Uski
- const UF=CJ.mov.filter(m=>m.tipo=='factura'&&provDe(m)=='Uski'),UP=CJ.mov.filter(m=>m.tipo=='compra'&&provDe(m)=='Uski'),uDebe=UF.reduce((s,m)=>s+(+m.monto||0),0)-UP.reduce((s,m)=>s+(+m.monto||0),0),uF=UF[0],uPag=uF?Math.max(0,(+uF.monto||0)-Math.max(0,uDebe)):0;  // de la última factura, cuánto ya está pagado
- const paraPed=lib-Math.max(0,uDebe);
- $('cjres').innerHTML=`<div class="r" style="margin-bottom:10px">${dato('Sobre mercadería',cap,cap<-.005,`Libre ${money(lib)} · guardado para cajas cerradas ${money(bul)}`)}${dato('Sobre ganancia',gan,gan<-.005,'Para gastos y retiros')}${dato('Total en la mano',cap+gan,cap+gan<-.005,'Contalo y compará','var(--bg)')}</div>
-  <p class="m" style="margin:-2px 0 10px;font-size:13px">Te deben los clientes: <b>${money(deben)}</b> (entra a los sobres cuando pagan)</p>`;
- $('cjusk').innerHTML=`<div class="r" style="justify-content:space-between;align-items:center"><b>Uski</b><span style="font-size:13px;padding:2px 10px;border-radius:99px;${uDebe>.009?'background:#fde8e8;color:#b42318':'background:#e5f6ea;color:#1a7f37'}">${uDebe>.009?'Le debés '+money(uDebe):uDebe<-.009?'A favor '+money(-uDebe):'Al día'}</span></div>`
-  +(uF?fila(`Último pedido que llegó${uF.detalle&&uF.detalle.includes(':')?' · '+esc(uF.detalle.split(':').slice(1).join(':').trim()):''}`,'Factura '+money(uF.monto),{sub:new Date(uF.fecha).toLocaleDateString('es',{day:'2-digit',month:'2-digit'})})+fila('Pagado de esa factura',money(uPag),{n:1}):'<p class="m" style="margin:6px 0">Cuando llegue un pedido, tocá "Llegó pedido de Uski" y cargá la factura (lo que llegó de verdad). Cada pago a Uski la baja.</p>')
-  +fila('Le debés a Uski',money(Math.max(0,uDebe)))
-  +fila('Tenés para el próximo pedido',money(paraPed),{c:paraPed<0?'var(--no)':'var(--a)',sub:'Lo libre del sobre mercadería, menos lo que le debés a Uski'})
-  +`<div class="acc" style="margin-top:8px"><button class="s" onclick="abreCaja('compra','Uski')">Pagarle a Uski</button><button class="s" onclick="abreCaja('factura')">Llegó pedido de Uski</button></div>`;
- // Para comprar en el momento (Mi madre / Exult)
- const PM=P.filter(p=>p.repone&&+p.repone_pend>0&&!p.borrado);$('cjmom').hidden=!PM.length;
- if(PM.length)$('cjmom').innerHTML=`<b>Para comprar en el momento</b> <span class="m" style="font-size:12px">· ${PM.length} producto${PM.length==1?'':'s'}</span>`+['madre','exult'].map(k=>{const X=PM.filter(p=>p.repone==k);return X.length?`<div class="m" style="margin:10px 0 2px;font-size:13px">${NOMREP[k]}</div>`+X.map(p=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;border-top:1px solid var(--b);padding:7px 0"><span class="nom">${fmt(+p.repone_pend)} × ${esc(p.nombre)}<span class="m" style="display:block;font-size:12px">Costo cargado ${money((+p.costo||0)*(+p.repone_pend))}</span></span><span class="r" style="flex-wrap:nowrap;gap:6px"><button class="s" title="Sacar de la lista sin cargar compra" onclick="sacaMom(${p.id})">✕</button><button onclick="compraMom(${p.id})">Ya lo compré</button></span></div>`).join(''):''}).join('');
- // Semana (sábado a viernes, o las fechas elegidas)
- const RV=rangoVen(),MV=CJ.mov.filter(m=>{const f=new Date(m.fecha);return f>=RV.ini&&(!RV.fin||f<RV.fin)}),sumV=(t,f=()=>true)=>MV.reduce((a,m)=>a+(m.tipo==t&&f(m)?(+m.monto||0):0),0),
-  CB=MV.filter(m=>m.tipo=='cobro'),cob=sumV('cobro'),merc=CB.reduce((a,m)=>a+(+m.capital||0),0),ganB=CB.reduce((a,m)=>a+(+m.ganancia||0),0),gas=sumV('gasto'),
-  gT=g=>MV.filter(m=>m.tipo=='gasto'&&tipoGasto(m)==g).reduce((a,m)=>a+(+m.monto||0),0),repM=sumV('compra',m=>provDe(m)!='Uski'),pagU=sumV('compra',m=>provDe(m)=='Uski'),ret=sumV('retiro'),div=+CJ.cfg.divisor||1.3;
- $('cjsemr').innerHTML=`<div class="r" style="justify-content:space-between;align-items:center"><b>Semana ${RV.manual?'(fechas elegidas)':''}</b><button class="s" onclick="abreVen()" title="Elegir otras fechas">${RV.txt} · cambiar</button></div>`
-  +fila('Cobrado',money(cob))+fila(`÷ ${fmt(div)} = mercadería vendida`,money(merc),{m:1,n:1})+fila('Ganancia bruta',money(ganB))
-  +fila('Gastos',(gas?'− ':'')+money(gas),{sub:GTIP.map(g=>`${g} ${money(gT(g))}`).join(' · '),c:gas?'var(--no)':''})
-  +fila('<b>Ganancia de la semana</b>',money(ganB-gas),{c:ganB-gas<0?'var(--no)':'#1a7f37'})+(ret?fila('Retiros',money(ret),{m:1,n:1}):'')
-  +fila('Reposición en el momento',(repM?'− ':'')+money(repM),{sub:'Mi madre, Exult y otros'})+fila('<b>Queda de lo vendido para Uski</b>',money(merc-repM))
-  +(pagU?`<p class="m" style="margin:8px 0 0;font-size:13px">Pagos a Uski en estas fechas: ${money(pagU)}. Son del pedido anterior: se ven en Uski y no se restan acá.</p>`:'');
+function pintaCaja(){const cap=sumaCj('capital'),gan=sumaCj('ganancia'),D=saldosCaja(),deben=D.reduce((s,x)=>s+Math.max(0,x.saldo),0),comp=sumaCj('monto',m=>m.tipo=='compra'&&!m.bulto);
+ const pend=Math.max(0,(+CJ.cfg.costo_vendido||0)-comp),bul=bultosCaja(),lib=cap-pend-bul;
+ const dato=(t,v,neg,sub)=>`<div style="flex:1;min-width:150px;padding:12px;background:var(--c);border:1px solid var(--b);border-radius:10px"><div class="m" style="font-size:12px">${t}</div><div style="font-size:21px;font-weight:600${neg?';color:var(--no)':''}">${money(v)}</div>${sub?`<div class="m" style="font-size:11px">${sub}</div>`:''}</div>`;
+ // Plata que entró esta semana (sábado a viernes): todos los cobros, también los pagos de deudas.
+ // Lo fiado no suma hasta que lo pagan.
+ // y abajo, lo que queda después de restar las compras de mercadería y los gastos de esas mismas fechas
+ const RV=rangoVen(),MV=CJ.mov.filter(m=>{const f=new Date(m.fecha);return f>=RV.ini&&(!RV.fin||f<RV.fin)}),sumV=t=>MV.reduce((a,m)=>a+(m.tipo==t?(+m.monto||0):0),0),vendSem=sumV('cobro'),netoSem=vendSem-sumV('compra')-sumV('gasto');
+ $('cjres').innerHTML=`<div class="r" style="margin-bottom:10px">${dato('Capital en caja',cap,cap<-.005)}${dato('Ganancia para retirar',gan,gan<-.005)}${dato('Te deben los clientes',deben)}<div onclick="abreVen()" title="Tocar para elegir las fechas" style="flex:1;min-width:150px;padding:12px;background:var(--c);border:1px solid var(--b);border-radius:10px;cursor:pointer"><div class="m" style="font-size:12px">${RV.manual?'Plata que entró (fechas elegidas)':'Plata que entró esta semana'}</div><div style="font-size:21px;font-weight:600">${money(vendSem)}</div><div style="font-size:12px;margin:2px 0">Después de compras y gastos: <b>${money(netoSem)}</b></div><div class="m" style="font-size:11px">${RV.txt} · <u>cambiar</u></div></div></div>`;
+ const tot=Math.max(1,pend+bul+Math.max(0,lib)),fila=(n,t,v,c)=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;font-size:15px;padding:3px 0"><span>${n}. ${t}</span><b style="white-space:nowrap${c?';color:var(--no)':''}">${money(v)}</b></div>`;
+ $('cjcap').innerHTML=`<div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--bg);margin:10px 0"><div style="width:${pend/tot*100}%;background:var(--no)"></div><div style="width:${bul/tot*100}%;background:var(--m)"></div><div style="width:${Math.max(0,lib)/tot*100}%;background:var(--b)"></div></div>`
+  +fila(1,'Mercadería vendida sin reponer',pend,pend>0)+fila(2,'Plata a separar para bultos',bul)+(lib<0?`<p class="falta" style="margin:6px 0 0">Faltan ${money(-lib)} de capital para cubrir todo esto.</p>`:fila(3,'Capital libre, de reserva',lib));
  $('cjlis').innerHTML=CLI.map(c=>`<option value="${esc(c.nombre)}">`).join('');
  CJ.cli=D;$('cjdeu').innerHTML=D.map((x,i)=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;border-top:1px solid var(--b);padding:7px 0;margin-top:4px"><span class="nom">${esc(x.nombre)}</span><span class="r" style="flex-wrap:nowrap;gap:10px"><b style="white-space:nowrap">${saldoTxt(x.saldo)}</b><button class="s" title="Editar nombre" onclick="renombraCli(CJ.cli[${i}].nombre)">✎</button><button class="s" onclick="abreCli(${i})">Ver</button></span></div>`).join('')||'<p class="m" style="margin:6px 0 0">Todavía no hay clientes con cuenta.</p>';filtraLista('cjdeu',$('cjcq').value);
  const per=$('cjver').value,hoy=new Date,ini=per=='sem'?iniSemana():per=='mes'?new Date(hoy.getFullYear(),hoy.getMonth(),1):per=='mpa'?new Date(hoy.getFullYear(),hoy.getMonth()-1,1):null,fin=per=='mpa'?new Date(hoy.getFullYear(),hoy.getMonth(),1):null,sem=!!ini,
@@ -1465,11 +1421,10 @@ function pintaCaja(){const cap=sumaCj('capital'),gan=sumaCj('ganancia'),D=saldos
  $('cjmov').innerHTML=N.map(m=>`<tr><td><div class="nom">${esc(CJNOM[m.tipo]||m.tipo)}${m.cliente?' · '+esc(m.cliente):''}${m.detalle?' · '+esc(m.detalle):''}${m.bulto?' · bulto':''}</div><div class="m" style="font-size:12px">${new Date(m.fecha).toLocaleDateString('es',{day:'2-digit',month:'2-digit'})} · ${efe(m)||money(m.monto)}</div></td><td class="n"><button class="s" title="Borrar movimiento" onclick="borraCaja(${m.id})">✕</button></td></tr>`).join('')
   ||`<tr><td class="m">${CJF||sem?'No hay movimientos de este tipo'+(sem?' '+perTxt+'.':'.'):'Todavía no hay movimientos.'}</td></tr>`;
  $('cjdiv').value=fmtIn(CJ.cfg.divisor)}
-function abreCaja(t,prov){if(!CJ.ok)return avisa('La Caja todavía no está lista. Revisa el aviso de arriba.');CJT=t;$('cjt').textContent=prov=='Uski'?'Pago a Uski':CJTIT[t];
- const ver=(i,v)=>$(i).hidden=!v;ver('cjlcl',t=='cobro'||t=='deuda');ver('cjlte',t=='deuda');ver('cjlpr',t=='compra');ver('cjlga',t=='gasto');ver('cjlde',['compra','gasto','factura'].includes(t));ver('cjlg2',t=='inicial');ver('cjlpd',t=='cobro');ver('cjlnv',t=='cobro');ver('cjlbu',false);
- $('cjmt').textContent=t=='inicial'?'Capital en caja':t=='cobro'?'Plata que entró':t=='deuda'?'Cuánto debe':t=='factura'?'Total de la factura (lo que llegó de verdad)':'Monto';
- for(const i of['cjcl','cjte','cjde','cjm','cjm2','cjnv'])$(i).value='';$('cjpd').checked=$('cjbu').checked=false;$('cjpr').selectedIndex=$('cjga').selectedIndex=0;if(prov)$('cjpr').value=prov;
- $('cjde').placeholder=t=='factura'?'Ej.: pedido del 07/11':'';if(t=='inicial')$('cjm').value=$('cjm2').value='0';avisaCaja();$('dcaja').showModal()}
+function abreCaja(t){if(!CJ.ok)return avisa('La Caja todavía no está lista. Revisa el aviso de arriba.');CJT=t;$('cjt').textContent=CJTIT[t];
+ const ver=(i,v)=>$(i).hidden=!v;ver('cjlcl',t=='cobro'||t=='deuda');ver('cjlte',t=='deuda');ver('cjlpr',t=='compra');ver('cjlga',t=='gasto');ver('cjlde',['compra','gasto'].includes(t));ver('cjlg2',t=='inicial');ver('cjlpd',t=='cobro');ver('cjlnv',t=='cobro');ver('cjlbu',t=='compra');
+ $('cjmt').textContent=t=='inicial'?'Capital en caja':t=='cobro'?'Plata que entró':t=='deuda'?'Cuánto debe':'Monto';
+ for(const i of['cjcl','cjte','cjde','cjm','cjm2','cjnv'])$(i).value='';$('cjpd').checked=$('cjbu').checked=false;$('cjpr').selectedIndex=$('cjga').selectedIndex=0;if(t=='inicial')$('cjm').value=$('cjm2').value='0';avisaCaja();$('dcaja').showModal()}
 // Muestra cómo se va a repartir lo que se está cargando
 function avisaCaja(){let t='';const m=num($('cjm').value)||0,div=+CJ.cfg.divisor||1.3;
  if(CJT=='cobro'){if(m>0)t=`Capital ${money(m/div)} · Ganancia ${money(m-m/div)}`;
@@ -1493,13 +1448,11 @@ Ganancia: ${money(gan)} → ${money(ng)}
 
 Lo que te deben los clientes no cambia. ¿Guardar?`))return;
   o={tipo:'inicial',detalle:'Caja puesta en '+money(nc)+' / '+money(ng),monto:nc+ng,capital:dc,ganancia:dg}}
- else{if(!(m>0))return avisa(t=='factura'?'Escribe el total de la factura.':'Escribe el monto.');const de=$('cjde').value.trim();
-  // factura: no mueve plata, anota lo que se le debe a Uski
-  if(t=='factura')o={tipo:'factura',detalle:'Uski: '+(de||'pedido que llegó el '+new Date().toLocaleDateString('es',{day:'2-digit',month:'2-digit'})),monto:m};
-  else if(t=='gasto')o={tipo:'gasto',detalle:$('cjga').value+(de?': '+de:''),monto:m,ganancia:-m};
+ else{if(!(m>0))return avisa('Escribe el monto.');const de=$('cjde').value.trim();
+  if(t=='gasto')o={tipo:'gasto',detalle:$('cjga').value+(de?': '+de:''),monto:m,ganancia:-m};
   else if(t=='retiro'){const gan=sumaCj('ganancia');if(m>gan&&!await confirma(`Hay ${money(gan)} de ganancia y vas a retirar ${money(m)}. ¿Guardar igual?`))return;o={tipo:'retiro',detalle:de||null,monto:m,ganancia:-m}}
   else{const cap=sumaCj('capital');if(m>cap&&!await confirma(`No alcanza el capital: hay ${money(cap)} y la compra es de ${money(m)}.\n\nLa ganancia no se toca: el capital va a quedar en ${money(cap-m)}. ¿Guardar igual?`))return;
-   o={tipo:'compra',detalle:$('cjpr').value+(de?': '+de:''),monto:m,capital:-m}}}
+   o={tipo:'compra',detalle:$('cjpr').value+(de?': '+de:''),monto:m,capital:-m,bulto:$('cjbu').checked}}}
  await asegCli(cl,t=='deuda'?$('cjte').value.trim():null);const b=$('cjok');b.disabled=true;const{error}=await sb.from('caja_mov').insert(o);b.disabled=false;if(error)return avisa(msg(error));$('dcaja').close();toast('Guardado');cargaCaja()}
 // Ficha del cliente: lo que se le lleva suma a su saldo y lo que paga lo baja (y entra a la caja)
 let CJC='';
@@ -1672,14 +1625,6 @@ const minDesc=s=>bultoDe(s)||+(String(s||'').match(/\bCAJA\s+CERRADA\s*(?:DE\s*|
 // Un producto por bulto se pide solo si el stock quedó por debajo de 5 (de la mitad del bulto en los de 20 o más)
 const limiteDe=b=>b>=20?b/2:5;
 let PED={lineas:[],hasta:0,n:0};
-// Caja cerrada: cuando el stock llegó al aviso (y no está ya pedida) va la caja entera en el pedido.
-// Si no, no se pide y se ve cuánto lleva guardado.
-function cajaPed(p){const n=+p.compra_cant,c=+p.costo||0,g=(+p.compra_vendido||0)*c;
- if(p.compra_pendiente)return{pedir:0,nota:`Caja cerrada x${fmt(n)}: ya pedida, falta que llegue`};
- if(+p.stock<=(+p.compra_aviso||0))return{pedir:n,nota:`Caja cerrada x${fmt(n)}: va entera · se paga con lo guardado (${money(g)} de ${money(n*c)})`};
- return{pedir:0,nota:`Caja cerrada x${fmt(n)}: juntando · guardado ${money(g)} de ${money(n*c)} · se pide cuando queden ${fmt(+p.compra_aviso||0)}`}}
-// Capital de la Caja (sobre mercadería): para mostrar en el pedido cuánto alcanza
-async function capitalCaja(){try{const m=await todos(()=>sb.from('caja_mov').select('capital'));return m.reduce((s,x)=>s+(+x.capital||0),0)}catch{return null}}
 // Suma lo vendido en los presupuestos posteriores al último pedido enviado
 async function cargaPedido(){await guardaBorr(true);const MANO=BORR_OK?[]:(PED?.lineas||[]).filter(l=>l.mano);$('pedinfo').textContent='Cargando…';$('pedt').innerHTML='';$('pedres').hidden=true;PED={lineas:[],hasta:0,n:0};pintaPedido(true);
  // datos al día de los productos con compra por cantidad (las ventas pueden venir de otro equipo)
@@ -1693,14 +1638,10 @@ async function cargaPedido(){await guardaBorr(true);const MANO=BORR_OK?[]:(PED?.
   x.vendido+=d;x.falto+=Math.max(0,c-d);M.set(l.id,x)}
  PED={hasta:pres.length?pres[pres.length-1].id:desde,n:pres.filter(x=>(x.lineas||[]).some(l=>!l.anulado)).length,lineas:[...M.values()].map(x=>{const p=P.find(q=>q.id==x.id),st=p?Math.max(0,+p.stock):null,
    b=bultoDe(p?.clave||p?.nombre||x.nombre),total=x.vendido;let pedir=total,nota='';
-   if(p?.repone){pedir=0;nota=`Se compra en el momento a ${NOMREP[p.repone]}: no va a Uski`}else
-   if(+p?.compra_cant>0){const c=cajaPed(p);pedir=c.pedir;nota=c.nota}else
+   if(+p?.compra_cant>0){pedir=0;nota=`Compra de a ${fmt(p.compra_cant)}: va en Plata a separar`}else
    if(b){if(st!=null&&st>=limiteDe(b)){pedir=0;nota=`Bulto x${b} · quedan ${fmt(st)}, no se pide`}else{pedir=Math.max(1,Math.ceil(total/b))*b;nota=`Bulto x${b}`}}
-   return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',codigo:p?.codigo||'',stock:st,costo:p?+p.costo||0:null,bulto:b,pedir,calc:pedir,nota,caja:+p?.compra_cant>0&&!p?.repone}}).sort((a,b)=>b.vendido-a.vendido||b.falto-a.falto||a.nombre.localeCompare(b.nombre))};
- // cajas cerradas que llegaron al aviso aunque no se hayan vendido en este pedido (por ejemplo, las que no llegaron)
- for(const p of P)if(+p.compra_cant>0&&!p.repone&&!p.borrado&&!PED.lineas.some(l=>l.id==p.id)){const c=cajaPed(p);if(c.pedir>0)PED.lineas.unshift({id:p.id,nombre:p.nombre,clave:p.clave||'',codigo:p.codigo||'',vendido:0,falto:0,stock:Math.max(0,+p.stock||0),costo:+p.costo||0,bulto:0,pedir:c.pedir,calc:c.pedir,nota:c.nota,caja:true})}
+   return{...x,nombre:p?.nombre||x.nombre,clave:p?.clave||'',codigo:p?.codigo||'',stock:st,costo:p?+p.costo||0:null,bulto:b,pedir,calc:pedir,nota}}).sort((a,b)=>b.vendido-a.vendido||b.falto-a.falto||a.nombre.localeCompare(b.nombre))};
  for(const m of MANO)if(!PED.lineas.some(l=>l.id==m.id))PED.lineas.unshift(m);
- PED.cap=await capitalCaja();
  await aplicaBorr();
  pintaPedido();avisoWebPedido();pintaNota()}
 // Qué nota se va a usar: la última importada con los precios
@@ -1757,31 +1698,23 @@ function pintaPedido(cargando){const n=PED.lineas.filter(l=>l.pedir>0).length;
  const Q=PED.lineas.filter(l=>l.pedir>0),sinC=Q.filter(l=>!l.costo).length;$('pedtot').hidden=cargando||!Q.length;
  $('pedtotv').textContent=money(Q.reduce((s,l)=>s+(l.costo||0)*l.pedir,0));
  $('pedtotn').textContent=`${Q.length} producto(s) · ${fmt(Q.reduce((s,l)=>s+l.pedir,0))} unidades`+(sinC?` · ${sinC} sin costo cargado (no suman)`:'');
- $('bnota').disabled=$('botra').disabled=!n;$('benv').disabled=!PED.n&&!PED.lineas.some(l=>(l.mano||l.caja)&&l.pedir>0);pintaSep()}
+ $('bnota').disabled=$('botra').disabled=!n;$('benv').disabled=!PED.n&&!PED.lineas.some(l=>l.mano&&l.pedir>0);pintaSep()}
 // Plata a separar: lo vendido de los productos con compra por cantidad, a costo actual, desde la última compra
-// Arriba del pedido: cuánto es reponer lo vendido, cuánto son cajas cerradas y cuánto es de más, y cuánto alcanza.
-// Abajo: las cajas cerradas con lo que lleva guardado cada una.
-function pintaSep(){const Q=P.filter(p=>+p.compra_cant>0&&!p.borrado&&!p.repone).sort((a,b)=>(cajaPed(b).pedir>0)-(cajaPed(a).pedir>0)||a.nombre.localeCompare(b.nombre));
- // lo pedido ya llegó: se quita la marca cuando el stock pasó el aviso
+function pintaSep(){const Q=P.filter(p=>+p.compra_cant>0&&!p.borrado).sort((a,b)=>(+a.stock<=+a.compra_aviso?0:1)-(+b.stock<=+b.compra_aviso?0:1)||a.nombre.localeCompare(b.nombre));
+ $('psep').hidden=!Q.length;if(!Q.length)return;
+ // lo comprado ya llegó: se quita la marca cuando el stock pasó el aviso
  for(const p of Q)if(p.compra_pendiente&&+p.stock>+p.compra_aviso){p.compra_pendiente=false;sb.from('productos').update({compra_pendiente:false}).eq('id',p.id).then(()=>{})}
- const L=PED.lineas.filter(l=>l.pedir>0),c=l=>l.costo||0,
-  rep=L.filter(l=>!l.caja&&!l.mano).reduce((s,l)=>s+Math.min(l.pedir,l.vendido)*c(l),0),
-  cajas=L.filter(l=>l.caja).reduce((s,l)=>s+l.pedir*c(l),0),
-  extra=L.filter(l=>!l.caja).reduce((s,l)=>s+Math.max(0,l.pedir-(l.mano?0:l.vendido))*c(l),0),
-  guardado=Q.reduce((s,p)=>s+(+p.compra_vendido||0)*(+p.costo||0),0),libre=PED.cap==null?null:PED.cap-guardado;
- $('psep').hidden=!L.length&&!Q.length;
- const fila=(t,v,sub,col)=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;border-top:1px solid var(--b);padding:7px 0"><span>${t}${sub?`<span class="m" style="display:block;font-size:12px">${sub}</span>`:''}</span><b style="white-space:nowrap${col?';color:'+col:''}">${money(v)}</b></div>`;
- let alc='';if(libre!=null){const sobra=libre-rep;alc=sobra<0?`<p class="falta" style="margin:8px 0 0">Para reponer lo vendido faltan ${money(-sobra)}: es lo que todavía te deben los clientes. Pedí primero lo que más se vende.</p>`
-  :`<p style="margin:8px 0 0;font-weight:600;color:var(--a)">Con lo libre (${money(libre)}) te alcanza para reponer todo${extra>.009?` y ${sobra>=extra?'también todo lo de más':money(sobra)+' de lo de más'}`:''}.</p>`}
- $('psep').innerHTML=`<b>Plata del pedido a Uski</b>`+fila('Reponer lo vendido',rep)+fila('Cajas cerradas',cajas,'Se paga con lo guardado para cajas')+fila('De más',extra,'Bultos redondeados y agregados a mano: agranda el stock')+fila('Total del pedido (a costo)',rep+cajas+extra)+alc
-  +(Q.length?`<div style="margin-top:14px"><b>Cajas cerradas</b> <span class="m" style="font-size:12px">· guardado en total ${money(guardado)}</span></div>`+Q.map(p=>{const v=+p.compra_vendido||0,cc=+p.costo||0,tot=+p.compra_cant*cc,j=v*cc,pct=tot?Math.min(100,j/tot*100):0,k=cajaPed(p);
+ const pagar=PED.lineas.reduce((s,l)=>s+(l.pedir>0?(l.costo||0)*l.pedir:0),0),guardar=Q.reduce((s,p)=>s+(+p.compra_vendido||0)*(+p.costo||0),0);
+ const dato=(t,v,neg)=>`<div style="flex:1;min-width:150px;padding:10px;border:1px solid var(--b);border-radius:10px"><div class="m" style="font-size:12px">${t}</div><div style="font-size:19px${neg?';font-weight:700':''}">${money(v)}</div></div>`;
+ $('psep').innerHTML=`<div class="r" style="margin-bottom:10px">${dato('Se paga ahora al proveedor',pagar)}${dato('Se guarda para los bultos',guardar)}${dato('Total a apartar',pagar+guardar,1)}</div>
+  <b>Plata a separar</b>`+Q.map(p=>{const v=+p.compra_vendido||0,c=+p.costo||0,tot=+p.compra_cant*c,j=v*c,pct=tot?Math.min(100,j/tot*100):0,baja=+p.stock<=+p.compra_aviso,pend=baja&&p.compra_pendiente;
    return`<div style="border-top:1px solid var(--b);padding:9px 0;margin-top:6px"><div class="r" style="justify-content:space-between;flex-wrap:nowrap"><span class="nom">${esc(p.nombre)}</span><b style="white-space:nowrap">${money(j)}</b></div>
-   <div class="m" style="font-size:12px;margin:2px 0 6px">Stock ${fmt(+p.stock)} · se pide cuando queden ${fmt(+p.compra_aviso||0)} · vendidas ${fmt(v)} · caja de ${fmt(+p.compra_cant)}: ${cc?money(tot):'sin costo cargado'}</div>
-   <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${k.pedir>0?'var(--no)':'var(--m)'}"></div></div>
-   <div class="r" style="justify-content:space-between;margin-top:6px"><span class="${k.pedir>0?'falta':'m'}" style="font-size:13px">${p.compra_pendiente?'Ya pedida: falta que llegue':k.pedir>0?'Va entera en este pedido':'Juntando'}</span>${!p.compra_pendiente&&v?`<button class="s" onclick="compreSep(${p.id})" title="Si la compraste por fuera del pedido">La compré aparte</button>`:''}</div></div>`}).join(''):'')}
-// Comprada por fuera del pedido: lo guardado vuelve a cero (el stock se suma con "Importar cantidades")
+   <div class="m" style="font-size:12px;margin:2px 0 6px">Stock ${fmt(+p.stock)} · avisa en ${fmt(+p.compra_aviso||0)} · vendidas ${fmt(v)} · compra de ${fmt(+p.compra_cant)}: ${c?money(tot):'sin costo cargado'}</div>
+   <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${baja&&!pend?'var(--no)':'var(--m)'}"></div></div>
+   ${pend?'<p class="m" style="margin:6px 0 0;font-size:13px">Ya comprado: falta sumar el stock con "Importar cantidades".</p>':baja?`<div class="r" style="justify-content:space-between;margin-top:8px"><span class="falta">Hay que pedir ${fmt(+p.compra_cant)}${tot>j?` · faltan ${money(tot-j)}`:''}</span><button class="s" onclick="compreSep(${p.id})">Ya lo compré</button></div>`:v?`<div class="acc" style="margin-top:6px"><button class="s" onclick="compreSep(${p.id})">Ya lo compré</button></div>`:''}</div>`}).join('')}
+// Comprado por el otro Excel: la cuenta vuelve a cero (el stock se suma con "Importar cantidades")
 async function compreSep(id){const p=P.find(x=>x.id==id);if(!p)return;const j=(+p.compra_vendido||0)*(+p.costo||0);
- if(!await confirma(`¿Compraste ${p.nombre} por fuera del pedido a Uski?\n\nLo guardado para esta caja (${money(j)}) vuelve a cero.`))return;
+ if(!await confirma(`¿Ya compraste ${p.nombre}?\n\nLa plata a separar de este producto (${money(j)}) vuelve a cero.`))return;
  const{error}=await sb.from('productos').update({compra_vendido:0,compra_pendiente:true}).eq('id',id);if(error)return avisa(msg(error));
  p.compra_vendido=0;p.compra_pendiente=true;toast('Compra registrada');pintaSep()}
 // Escribe las cantidades en la nota de pedido del proveedor y descarga una copia (el original no se toca)
@@ -1826,13 +1759,11 @@ async function escribirCantidades(buf,poner){const z=await JSZip.loadAsync(buf),
  if(!cp){cp=wbx.createElementNS(wbx.documentElement.namespaceURI,'calcPr');wbx.documentElement.insertBefore(cp,wbx.getElementsByTagName('extLst')[0]||null)}
  cp.setAttribute('fullCalcOnLoad','1');z.file('xl/workbook.xml',S.serializeToString(wbx),{createFolders:false});
  return z.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
-async function marcarEnviado(){if(!PED.n&&!PED.lineas.some(l=>(l.mano||l.caja)&&l.pedir>0))return;
+async function marcarEnviado(){if(!PED.n&&!PED.lineas.some(l=>l.mano&&l.pedir>0))return;
  if(!await confirma(`¿Marcar el pedido como enviado?\n\nLas ventas de estos ${PED.n} presupuesto(s) ya no se contarán en el próximo pedido.`+(PED.web?`\n\nOjo: hay ${PED.web} pedido(s) web sin pasar a presupuesto. No están en este pedido; se contarán en el próximo cuando los pases.`:'')))return;
  const b=$('benv');b.disabled=true;
  const{error}=await sb.from('pedidos').insert({hasta_presupuesto:PED.hasta,lineas:PED.lineas.filter(l=>l.pedir>0).map(l=>({id:l.id,nombre:l.clave||l.nombre,cantidad:l.pedir}))});
  b.disabled=false;if(error)return avisa(msg(error));
- // las cajas cerradas que van en este pedido: lo guardado pasa a pagar este pedido y quedan "ya pedidas"
- for(const l of PED.lineas)if(l.caja&&l.pedir>0){const p=P.find(x=>x.id==l.id);const r=await sb.from('productos').update({compra_vendido:0,compra_pendiente:true}).eq('id',l.id);if(!r.error&&p){p.compra_vendido=0;p.compra_pendiente=true}}
  clearTimeout(BORR_T);BORR_T=null;if(BORR_OK){const r=await sb.from('pedido_borrador').upsert({id:1,datos:{},actualizado:new Date().toISOString()});if(r.error)avisa('El pedido quedó enviado, pero no se pudieron borrar tus cambios guardados: '+msg(r.error)+'\n\nVuelve a entrar en Pedido y revisa las cantidades.')}
  toast('Pedido marcado como enviado');PED.lineas=[];$('pedq').value='';cargaPedido()}
 

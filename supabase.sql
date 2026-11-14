@@ -166,21 +166,13 @@ alter table productos add column if not exists compra_aviso numeric;       -- av
 alter table productos add column if not exists compra_vendido numeric not null default 0;     -- vendidas desde la última compra
 alter table productos add column if not exists compra_pendiente boolean not null default false; -- comprado, falta sumar el stock
 
--- ===================== COMPRA EN EL MOMENTO (MI MADRE / EXULT) =====================
--- repone: null = se repone con el pedido a Uski; 'madre' o 'exult' = se compra en el momento al venderlo.
--- Esos productos no usan stock: en el catálogo siempre se pueden pedir y no entran en el pedido a Uski.
--- repone_pend: unidades vendidas que todavía hay que comprar (la lista "Para comprar en el momento" de la Caja).
-alter table productos add column if not exists repone text check (repone in ('madre','exult'));
-alter table productos add column if not exists repone_pend numeric not null default 0;
-grant select (repone) on productos to anon;
-
 -- ===================== CAJA =====================
 -- Cada movimiento guarda cuánto suma o resta al capital, a la ganancia y a la deuda del cliente.
 -- Los saldos son la suma de los movimientos: borrar un movimiento mal cargado corrige todo.
 create table if not exists caja_mov(
   id bigint generated always as identity primary key,
   fecha timestamptz default now(),
-  tipo text not null check (tipo in ('cobro','fiado','compra','gasto','retiro','inicial','factura')),
+  tipo text not null check (tipo in ('cobro','fiado','compra','gasto','retiro','inicial')),
   detalle text,                         -- proveedor, tipo de gasto o aclaración
   cliente text,
   monto numeric not null default 0,
@@ -199,11 +191,6 @@ insert into caja_config(id) values (1) on conflict (id) do nothing;
 -- "Vendido" en la Caja: fechas elegidas a mano (vacío = semana de sábado a viernes)
 alter table caja_config add column if not exists ven_desde date;
 alter table caja_config add column if not exists ven_hasta date;
--- Caja: 'factura' = llegó el pedido de un proveedor (Uski). No mueve plata: anota lo que se le debe.
--- Los pagos son compras con el mismo proveedor ("Uski: …") y bajan esa deuda.
-alter table caja_mov drop constraint if exists caja_mov_tipo_check;
-alter table caja_mov add constraint caja_mov_tipo_check
-  check (tipo in ('cobro','fiado','compra','gasto','retiro','inicial','factura'));
 alter table caja_mov enable row level security;
 alter table caja_config enable row level security;
 drop policy if exists "admin caja_mov" on caja_mov;
@@ -357,7 +344,7 @@ end $$;
 drop function if exists crear_presupuesto(text, jsonb);
 drop function if exists crear_presupuesto(text, jsonb, bigint);
 create function crear_presupuesto(p_cliente text, p_lineas jsonb, p_solicitud bigint default null)
-returns jsonb language plpgsql set search_path = public as $$
+returns jsonb language plpgsql as $$
 declare l jsonb; n bigint; t numeric := 0; c numeric; d numeric; pr record; lineas jsonb := '[]'; s record;
 begin
   if p_solicitud is not null then
@@ -366,34 +353,29 @@ begin
     if s.estado <> 'nuevo' then raise exception 'El pedido web Nº % ya no está pendiente (%)', p_solicitud, s.estado; end if;
     for l in select * from jsonb_array_elements(s.lineas) loop
       update productos set stock = stock + coalesce((l->>'reservado')::numeric, 0)
-        where id = (l->>'id')::bigint and coalesce((l->>'reservado')::numeric, 0) > 0 and repone is null;
+        where id = (l->>'id')::bigint and coalesce((l->>'reservado')::numeric, 0) > 0;
     end loop;
   end if;
   for l in select * from jsonb_array_elements(p_lineas) loop
     c := (l->>'cantidad')::numeric;
     if c is null or c < 0 then raise exception 'Cantidad no válida: %', l->>'nombre'; end if;
+    -- en oferta se cobra el precio de oferta; "antes" guarda el precio normal para mostrarlo tachado
     select id, codigo, nombre, coalesce(precio_oferta, precio) precio, precio_oferta is not null oferta, precio antes,
-           stock, costo, compra_cant, repone into pr from productos where id = (l->>'id')::bigint for update;
+           stock, costo, compra_cant into pr from productos where id = (l->>'id')::bigint for update;
     if not found then raise exception 'Producto no encontrado: %', l->>'nombre'; end if;
-    if pr.repone is not null then
-      -- se compra en el momento: se vende todo lo pedido y queda anotado para comprarlo
-      d := c;
-      if d > 0 then update productos set repone_pend = repone_pend + d where id = pr.id; end if;
-    else
-      d := least(c, greatest(pr.stock, 0));
-      if d > 0 then
-        update productos set stock = stock - d,
-          compra_vendido = compra_vendido + case when compra_cant is not null then d else 0 end
-          where id = pr.id;
-        if pr.compra_cant is null then
-          update caja_config set costo_vendido = costo_vendido + d * coalesce(pr.costo, 0) where id = 1;
-        end if;
+    d := least(c, greatest(pr.stock, 0));
+    if d > 0 then
+      update productos set stock = stock - d,
+        compra_vendido = compra_vendido + case when compra_cant is not null then d else 0 end
+        where id = pr.id;
+      -- para la Caja: mercadería vendida que hay que reponer (rep = esta línea se contó)
+      if pr.compra_cant is null then
+        update caja_config set costo_vendido = costo_vendido + d * coalesce(pr.costo, 0) where id = 1;
       end if;
     end if;
     lineas := lineas || (jsonb_build_object('id', pr.id, 'codigo', pr.codigo, 'nombre', pr.nombre,
                                            'precio', pr.precio, 'cantidad', c, 'disponible', d,
-                                           'costo', coalesce(pr.costo, 0), 'rep', pr.compra_cant is null and pr.repone is null)
-              || case when pr.repone is not null then jsonb_build_object('repone', pr.repone) else '{}' end
+                                           'costo', coalesce(pr.costo, 0), 'rep', pr.compra_cant is null)
               || case when pr.oferta then jsonb_build_object('oferta', true, 'antes', pr.antes) else '{}' end);
     t := t + d * pr.precio;
   end loop;
@@ -410,7 +392,7 @@ end $$;
 -- Si el presupuesto se cargó en la Caja, lo anulado se le descuenta al cliente de su deuda
 -- (si ya lo había pagado, le queda a favor). La plata de la caja no cambia.
 create or replace function anular_presupuesto(p_id bigint, p_lineas int[])
-returns jsonb language plpgsql set search_path = public as $$
+returns jsonb language plpgsql as $$
 declare pr record; l jsonb; i int := 0; d numeric; nuevas jsonb := '[]'; t numeric := 0; st jsonb := '[]'; v numeric; cli text; baja numeric := 0;
 begin
   select * into pr from presupuestos where id = p_id for update;
@@ -421,16 +403,11 @@ begin
     if i = any(p_lineas) and not coalesce((l->>'anulado')::boolean, false) then
       d := coalesce((l->>'disponible')::numeric, (l->>'cantidad')::numeric, 0);
       if d > 0 then
-        if l ? 'repone' then
-          -- compra en el momento: no hay stock que devolver, solo deja de estar en la lista para comprar
-          update productos set repone_pend = greatest(0, repone_pend - d) where id = (l->>'id')::bigint;
-        else
-          update productos set stock = stock + d, compra_vendido = greatest(0, compra_vendido - d)
-            where id = (l->>'id')::bigint returning stock into v;
-          if found then st := st || jsonb_build_object('id', (l->>'id')::bigint, 'stock', v); end if;
-          if coalesce((l->>'rep')::boolean, false) then
-            update caja_config set costo_vendido = greatest(0, costo_vendido - d * coalesce((l->>'costo')::numeric, 0)) where id = 1;
-          end if;
+        update productos set stock = stock + d, compra_vendido = greatest(0, compra_vendido - d)
+          where id = (l->>'id')::bigint returning stock into v;
+        if found then st := st || jsonb_build_object('id', (l->>'id')::bigint, 'stock', v); end if;
+        if coalesce((l->>'rep')::boolean, false) then
+          update caja_config set costo_vendido = greatest(0, costo_vendido - d * coalesce((l->>'costo')::numeric, 0)) where id = 1;
         end if;
       end if;
       l := l || '{"anulado": true}';
@@ -544,17 +521,13 @@ begin
     c := (l->>'cantidad')::numeric;
     if c is null or c <= 0 or c > 100000 then raise exception 'Cantidad no válida'; end if;
     select id, codigo, nombre, coalesce(precio_oferta, precio) precio, precio_oferta is not null oferta, precio antes,
-           stock, minimo, repone into pr from productos
+           stock, minimo into pr from productos
       where id = (l->>'id')::bigint and activo and not borrado for update;
     continue when not found;
-    continue when coalesce(pr.precio, 0) <= 0;
-    if coalesce(pr.minimo, 0) > c then c := pr.minimo; end if;
-    if pr.repone is not null then
-      d := c;  -- se compra en el momento: siempre disponible, no toca el stock
-    else
-      d := least(c, greatest(pr.stock, 0));
-      if d > 0 then update productos set stock = stock - d where id = pr.id; end if;
-    end if;
+    continue when coalesce(pr.precio, 0) <= 0;  -- a $ 0 no se vende por el carrito
+    if coalesce(pr.minimo, 0) > c then c := pr.minimo; end if;  -- respeta la compra mínima
+    d := least(c, greatest(pr.stock, 0));
+    if d > 0 then update productos set stock = stock - d where id = pr.id; end if;
     if d < c then falta := true; end if;
     lineas := lineas || (jsonb_build_object('id', pr.id, 'codigo', pr.codigo, 'nombre', pr.nombre,
                                            'precio', pr.precio, 'cantidad', c, 'reservado', d)
@@ -571,27 +544,23 @@ grant execute on function enviar_solicitud(text, text, text, jsonb) to anon, aut
 
 -- Pedidos web: descartar devuelve al stock lo reservado; recuperar un descartado lo vuelve a reservar.
 create or replace function estado_solicitud(p_id bigint, p_estado text)
-returns void language plpgsql set search_path = public as $$
-declare s record; l jsonb; c numeric; d numeric; st numeric; rp text; nuevas jsonb := '[]';
+returns void language plpgsql as $$
+declare s record; l jsonb; c numeric; d numeric; st numeric; nuevas jsonb := '[]';
 begin
   select * into s from solicitudes where id = p_id for update;
   if not found then raise exception 'No existe el pedido web Nº %', p_id; end if;
   if s.estado = 'nuevo' and p_estado = 'descartado' then
     for l in select * from jsonb_array_elements(s.lineas) loop
       update productos set stock = stock + coalesce((l->>'reservado')::numeric, 0)
-        where id = (l->>'id')::bigint and coalesce((l->>'reservado')::numeric, 0) > 0 and repone is null;
+        where id = (l->>'id')::bigint and coalesce((l->>'reservado')::numeric, 0) > 0;
       nuevas := nuevas || jsonb_set(l, '{reservado}', '0');
     end loop;
   elsif s.estado = 'descartado' and p_estado = 'nuevo' then
     for l in select * from jsonb_array_elements(s.lineas) loop
       c := (l->>'cantidad')::numeric;
-      select stock, repone into st, rp from productos where id = (l->>'id')::bigint for update;
-      if not found then d := 0;
-      elsif rp is not null then d := c;
-      else
-        d := least(c, greatest(st, 0));
-        if d > 0 then update productos set stock = stock - d where id = (l->>'id')::bigint; end if;
-      end if;
+      select stock into st from productos where id = (l->>'id')::bigint for update;
+      d := case when found then least(c, greatest(st, 0)) else 0 end;
+      if d > 0 then update productos set stock = stock - d where id = (l->>'id')::bigint; end if;
       nuevas := nuevas || jsonb_set(l, '{reservado}', to_jsonb(d));
     end loop;
   else
@@ -605,8 +574,8 @@ grant execute on function estado_solicitud(bigint, text) to authenticated;
 -- Pedidos web: cambiar la cantidad de un producto de un pedido nuevo (0 = quitarlo).
 -- Devuelve al stock lo que tenía reservado y vuelve a reservar la cantidad nueva (lo que haya).
 create or replace function cantidad_solicitud(p_id bigint, p_producto bigint, p_cantidad numeric)
-returns jsonb language plpgsql set search_path = public as $$
-declare s record; l jsonb; v_nuevas jsonb := '[]'; v_total numeric := 0; v_r numeric; v_d numeric; v_st numeric; v_rp text; v_hay boolean := false;
+returns jsonb language plpgsql as $$
+declare s record; l jsonb; v_nuevas jsonb := '[]'; v_total numeric := 0; v_r numeric; v_d numeric; v_st numeric; v_hay boolean := false;
 begin
   if p_cantidad is null or p_cantidad < 0 or p_cantidad > 100000 then raise exception 'Cantidad no válida'; end if;
   select * into s from solicitudes where id = p_id for update;
@@ -615,15 +584,10 @@ begin
   for l in select * from jsonb_array_elements(s.lineas) loop
     if (l->>'id')::bigint = p_producto then
       v_hay := true;
-      select repone, stock into v_rp, v_st from productos where id = p_producto for update;
-      if v_rp is not null then
-        v_d := p_cantidad;  -- se compra en el momento: no reserva stock
-      else
-        v_r := coalesce((l->>'reservado')::numeric, 0);
-        update productos set stock = stock + v_r where id = p_producto returning stock into v_st;
-        v_d := least(p_cantidad, greatest(coalesce(v_st, 0), 0));
-        if v_d > 0 then update productos set stock = stock - v_d where id = p_producto returning stock into v_st; end if;
-      end if;
+      v_r := coalesce((l->>'reservado')::numeric, 0);
+      update productos set stock = stock + v_r where id = p_producto returning stock into v_st;
+      v_d := least(p_cantidad, greatest(coalesce(v_st, 0), 0));
+      if v_d > 0 then update productos set stock = stock - v_d where id = p_producto returning stock into v_st; end if;
       if p_cantidad > 0 then
         l := jsonb_set(jsonb_set(l, '{cantidad}', to_jsonb(p_cantidad)), '{reservado}', to_jsonb(v_d));
       else

@@ -87,27 +87,20 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Cuando llega la mercadería: sube la misma nota completa en "Importar cantidades" para sumar el stock (corregida con lo que llegó).
 - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la tabla de pedidos).
 
-## Cajas cerradas (pestaña Pedido)
-- Para productos que se compran sí o sí por caja entera (cinta Lusqtoff de a 100, silicona de a 48, fichas de a 500…): en Productos > editar, activa **📦 Caja cerrada**, escribe cuántas unidades trae la caja y con cuántas pedirla.
-- Cada venta guarda su costo solo (unidades vendidas × costo actual) en la Caja, dentro del sobre mercadería: **"Guardado para cajas cerradas"**. No hay que separar nada a mano. Los pedidos web cuentan al pasarlos a presupuesto; lo anulado se descuenta.
-- Cuando el stock llega a ese número, **la caja entera entra sola en el pedido a Uski** (aunque no se haya vendido en esta semana, por ejemplo si no llegó). Al marcar el pedido como enviado, lo guardado de esa caja vuelve a cero y queda "ya pedida" hasta que llega.
-- Arriba de Pedido se ve **la plata del pedido**: reponer lo vendido, cajas cerradas (se pagan con lo guardado) y lo **de más** (bultos redondeados y agregados a mano, que agrandan el stock), y si te alcanza con lo libre.
-- Si una caja la compraste por fuera del pedido, tocá **La compré aparte**.
-
-## Compra en el momento (Mi madre / Exult)
-- Productos que no tenés en el depósito y comprás cuando se venden (poliuretano a Mi madre; cable canal, cajas rectangulares y cinta Tacsa a Exult): en Productos > editar, en **Cómo se repone** elegí "Lo compro en el momento a Mi madre" o "a Exult".
-- No necesitan stock: en el catálogo siempre se pueden pedir. No van en el pedido a Uski.
-- Cuando se venden, aparecen en Caja > **Para comprar en el momento**. Con **Ya lo compré** escribís lo que pagaste: se carga la compra (sale del sobre mercadería) y sale de la lista. Si se anula la venta, sale solo de la lista.
+## Compra por cantidad fija y Plata a separar (pestaña Pedido)
+- Para productos que se compran de a muchas unidades (bultos de fichas, canillas de a 100): en Productos > editar, activa **🔒 Compra por cantidad fija** y escribe de a cuántas se compra y cuándo avisar. La primera vez hay que ejecutar otra vez `supabase.sql`.
+- Esos productos no entran en el pedido común. Cada venta suma a **Plata a separar** (unidades vendidas × costo actual), y la cuenta empieza en cero al activar el candado. Los pedidos web cuentan recién al pasarlos a presupuesto; los productos anulados se descuentan. Borrar el Historial no afecta la cuenta.
+- Arriba de Pedido se ve cuánto se paga ahora al proveedor, cuánto se guarda para los bultos y el total a apartar.
+- Cuando el stock llega al aviso, sale **Hay que pedir**. Se compra por el Excel aparte y se toca **Ya lo compré**: la cuenta vuelve a cero. El stock se suma con "Importar cantidades".
 
 ## Caja (pestaña Caja)
-- **Dos sobres**: lo que entra se divide por 1,3 (se puede cambiar). Una parte va al **sobre mercadería** y el resto al **sobre ganancia**. El sobre mercadería muestra lo **libre** y lo **guardado para cajas cerradas**. **Total en la mano** = los dos sobres: contalo y compará con la plata que tenés. Los sobres siguen solos de una semana a otra: no hace falta poner la caja en cero.
-- **Entró plata**: si es pago de una deuda, se marca la tilde. Si el cliente queda debiendo, se escribe cuánto.
-- **Compra**: se elige el proveedor (Uski, Mi madre, Exult u Otro) y sale del sobre mercadería.
-- **Uski**: cuando llega el pedido, tocá **Llegó pedido de Uski** y cargá la factura (lo que llegó de verdad, sin los faltantes). Cada pago a Uski (**Pagarle a Uski**, todo junto o en partes) baja lo que le debés. Se ve **Le debés a Uski** y **Tenés para el próximo pedido** (lo libre menos lo que le debés).
-- **Gasto** y **Retiro**: salen del sobre ganancia. Cada gasto lleva su tipo: Gastos fijos, Automotor u Otros.
-- **Semana** (sábado a viernes, o las fechas que elijas): como la hoja de papel. Cobrado, ÷ 1,3 = mercadería vendida, ganancia bruta, gastos, **ganancia de la semana**, reposición en el momento y **lo que queda de lo vendido para Uski**. El pago a Uski no se resta ahí porque es del pedido anterior.
-- En **Movimientos**, el botón **Gastos** muestra cuánto se gastó en cada tipo. Arriba se elige el período: esta semana, este mes, el mes pasado o todo.
+- La primera vez hay que ejecutar otra vez `supabase.sql`. Después se cargan el **saldo inicial** y las **deudas** que ya existen, cliente por cliente.
+- **Entró plata**: se divide por 1,3 (se puede cambiar): capital para mercadería y ganancia. Si es pago de una deuda, se marca la tilde. Si el cliente queda debiendo, se escribe cuánto.
+- **Compré mercadería**: sale del capital. Si no alcanza, avisa; la ganancia no se toca y, si se guarda igual, el capital queda en negativo. Las compras de bulto llevan su tilde.
+- **Gasto** y **Retiro**: salen de la ganancia. Cada gasto lleva su tipo: Gastos fijos, Automotor u Otros.
+- En **Movimientos**, el botón **Gastos** muestra cuánto se gastó en cada tipo (🚗 Automotor, Gastos fijos, Otros). Tocando un tipo se ven solo esos gastos. Arriba se elige el período: esta semana, este mes, el mes pasado o todo.
 - **Clientes**: cada cliente con cuenta tiene su ficha (botón **Ver**) con el saldo y el historial. Ahí se carga cuánto se le llevó y cuánto pagó; lo que paga entra a la caja. Para agregar uno con lo que ya debe, **+ Cliente con deuda**. Si una deuda quedó mal, se arregla con **Corregir saldo a** en su ficha (no mueve la plata de la caja). **Eliminar cliente** borra la cuenta y su deuda; lo que ya pagó sigue en la Caja, sin el nombre.
+- **Qué hacer con el capital**: primero reponer lo vendido, después los bultos; lo demás queda de reserva. El costo de lo vendido se cuenta solo desde los presupuestos nuevos.
 - Si algo se cargó mal, se borra con ✕ y los saldos se recalculan. La división es una estimación: el porcentaje real varía por producto.
 
 ## Clientes y cómo pagó

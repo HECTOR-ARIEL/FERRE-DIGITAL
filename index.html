@@ -119,12 +119,10 @@ if(CFG.NOMBRE)document.title=CFG.NOMBRE+' · Catálogo';
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 const pide=c=>()=>sb.from('productos').select(c).eq('activo',true).eq('borrado',false).not('codigo','is',null).neq('codigo','').order('nombre');
 async function load(){
- try{P=await todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts,oferta,precio_oferta,repone')).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts,oferta,precio_oferta'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock')))}
+ try{P=await todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts,oferta,precio_oferta')).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock')))}
  catch(e){$('u').textContent='No se pudo cargar el catálogo.';$('g').innerHTML='';$('info').hidden=false;return}
  // en oferta: se vende al precio de oferta y se guarda el de antes para mostrarlo tachado
  for(const p of P)if(p.oferta&&p.precio_oferta!=null&&+p.precio_oferta>0){p.antes=+p.precio;p.precio=+p.precio_oferta;p.of=true}
- // los que se compran en el momento (Mi madre / Exult) no usan stock: siempre se pueden pedir
- for(const p of P)if(p.repone)p.stock=1e9;
  // nuevo: apareció en el catálogo hace menos de 7 días (después se apaga solo)
  for(const p of P)p.nv=!!p.nuevo_ts&&Date.now()-Date.parse(p.nuevo_ts)<7*864e5;
  const{data}=await sb.from('sectores').select('id,nombre').order('nombre');SEC=data||[];pintaChips();
