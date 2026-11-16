@@ -246,7 +246,8 @@ dialog{overflow:auto}
   <div class="c w fija" style="padding:0"><table><thead><tr><th>Producto</th><th class="n">Pedimos</th><th class="n">Llegó</th><th class="n">Faltó</th><th class="n hide-sm">Plata a separar</th></tr></thead><tbody id="rect"></tbody></table></div>
  </div>
  <p class="m"><b>Cómo se usa:</b> en "1" elige la nota de pedido completa que le mandaste al proveedor; en "2" la misma nota corregida con lo que llegó (la que después subes en "Importar cantidades"). Los productos se reconocen por la descripción.<br>
- <b>Plata a separar:</b> lo que falta por el precio unitario de la nota (si la nota no tiene precio, se usa el costo cargado en el panel). Sirve para apartar esa plata y volver a pedirlo en el próximo pedido.</p>
+ <b>Plata a separar:</b> lo que falta por el precio unitario de la nota (si la nota no tiene precio, se usa el costo cargado en el panel). Sirve para apartar esa plata y volver a pedirlo en el próximo pedido.<br>
+ <b>Sumar faltantes al pedido:</b> pasa todo lo que no llegó al pedido de esta semana (pestaña Pedido), con la cantidad que faltó. Si el producto ya estaba en el pedido, se le suma. Ahí se ven como "Agregado a mano" o "Editado por vos" y se pueden cambiar o quitar. Los que no se encuentran entre tus productos se avisan y no se suman.</p>
 </section>
 </div>
 </main>
@@ -1823,17 +1824,17 @@ function pintaRec(){const[A,B]=RECX,cnt=x=>[...x.M.values()].filter(y=>y.cant>0)
  $('recinfo').innerHTML=[A&&`Pedimos: <b>${esc(A.nombre)}</b> (${cnt(A)} productos con cantidad)`,B&&`Llegó: <b>${esc(B.nombre)}</b> (${cnt(B)} productos con cantidad)`].filter(Boolean).join('<br>')+(A&&B?'':'<br>Falta elegir el '+(A?'segundo':'primer')+' Excel.');
  $('recres').hidden=!(A&&B);if(!(A&&B))return;
  // costo del panel por si la nota no trae precio
- const k=x=>norm(x).replace(/\s+/g,' '),porDes=new Map();for(const p of P){if(p.borrado)continue;if(p.clave)porDes.set(k(p.clave),p);porDes.set(k(p.nombre),p)}
+ const k=x=>norm(x).replace(/\s+/g,' '),porDes=new Map(),porCodP=new Map();for(const p of P){if(p.borrado)continue;if(p.clave)porDes.set(k(p.clave),p);porDes.set(k(p.nombre),p);if(p.cod_prov)porCodP.set(k(p.cod_prov),p)}
  const filas=[],porCod=new Map([...B.M.values()].filter(x=>x.codigo).map(x=>[x.codigo,x]));
- for(const[key,a]of A.M){if(!(a.cant>0))continue;const b=B.M.get(key)||(a.codigo&&porCod.get(a.codigo)),lleg=b?b.cant:0,pr=a.precio||b?.precio||+porDes.get(key)?.costo||0;
-  filas.push({nombre:a.nombre,pedimos:a.cant,lleg,falta:Math.max(0,a.cant-lleg),precio:pr})}
+ for(const[key,a]of A.M){if(!(a.cant>0))continue;const b=B.M.get(key)||(a.codigo&&porCod.get(a.codigo)),lleg=b?b.cant:0,p=porDes.get(key)||(a.codigo&&porCodP.get(k(a.codigo)))||null,pr=a.precio||b?.precio||+p?.costo||0;
+  filas.push({nombre:a.nombre,pedimos:a.cant,lleg,falta:Math.max(0,a.cant-lleg),precio:pr,p})}
  // lo que llegó sin haberlo pedido (o con otra descripción)
  const extra=[...B.M].filter(([key,b])=>b.cant>0&&!(A.M.get(key)?.cant>0)&&!(b.codigo&&[...A.M.values()].some(a=>a.codigo==b.codigo&&a.cant>0))).map(([,b])=>b);
  const F=filas.filter(x=>x.falta>0),plata=F.reduce((s,x)=>s+x.falta*x.precio,0),sinP=F.filter(x=>!x.precio).length;
- RECX.F=F;
+ RECX.F=F;const fq=A.nombre+'|'+B.nombre;if(RECX.sumado&&RECX.sumado!==fq)RECX.sumado=null;
  $('recfal').innerHTML=F.length?`<b>No llegaron completos ${F.length} de ${filas.length} productos pedidos.</b>
   <div style="font-size:18px;margin:6px 0">Plata a separar para volver a pedirlos: <b>${money(plata)}</b></div>${sinP?`<p class="m" style="margin:0 0 6px">${sinP} producto(s) sin precio no suman.</p>`:''}
-  <div class="r" style="gap:8px"><button class="s" onclick="copiaFalRec()">Copiar lista de faltantes</button><button class="s" onclick="waFalRec()">Mandar por WhatsApp</button></div>`
+  <div class="r" style="gap:8px"><button id="recsum" onclick="sumaFalRec()"${RECX.sumado?' disabled':''}>${RECX.sumado?'✓ Ya se sumaron al pedido':'Sumar faltantes al pedido'}</button><button class="s" onclick="copiaFalRec()">Copiar lista de faltantes</button><button class="s" onclick="waFalRec()">Mandar por WhatsApp</button></div>`
   :`<b>Llegó todo lo pedido (${filas.length} productos).</b>`;
  $('recfal').innerHTML+=extra.length?`<p class="m" style="margin:8px 0 0">Además llegaron ${extra.length} producto(s) que no estaban en el pedido (o tienen otra descripción): ${extra.slice(0,8).map(x=>esc(x.nombre)+' ('+fmt(x.cant)+')').join(' · ')}${extra.length>8?'…':''}</p>`:'';
  const V=$('recf').value=='f'?F:filas;
@@ -1844,6 +1845,22 @@ function pintaRec(){const[A,B]=RECX,cnt=x=>[...x.M.values()].filter(y=>y.cant>0)
 const textoFalRec=()=>`Faltantes del pedido (${CFG.NOMBRE||''}):\n`+RECX.F.map(x=>`- ${x.nombre.toUpperCase()}: pedimos ${fmt(x.pedimos)}, llegaron ${fmt(x.lleg)} (faltan ${fmt(x.falta)})`).join('\n');
 async function copiaFalRec(){try{await navigator.clipboard.writeText(textoFalRec());toast('Lista de faltantes copiada')}catch{await pide('Copia la lista:',textoFalRec())}}
 function waFalRec(){open('https://wa.me/?text='+encodeURIComponent(textoFalRec()),'_blank')}
+// Suma lo que no llegó al pedido de esta semana (pestaña Pedido), con la cantidad que faltó.
+// Si el producto ya está en el pedido, se le suma a lo que había. Queda guardado como un cambio tuyo ("Agregado a mano" / "Editado por vos").
+async function sumaFalRec(){const F=RECX.F||[],ok=F.filter(x=>x.p),no=F.filter(x=>!x.p);if(RECX.sumado)return;
+ if(!ok.length)return avisa('Ninguno de los faltantes se encontró entre tus productos (la descripción del Excel no coincide), así que no se puede sumar al pedido. Usá "Copiar lista de faltantes" y sumalos con la lupa en Pedido.');
+ const lis=ok.slice(0,15).map(x=>`• ${x.p.nombre}: ${fmt(x.falta)}`).join('\n')+(ok.length>15?`\n… y ${ok.length-15} más`:'');
+ if(!await confirma(`Se van a sumar al pedido de esta semana ${ok.length} producto(s) con la cantidad que faltó:\n\n${lis}`+(no.length?`\n\n${no.length} no se encontraron entre tus productos y NO se suman: ${no.slice(0,6).map(x=>x.nombre).join(', ')}${no.length>6?'…':''}.`:'')+`\n\nSi un producto ya estaba en el pedido, se le suma lo que faltó. ¿Sumar?`))return;
+ const b=$('recsum');if(b){b.disabled=true;b.textContent='Sumando…'}
+ await cargaPedido();  // el pedido de esta semana, con tus cambios guardados
+ if(!BORR_OK){if(b){b.disabled=false;b.textContent='Sumar faltantes al pedido'}return avisa('No se pudo leer el pedido guardado. Revisá la conexión. Si sigue pasando, ejecutá otra vez supabase.sql en Supabase (SQL Editor > Run).')}
+ for(const x of ok){const l=PED.lineas.find(y=>y.id==x.p.id);
+  if(l){l.pedir=(+l.pedir||0)+x.falta;if(!l.mano)l.editado=l.pedir!==l.calc}else PED.lineas.unshift(lineaMano(x.p,x.falta))}
+ clearTimeout(BORR_T);BORR_T=null;
+ const{error}=await sb.from('pedido_borrador').upsert({id:1,datos:datosBorr(),actualizado:new Date().toISOString()});
+ if(error){if(b){b.disabled=false;b.textContent='Sumar faltantes al pedido'}return avisa('No se pudieron sumar al pedido: '+msg(error))}
+ RECX.sumado=RECX[0].nombre+'|'+RECX[1].nombre;if(b)b.textContent='✓ Ya se sumaron al pedido';
+ toast(`Se sumaron ${ok.length} faltante(s) al pedido`);tab('ped')}
 
 init();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>

@@ -115,6 +115,7 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Muestra al momento qué llegó completo, qué llegó incompleto y qué no llegó. Los productos se reconocen por la descripción.
 - **Plata a separar**: lo que falta multiplicado por el precio unitario de la nota (si la nota no trae precio, usa el costo del panel). Sirve para apartar esa plata y volver a pedirlo.
 - Botones para copiar la lista de faltantes o mandarla por WhatsApp. También avisa si llegó algo que no estaba en el pedido.
+- **Sumar faltantes al pedido**: pasa todo lo que no llegó al pedido de esta semana (pestaña Pedido), con la cantidad que faltó. Antes muestra la lista y pide confirmar. Si el producto ya estaba en el pedido, se le suma lo que faltó ("Editado por vos"); si no, entra como "Agregado a mano". Se puede cambiar o quitar en Pedido como cualquier otro. Los faltantes que no se encuentran entre tus productos (por la descripción o el código del proveedor) se avisan y no se suman. El botón queda en "Ya se sumaron" para no sumarlos dos veces.
 - No guarda nada ni toca el stock: el stock se sigue sumando con "Importar cantidades".
 
 ## Carrito del catálogo (pedidos web)
