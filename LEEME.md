@@ -208,7 +208,7 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 - **Rojo:** el precio subió respecto al Excel anterior. **Verde:** bajó. Duran hasta que importás el próximo Excel (cambios de menos del 0,5 % no cuentan).
 - **Amarillo:** producto nuevo en el catálogo. Los 7 días empiezan cuando el producto tiene código **y** está visible en el catálogo (si le ponés el código y lo dejás oculto, todavía no cuenta). Cuenta una sola vez: si después lo ocultás y lo volvés a mostrar, no vuelve a ser nuevo. Si después le cambia el precio, pasa a rojo o verde.
 - **✨ NUEVOS PRODUCTOS:** cuando hay productos nuevos (de los últimos 7 días), el catálogo muestra al lado de OFERTAS un botón amarillo y una franja amarilla que lleva a verlos. Si no hay productos nuevos, no aparecen.
-- **Cambiar el costo a mano** (en Productos > editar) también pinta: rojo si subió, verde si bajó (cambios de menos del 0,5 % no cuentan). Dura hasta el próximo Excel. Cambiar solo la ganancia no pinta nada.
+- **Cambiar el precio a mano** (en Productos > editar) también pinta: rojo si el precio de venta subió, verde si bajó (cambios de menos del 0,5 % no cuentan). Vale cambiando el costo, la ganancia o escribiendo directamente el precio de venta (el porcentaje se recalcula solo y el costo no se toca). Dura hasta el próximo Excel.
 
 ## Caja: "Plata que entró esta semana"
 - Suma toda la plata que entró de sábado a viernes (los "Entró plata", también cuando un cliente paga una deuda). Lo fiado no suma hasta que lo pagan.
