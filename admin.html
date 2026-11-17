@@ -611,6 +611,9 @@ function borrarImg(u){const r=rutaImg(u);if(r)sb.storage.from('imagenes').remove
 async function guardarProd(e){e.preventDefault();
  const o={codigo:$('fcod').value.trim()||null,nombre:$('fdes').value.trim().replace(/\s+/g,' '),costo:num($('fcos').value)??0,ganancia:num($('fgan').value)??0,stock:num($('fsto').value)??0,activo:$('fact').checked};if(S.ok)o.sector_id=+$('fsec').value||null;
  if(MIN_OK){const m=num($('fmin').value);o.minimo=m>1?m:null}
+ // Costo cambiado a mano: se pinta igual que con el Excel (rojo si subió, verde si bajó; menos del 0,5 % no cuenta).
+ // Dura hasta el próximo Excel. Si el costo no cambió, el color queda como estaba.
+ if(ed.id&&'marca'in ed){const v=+ed.costo||0,n=o.costo;if(v>0&&n>v*1.005)o.marca='sube';else if(v>0&&n<v*0.995)o.marca='baja'}
  if(!o.nombre)return avisa('La descripción es obligatoria.');
  if(OF_OK){const on=$('fof').checked,go=num($('fgo').value);
   if(on&&go===null)return avisa('Escribí la ganancia en oferta (por ejemplo 25), o sacale la tilde de "En oferta".');
