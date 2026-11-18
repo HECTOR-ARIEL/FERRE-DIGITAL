@@ -226,3 +226,7 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 - Al final del catálogo hay una franja negra con el horario, la dirección (con "Ver en el mapa"), las formas de pago, los días de entrega y el botón de WhatsApp.
 - El botón **Info** de arriba muestra lo mismo sin tener que bajar todo el catálogo.
 - Para cambiar esos datos, se editan en `index.html`, en la parte `<footer class="pie" id="info">`.
+
+## Cambios del 18/11/2026
+- **Productos siempre al día en la PC y en el teléfono:** el panel mira cada 30 segundos (y cada vez que volvés a la app) si cambió algo en la base: un Excel importado, precios, stock o productos borrados. Si cambió, vuelve a leer los productos solo, sin recargar la página. Al entrar a Pedido siempre se leen todos los productos de nuevo antes de calcular, y abajo dice qué nota se usa (con fecha y hora) y a qué hora se leyeron los precios.
+- **Renombrados por el proveedor:** al importar el Excel, si el nombre nuevo contiene entero al viejo (ej. "ACOPLE RAPIDO 1/2 HEMBRA" → "ACOPLE RAPIDO 1/2 HEMBRA PARA MANGUERA RIEGO"), se muestra en la lista de renombrados con la etiqueta "contiene el nombre anterior", ya marcado si los números coinciden. Así se reemplaza la descripción del mismo producto (conserva stock, ventas y pedido) en vez de crear uno nuevo.

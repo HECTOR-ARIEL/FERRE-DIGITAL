@@ -423,6 +423,7 @@ const hh=()=>document.documentElement.style.setProperty('--hh',document.querySel
 new ResizeObserver(()=>document.documentElement.style.setProperty('--tb',document.querySelector('#t-prod .top').offsetHeight+'px')).observe(document.querySelector('#t-prod .top'));
 // Al acercarse al final de la lista se cargan 100 productos más, sin botón
 const masObs=new IntersectionObserver(e=>{if(e[0].isIntersecting&&!$('mas').hidden){lim+=100;renderP()}},{rootMargin:'800px'});
+let VER_DB=null,CARGADO=null;  // versión de la base con la que se leyeron los productos, y a qué hora
 let COMP_OK=false,P=[],L=JSON.parse(leeLS('borrador')||'[]'),ed=null,nuevaImg=null,quitarImg=false,lim=100,enPap=false;const sel=new Set();
 const PH='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44"><path d="M12 30l7-8 5 6 3-3 5 5" fill="none" stroke="#b5c2bf" stroke-width="2"/><circle cx="28" cy="16" r="3" fill="#b5c2bf"/></svg>');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -480,7 +481,7 @@ async function nuevaClave(e){e.preventDefault();const a=$('pw1').value;if(a!==$(
 function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('t-prod').hidden=t!='prod';$('t-pres').hidden=t!='pres';$('t-hist').hidden=t!='hist';$('t-ped').hidden=t!='ped';$('t-web').hidden=t!='web';$('t-mos').hidden=t!='mos';$('t-rec').hidden=t!='rec';$('t-caja').hidden=t!='caja';if(t=='caja')cargaCaja();if(t=='mos')abrirMq();if(t=='web')cargaWeb();if(t=='hist')cargaHist();if(t=='ped')cargaPedido()}
 
 /* ---------- productos ---------- */
-async function load(silencio){try{P=await todos(()=>sb.from('productos').select('*').order('nombre'))}catch(e){if(silencio)throw e;return avisa(msg(e))}
+async function load(silencio){try{const cv=await sb.from('cambios').select('ts').eq('id',1).maybeSingle();P=await todos(()=>sb.from('productos').select('*').order('nombre'));VER_DB=cv.data?.ts||VER_DB;CARGADO=new Date()}catch(e){if(silencio)throw e;return avisa(msg(e))}
  MIN_OK=!P.length||'minimo'in P[0];  // false si todavía no se ejecutó el SQL de compra mínima
  COD_OK=!P.length||'cod_prov'in P[0];  // false si todavía no se ejecutó el SQL de renombrados
  COMP_OK=!!P.length&&'compra_cant'in P[0];  // false si todavía no se ejecutó el SQL de compra por cantidad
@@ -724,17 +725,22 @@ function parecido(a,b){const bi=s=>{s=norm(s).replace(/[^a-z0-9]+/g,' ').trim();
  const[A,na]=bi(a),[B,nb]=bi(b);let c=0;for(const[x,v]of A)c+=Math.min(v,B.get(x)||0);return 2*c/(na+nb)}
 function renombrados(nuevas,enExcel){const viejos=P.filter(p=>p.clave&&!p.borrado&&!enExcel.has(p.clave)),C=[];
  for(const o of nuevas)for(const p of viejos){const mismo=!!(o.cod&&p.cod_prov&&norm(o.cod)==norm(p.cod_prov));
-  if(o.cod&&p.cod_prov&&!mismo)continue;const s=parecido(o.descripcion,p.clave);
+  if(o.cod&&p.cod_prov&&!mismo)continue;let s=parecido(o.descripcion,p.clave);
   // al comparar números se ignora el código del proveedor cuando viene escrito en la descripción: "MANIJA 30CM (1031-01)"
   const sinCod=(d,c)=>c?norm(d).split(norm(c)).join(' '):d;
-  if(s>=(mismo?.45:.7))C.push({nueva:o,p,s,mismo,marca:s>=.75&&nums(sinCod(o.descripcion,o.cod))==nums(sinCod(p.clave,p.cod_prov||o.cod))})}
+  // El nombre nuevo contiene entero al viejo (o al revés): "ACOPLE RAPIDO 1/2 HEMBRA" → "ACOPLE RAPIDO 1/2 HEMBRA PARA MANGUERA RIEGO".
+  // Se sugiere siempre, y viene marcado si los números son los mismos.
+  const pal=x=>new Set(norm(x).replace(/[^a-z0-9/]+/g,' ').trim().split(' ').filter(Boolean)),A=pal(o.descripcion),B=pal(p.clave),
+   dentro=(x,y)=>x.size>=2&&[...x].every(w=>y.has(w)),cont=dentro(B,A)||dentro(A,B),mn=nums(sinCod(o.descripcion,o.cod))==nums(sinCod(p.clave,p.cod_prov||o.cod));
+  if(cont)s=Math.max(s,.8);
+  if(s>=(mismo?.45:.7))C.push({nueva:o,p,s,mismo,cont,marca:(s>=.75||cont)&&mn})}
  // cada producto viejo y cada descripción nueva se usan una sola vez: primero los más parecidos
  C.sort((x,y)=>y.mismo-x.mismo||y.s-x.s);const un=new Set(),up=new Set();
  return C.filter(c=>!un.has(c.nueva)&&!up.has(c.p.id)&&(un.add(c.nueva),up.add(c.p.id))).sort((x,y)=>x.nueva.descripcion.localeCompare(y.nueva.descripcion))}
 // Ventana de confirmación de la importación con la lista de renombrados. Devuelve los elegidos, o null si se cancela.
 function revisarImport(texto,sug){return new Promise(ok=>{$('dimpt').textContent=texto+(sug.length?'':'\n¿Continuar?');
  $('dimpr').hidden=!sug.length;
- $('dimpl').innerHTML=sug.map((s,i)=>`<label class="chk ren"><input type="checkbox" data-i="${i}"${s.marca?' checked':''}><span><span class="m">${esc(s.p.nombre)}${norm(s.p.nombre)!=norm(s.p.clave)?` <i>(proveedor: ${esc(s.p.clave.toUpperCase())})</i>`:''}</span><br>→ <b>${esc(s.nueva.descripcion)}</b> <span class="tag">${s.mismo?'mismo código · ':''}${Math.round(s.s*100)} % parecido</span></span></label>`).join('');
+ $('dimpl').innerHTML=sug.map((s,i)=>`<label class="chk ren"><input type="checkbox" data-i="${i}"${s.marca?' checked':''}><span><span class="m">${esc(s.p.nombre)}${norm(s.p.nombre)!=norm(s.p.clave)?` <i>(proveedor: ${esc(s.p.clave.toUpperCase())})</i>`:''}</span><br>→ <b>${esc(s.nueva.descripcion)}</b> <span class="tag">${s.mismo?'mismo código · ':''}${s.cont?'contiene el nombre anterior · ':''}${Math.round(s.s*100)} % parecido</span></span></label>`).join('');
  const fin=v=>{$('dimp').onclose=null;$('dimp').close();ok(v)};
  $('dimpo').onclick=()=>fin(sug.filter((s,i)=>$('dimpl').querySelector(`[data-i="${i}"]`).checked));
  $('dimpc').onclick=()=>fin(null);$('dimp').onclose=()=>ok(null);$('dimp').showModal()})}
@@ -1660,6 +1666,15 @@ async function cuentaWeb(){if($('app').hidden)return;const{count,error}=await sb
  if(error)return;if(nWeb!==null&&count>nWeb){toast(count-nWeb>1?`Llegaron ${count-nWeb} pedidos web nuevos`:'Llegó un pedido web nuevo');if(!$('t-web').hidden)cargaWeb()}
  nWeb=count;$('nw').textContent=count;$('nw').hidden=!count;document.title=(count?`(${count}) `:'')+'Administración'}
 setInterval(()=>{if(!document.hidden)cuentaWeb()},30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)cuentaWeb()});
+// Productos siempre al día en todos los equipos: cada 30 s (y al volver a la app) se mira si cambió algo en la base
+// (Excel importado, precios, stock, productos borrados…). Si cambió, se vuelven a leer y, si está abierto Pedido, se recalcula.
+// No interrumpe: si estás escribiendo o hay una ventana abierta, espera a la próxima vuelta.
+let revisando=false;
+async function revisaCambios(){if(revisando||$('app').hidden||document.querySelector('dialog[open]'))return;
+ const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
+ revisando=true;try{const{data}=await sb.from('cambios').select('ts').eq('id',1).maybeSingle();const v=data?.ts;
+  if(v&&VER_DB&&v!==VER_DB){if(!$('t-ped').hidden)await cargaPedido();else await load(true)}else if(v&&!VER_DB)VER_DB=v}catch{}finally{revisando=false}}
+setInterval(()=>{if(!document.hidden)revisaCambios()},30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)revisaCambios()});
 
 /* ---------- pedido al proveedor ---------- */
 // Bulto según la descripción del proveedor: "(MINIMO 12)", "MINIMO 6 UNID", "MIN 10", "MINIM0 12"… ("X 100 UNID" no es bulto)
@@ -1671,8 +1686,9 @@ const limiteDe=b=>b>=20?b/2:5;
 let PED={lineas:[],hasta:0,n:0};
 // Suma lo vendido en los presupuestos posteriores al último pedido enviado
 async function cargaPedido(){await guardaBorr(true);const MANO=BORR_OK?[]:(PED?.lineas||[]).filter(l=>l.mano);$('pedinfo').textContent='Cargando…';$('pedt').innerHTML='';$('pedres').hidden=true;PED={lineas:[],hasta:0,n:0};pintaPedido(true);
- // datos al día de los productos con compra por cantidad (las ventas pueden venir de otro equipo)
- await frescoComp();
+ // Antes de calcular se vuelven a leer TODOS los productos de la base: así el teléfono nunca calcula con
+ // precios, nombres o productos viejos aunque la app haya quedado abierta desde días antes.
+ try{await load(true)}catch{await frescoComp()}
  const u=await sb.from('pedidos').select('hasta_presupuesto').order('id',{ascending:false}).limit(1);
  if(u.error)return $('pedinfo').textContent=/pedidos/.test(u.error.message)?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(u.error);
  const desde=u.data[0]?.hasta_presupuesto||0;let pres;
@@ -1690,8 +1706,9 @@ async function cargaPedido(){await guardaBorr(true);const MANO=BORR_OK?[]:(PED?.
  pintaPedido();avisoWebPedido();pintaNota()}
 // Qué nota se va a usar: la última importada con los precios
 let NOTA=null;
+const hora=d=>d.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
 async function pintaNota(){NOTA=await ultimaNota();
- $('notainfo').innerHTML=NOTA?`Se usará: <b>${esc(NOTA.nombre)}</b> (importada el ${NOTA.fecha.toLocaleDateString('es')})`:'Todavía no hay nota guardada: importa la nota del proveedor en Productos &gt; "Importar Excel".'}
+ $('notainfo').innerHTML=(NOTA?`Se usará: <b>${esc(NOTA.nombre)}</b> (importada el ${NOTA.fecha.toLocaleDateString('es')} a las ${hora(NOTA.fecha)})`:'Todavía no hay nota guardada: importa la nota del proveedor en Productos &gt; "Importar Excel".')+(CARGADO?`<br>Precios y productos al día (leídos de la base a las ${hora(CARGADO)})`:'')}
 async function notaGuardada(){const b=$('bnota');b.disabled=true;b.textContent='Buscando la nota…';let buf;
  try{NOTA=await ultimaNota();
   if(NOTA){const{data,error}=await sb.storage.from('notas').download(NOTA.ruta);if(error)throw error;buf=await data.arrayBuffer()}}
