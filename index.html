@@ -172,11 +172,14 @@ let C={};try{C=JSON.parse(leeLS('carrito')||'{}')||{}}catch{}
 // Controles de cada tarjeta: "Agregar" o, si ya está en el carrito, − cantidad +
 const ctrl=id=>C[id]?`<div class="step"><button type="button" class="s" title="Quitar uno" onclick="suma(${id},-1)">−</button><input type="number" min="0" step="any" inputmode="decimal" value="${C[id]}" aria-label="Cantidad" onfocus="this.select()" onchange="ponCant(${id},this.value)"><button type="button" title="Agregar uno" onclick="suma(${id},1)">+</button></div>`:`<button type="button" class="agr" onclick="suma(${id},1)">+ Agregar</button>`;
 const lineasCar=()=>Object.keys(C).map(id=>({p:P.find(x=>x.id==id),c:C[id]})).filter(l=>l.p&&l.p.precio>0);
-// Compra mínima: "Agregar" pone el mínimo y "−" desde el mínimo lo quita del carrito
+// Compra mínima: se vende de a esa cantidad. "Agregar" pone el mínimo, "+" y "−" suman o restan de a esa cantidad
+// (de 10 en 10, de 6 en 6…) y "−" desde el mínimo lo quita del carrito. Lo escrito a mano se sube al múltiplo siguiente.
 const minDe=id=>Math.max(1,+P.find(x=>x.id==id)?.minimo||0);
-function suma(id,d){const c=+C[id]||0,m=minDe(id);ponCant(id,!c&&d>0?m:c+d<m?0:c+d)}
+function suma(id,d){const c=+C[id]||0,m=minDe(id);
+ if(m<=1)return ponCant(id,!c&&d>0?1:c+d<1?0:c+d);
+ const k=c/m,n=d>0?(Math.floor(k+1e-9)+1)*m:(Math.ceil(k-1e-9)-1)*m;ponCant(id,n<m?0:n)}
 function ponCant(id,v){let n=parseFloat(String(v).replace(',','.'));const m=minDe(id);
- if(n>0&&n<m){n=m;alert(`Este producto tiene compra mínima de ${fmt(m)} unidades.`)}
+ if(n>0&&m>1){const r=Math.ceil(n/m-1e-9)*m;if(r!==n){alert(n<m?`Este producto tiene compra mínima de ${fmt(m)} unidades.`:`Este producto se vende de a ${fmt(m)} unidades: se ajustó a ${fmt(r)}.`);n=r}}
  if(n>0)C[id]=Math.round(n*100)/100;else delete C[id];
  guardaLS('carrito',JSON.stringify(C));const k=$('k'+id);if(k)k.innerHTML=ctrl(id);pintaCar()}
 // Número del botón y, si está abierta, la lista del carrito. Se quitan los productos que ya no están en el catálogo.

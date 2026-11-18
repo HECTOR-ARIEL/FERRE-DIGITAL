@@ -198,7 +198,7 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 
 ## Compra mínima (catálogo)
 - En el catálogo ya no se ve la leyenda del proveedor "(MINIMO 12 UNIDADES)", "MIN 10", "(CAJA CERRADA 50 UNID)"…: el cliente ve el nombre limpio. En el panel y en el pedido al proveedor la descripción sigue completa.
-- Cada producto tiene **Compra mínima** en su ficha: vacío = se vende por unidad; con número, el catálogo muestra "Compra mínima: X" y el carrito no deja pedir menos (al tocar "Agregar" pone directamente ese mínimo).
+- Cada producto tiene **Compra mínima** en su ficha: vacío = se vende por unidad; con número, el catálogo muestra "Compra mínima: X" y el carrito no deja pedir menos (al tocar "Agregar" pone directamente ese mínimo). Además se vende **de a esa cantidad**: "+" y "−" suman o restan de a 10, de a 6…, y si el cliente escribe un número que no es múltiplo (por ejemplo 15 con mínimo 10) se sube al siguiente (20). La base de datos hace lo mismo al recibir el pedido.
   - El botón **Usar el de la descripción (X)** copia el número que dice "MINIMO" o "CAJA CERRADA" en la descripción.
 - Para muchos a la vez: marca los productos y en la barra de abajo elige **Compra mínima… > Según la descripción** o **Por unidad**.
 - Filtro (junto a sectores): **Con compra mínima**, **Por unidad** o **Dicen MINIMO pero van por unidad** (para revisarlos).

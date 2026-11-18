@@ -525,7 +525,8 @@ begin
       where id = (l->>'id')::bigint and activo and not borrado for update;
     continue when not found;
     continue when coalesce(pr.precio, 0) <= 0;  -- a $ 0 no se vende por el carrito
-    if coalesce(pr.minimo, 0) > c then c := pr.minimo; end if;  -- respeta la compra mínima
+    -- respeta la compra mínima: se vende de a esa cantidad (6, 12, 18…); lo que no llega se sube al múltiplo siguiente
+    if coalesce(pr.minimo, 0) > 1 then c := ceil(c / pr.minimo - 1e-9) * pr.minimo; end if;
     d := least(c, greatest(pr.stock, 0));
     if d > 0 then update productos set stock = stock - d where id = pr.id; end if;
     if d < c then falta := true; end if;
