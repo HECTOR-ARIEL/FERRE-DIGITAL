@@ -1163,7 +1163,7 @@ function pintaListaMq(){const R=calcMq(MQ.items),cod=codMq(R.items);
   <div class="w"><table style="font-size:13px"><thead><tr><th>Perfil</th><th>Color</th><th class="n">Se usa</th><th class="n">Barras de 6 m</th><th class="n hide-sm">Sobra</th></tr></thead><tbody>
   ${PB.map(([k,b])=>{const[p,c]=k.split('_');return`<tr><td style="text-transform:capitalize">${MQPER[p]}</td><td>${colMq(c)[1]}</td><td class="n">${fmt(Math.round(b.metros*1000))} mm <span class="m">(${mtr(b.metros)} m)</span></td><td class="n"><b>${b.n}</b></td><td class="n hide-sm m">${mtr(b.sobra)} m</td></tr>`}).join('')}
   </tbody></table></div>${R.err?`<p class="falta">${esc(R.err)}</p>`:''}</div>`:(R.err?`<p class="falta">${esc(R.err)}</p>`:'');
- numMq();$('mtmw').hidden=!!MQ.sm;const col=+MQ.colocacion||0,tm=tmMq(),T=R.total+tm;$('mtot').innerHTML=R.items.length?`${tm?`<div class="m" style="font-size:14px">Mosquiteros ${money(R.total)} · Toma de medidas ${money(tm)}</div>`:''}Total: <b>${money(T)}</b>${col?`<div class="m" style="font-size:14px">Colocación ${money(col)} · Con colocación <b>${money(T+col)}</b></div>`:''}`:''}
+ numMq();$('mtmw').hidden=!!MQ.sm;const col=+MQ.colocacion||0,tm=tmMq(),T=R.total+tm;$('mtot').innerHTML=R.items.length?`${tm?`<div class="m" style="font-size:14px">Mosquiteros ${money(R.total)} · Toma de medidas y envío ${money(tm)}</div>`:''}Total: <b>${money(T)}</b>${col?`<div class="m" style="font-size:14px">Colocación ${money(col)} · Con colocación <b>${money(T+col)}</b></div>`:''}`:''}
 // Costo total de materiales de un presupuesto: tejido, burlete, perfiles (barras de 6 m enteras) y accesorios, con los precios de hoy
 function costoTotMq(items,tit,col=0,vg=null,nota='',tm=0){const R=calcMq(items),c=CM||{},A={},row=(a,b,d,e='')=>`<tr><td>${a}</td><td class="n">${b}</td><td class="n">${d}</td>${e}</tr>`;let tej=0,bur=0,cTej=0,cBur=0,cPerM=0;
  for(const x of R.items)for(const l of x.mat){const q=x.ca;if(l[5]=='tejido'){tej+=l[6]*q;cTej+=l[2]*q}else if(l[5]=='burlete'){bur+=l[6]*q;cBur+=l[2]*q}else if(l[3])cPerM+=l[2]*q;else{const k=l[0],o=A[k]??={n:0,c:0};o.n+=(l[6]??(+l[1]||0))*q;o.c+=l[2]*q}}
@@ -1181,7 +1181,7 @@ function costoTotMq(items,tit,col=0,vg=null,nota='',tm=0){const R=calcMq(items),
    <div class="r" style="justify-content:space-between"><span>Gasto en materiales</span><b style="color:var(--no)">− ${money(gasto)}</b></div>
    <div class="r" style="justify-content:space-between;border-top:1px solid var(--b);margin-top:6px;padding-top:6px;font-size:17px"><span><b>Ganancia total</b><div class="m" style="font-size:12px">descontando los materiales</div></span><b style="color:var(--ok,#1a7f37)">${money(gan)}</b></div>
    <div class="m" style="font-size:12px;text-align:right">Es el ${pc(gan,gasto)} sobre lo gastado · el ${pc(gan,venta)} de lo que se cobra</div>
-   ${col||tm?`${tm?`<div class="r" style="justify-content:space-between;margin-top:6px"><span>+ Toma de medidas</span><b>${money(tm)}</b></div>`:''}${col?`<div class="r" style="justify-content:space-between;${tm?'':'margin-top:6px'}"><span>+ Colocación</span><b>${money(col)}</b></div>`:''}
+   ${col||tm?`${tm?`<div class="r" style="justify-content:space-between;margin-top:6px"><span>+ Toma de medidas y envío</span><b>${money(tm)}</b></div>`:''}${col?`<div class="r" style="justify-content:space-between;${tm?'':'margin-top:6px'}"><span>+ Colocación</span><b>${money(col)}</b></div>`:''}
    <div class="r" style="justify-content:space-between;font-size:17px"><b>Ganancia total con ${[tm&&'toma de medidas',col&&'colocación'].filter(Boolean).join(' y ')}</b><b style="color:var(--ok,#1a7f37)">${money(gan+col+tm)}</b></div>`:''}
   </div>
   ${nota}${barrasDibMq(PB)}
@@ -1300,7 +1300,7 @@ async function pdfMq(prev){const R=calcMq(MQ.items);
   d.setFillColor(246,246,246);d.setDrawColor(226,226,226);d.setLineWidth(.3);d.roundedRect(X,by,bw,bh,2,2,'FD');d.setFillColor(...ROJO);d.rect(X,by+1.8,.9,bh-3.6,'F');
   d.circle(X+7,by+bh/2,2.8,'F');d.setDrawColor(255,255,255);d.setLineWidth(.6);d.line(X+5.7,by+bh/2,X+6.7,by+bh/2+1.1);d.line(X+6.7,by+bh/2+1.1,X+8.5,by+bh/2-1.2);
   d.setTextColor(...NEG);esp(tt,X+12.5,by+bh/2+1,.3)}
- if(tm){fila('Mosquiteros',R.total);fila('Toma de medidas',tm)}
+ if(tm){fila('Mosquiteros',R.total);fila('Toma de medidas y envío',tm)}
  fila(col?'Total sin colocación':'Total',T,!col);if(col){d.setFontSize(9.5);fila(MQ.dir?.trim()?d.splitTextToSize('Colocación en '+MQ.dir.trim(),120)[0]:'Colocación',col);fila('Total con colocación',T+col,true)}else fila('Colocación','No incluida');
  // términos y condiciones: cada sección es una lista de párrafos ('• ' = viñeta),
  // o, si lleva 'caja', un recuadro gris con datos [etiqueta, valor] en columnas
