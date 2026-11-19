@@ -1294,8 +1294,9 @@ async function pdfMq(prev){const R=calcMq(MQ.items);
 
  const fila=(t,v,neg)=>{if(neg){y+=1.5;d.setDrawColor(...NEG);d.setLineWidth(.4);d.line(112,y-4.8,W,y-4.8)}d.setFont('helvetica',neg?'bold':'normal');d.setFontSize(neg?11:9.5);d.setTextColor(...NEG);d.text(t,150,y,{align:'right'});d.text(typeof v=='string'?v:money(v),W-3,y,{align:'right'});y+=neg?7:6};
  y+=3;
- // a la izquierda de los totales: recuadro "toma de medidas y envío incluidos" con un tilde
- if(!MQ.sm&&!tm){const tt='TOMA DE MEDIDAS Y ENVÍO INCLUIDOS';d.setFont('helvetica','bold');d.setFontSize(8);const bw=d.getTextWidth(tt)+.3*(tt.length-1)+17,bh=9,by=y-5.8;
+ // a la izquierda de los totales: recuadro "toma de medidas y envío incluidos" con un tilde.
+ // Sale siempre que la toma de medidas va en el presupuesto, también cuando se cobra (el precio va en los totales de al lado).
+ if(!MQ.sm){const tt='TOMA DE MEDIDAS Y ENVÍO INCLUIDOS';d.setFont('helvetica','bold');d.setFontSize(8);const bw=d.getTextWidth(tt)+.3*(tt.length-1)+17,bh=9,by=y-5.8;
   d.setFillColor(246,246,246);d.setDrawColor(226,226,226);d.setLineWidth(.3);d.roundedRect(X,by,bw,bh,2,2,'FD');d.setFillColor(...ROJO);d.rect(X,by+1.8,.9,bh-3.6,'F');
   d.circle(X+7,by+bh/2,2.8,'F');d.setDrawColor(255,255,255);d.setLineWidth(.6);d.line(X+5.7,by+bh/2,X+6.7,by+bh/2+1.1);d.line(X+6.7,by+bh/2+1.1,X+8.5,by+bh/2-1.2);
   d.setTextColor(...NEG);esp(tt,X+12.5,by+bh/2+1,.3)}
