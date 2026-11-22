@@ -156,13 +156,14 @@ end $$;
 drop trigger if exists productos_nuevo on productos;
 create trigger productos_nuevo before insert or update of codigo, activo, borrado on productos
   for each row execute function tg_nuevo();
--- "Volvió a entrar" en el catálogo: cuándo el producto pasó de sin stock a tener stock (se muestra 7 días).
--- No cuenta el stock que vuelve al anular un presupuesto o rechazar/cambiar un pedido web.
+-- "Volvió a entrar" en el catálogo: cuándo entró mercadería (el stock subió por recepción o carga a mano,
+-- tuviera o no stock antes). Se muestra 7 días. No cuenta el stock que vuelve al anular un presupuesto
+-- o rechazar/cambiar un pedido web.
 alter table productos add column if not exists repuesto_ts timestamptz;
 grant select (repuesto_ts) on productos to anon;
 create or replace function public.tg_repuesto() returns trigger language plpgsql set search_path=public as $$
 begin
-  if coalesce(old.stock, 0) <= 0 and coalesce(new.stock, 0) > 0
+  if coalesce(new.stock, 0) > coalesce(old.stock, 0) and coalesce(new.stock, 0) > 0
      and current_query() !~* '(anular_presupuesto|estado_solicitud|cantidad_solicitud)' then
     new.repuesto_ts := now();
   end if;

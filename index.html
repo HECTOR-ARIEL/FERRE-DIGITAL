@@ -28,10 +28,10 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 /* colores del catálogo: rojo = subió, verde = bajó (hasta el próximo Excel), amarillo = nuevo (7 días) */
 .card.sube{border:2px solid #ff2d55;background:color-mix(in srgb,#ff2d55 9%,var(--c));box-shadow:0 0 6px #ff2d55,0 0 18px rgba(255,45,85,.55)}
 .card.baja{border:2px solid #22e07a;background:color-mix(in srgb,#22ff88 9%,var(--c));box-shadow:0 0 6px #22ff88,0 0 18px rgba(34,255,136,.5)}
-.card.nuevo{border:2px solid var(--t);box-shadow:0 0 0 1px var(--t) inset}.card .img .nvb{position:absolute;z-index:2;left:8px;top:8px;background:#111;color:#fff;border:1px solid #fff;font-size:12px;font-weight:900;letter-spacing:.06em;padding:4px 9px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.card.nuevo{border:2px solid #ffd900;background:color-mix(in srgb,#ffe600 12%,var(--c));box-shadow:0 0 6px #ffe600,0 0 18px rgba(255,230,0,.6)}.card .img .nvb{position:absolute;z-index:2;left:8px;top:8px;background:#111;color:#fff;border:1px solid #fff;font-size:12px;font-weight:900;letter-spacing:.06em;padding:4px 9px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
 /* ofertas: gana sobre los colores. Cinta arriba de la foto, precio de antes tachado y botón que late (solo si hay ofertas) */
-.card.oferta{border:2px solid #e10600;box-shadow:0 0 0 1px #e10600 inset}
-.card.oferta .img::before{content:"OFERTA";position:absolute;z-index:1;top:0;left:0;right:0;background:#e10600;color:#fff;font-size:12px;font-weight:900;letter-spacing:.15em;padding:4px 0;text-align:center}
+.card.oferta{border:2px solid #ff4d00;box-shadow:0 0 0 1px #ff8a00 inset}
+.card.oferta .img::before{content:"OFERTA";position:absolute;z-index:1;top:0;left:0;right:0;background:linear-gradient(90deg,#ff1f1f,#ff8a00);color:#fff;font-size:12px;font-weight:900;letter-spacing:.15em;padding:4px 0;text-align:center}
 .card .antes{font-size:13px;color:var(--m);text-decoration:line-through}
 /* Ofertas: cartel con el % de descuento sobre la foto y "Ahorrás $X" debajo del precio */
 .card .img .pct{position:absolute;z-index:2;right:8px;bottom:8px;background:#e00000;color:#fff;font-size:16px;font-weight:900;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
@@ -45,13 +45,13 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 .card .ultx{display:block;font-size:13px;font-weight:800;color:#b45f00}:root[data-theme=dark] .card .ultx{color:#ffb000}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .card .ultx{color:#ffb000}}.card.oferta .pr{color:#e00000}:root[data-theme=dark] .card.oferta .pr{color:#ff5a3c}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .card.oferta .pr{color:#ff5a3c}}
-.chips button.of{background:#e10600;color:#fff;border:0;font-weight:900;letter-spacing:.04em;animation:late 1.6s ease-in-out infinite}
+.chips button.of{background:linear-gradient(90deg,#ff1f1f,#ff8a00);color:#fff;border:0;font-weight:900;letter-spacing:.04em;animation:late 1.6s ease-in-out infinite}
 .chips button.of.on{outline:2px solid var(--t);outline-offset:2px}
 @keyframes late{0%,100%{box-shadow:0 0 0 0 rgba(255,60,0,.55)}50%{box-shadow:0 0 0 7px rgba(255,60,0,0)}}
 @media(prefers-reduced-motion:reduce){.chips button.of{animation:none}}
 .cl .of{color:#e00000;font-weight:700}
-/* NUEVOS: botón negro y borde negro (blanco en modo oscuro) con cartel "NUEVO" sobre la foto, 7 días */
-.chips button.nv{background:#111;color:#fff;border:2px solid #111;font-weight:900;letter-spacing:.04em}:root[data-theme=dark] .chips button.nv{border-color:#fff}
+/* NUEVOS: botón negro con amarillo; la tarjeta mantiene el neón amarillo y lleva el cartel "NUEVO" sobre la foto, 7 días */
+.chips button.nv{background:#111;color:#ffd900;border:2px solid #ffd900;font-weight:900;letter-spacing:.04em}
 .chips button.nv.on{outline:2px solid var(--t);outline-offset:2px}
 @media(max-width:600px){.chips button.nv .lg{display:none}}  /* en el teléfono dice solo "NUEVOS" */
 /* VOLVIÓ A ENTRAR: blanco con rojo. Botón, borde punteado y cartel sobre la foto durante 7 días desde que volvió a tener stock */
