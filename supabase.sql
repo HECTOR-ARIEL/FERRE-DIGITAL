@@ -191,6 +191,17 @@ insert into caja_config(id) values (1) on conflict (id) do nothing;
 -- "Vendido" en la Caja: fechas elegidas a mano (vacío = semana de sábado a viernes)
 alter table caja_config add column if not exists ven_desde date;
 alter table caja_config add column if not exists ven_hasta date;
+-- "Mercadería vendida sin reponer" = costo_vendido − compras. Si las compras pagadas pasan lo vendido a costo
+-- (el pedido trajo mercadería extra), queda en 0 y vuelve a contar desde ahí: lo extra es stock nuevo.
+create or replace function public.tg_compra_reponer() returns trigger language plpgsql security definer set search_path=public as $$
+begin
+  update caja_config set costo_vendido = greatest(costo_vendido,
+    coalesce((select sum(monto) from caja_mov where tipo = 'compra' and not coalesce(bulto, false)), 0)) where id = 1;
+  return null;
+end $$;
+drop trigger if exists compra_reponer on caja_mov;
+create trigger compra_reponer after insert or update on caja_mov for each row when (new.tipo = 'compra') execute function public.tg_compra_reponer();
+revoke execute on function public.tg_compra_reponer() from public, anon, authenticated;
 alter table caja_mov enable row level security;
 alter table caja_config enable row level security;
 drop policy if exists "admin caja_mov" on caja_mov;
