@@ -156,6 +156,21 @@ end $$;
 drop trigger if exists productos_nuevo on productos;
 create trigger productos_nuevo before insert or update of codigo, activo, borrado on productos
   for each row execute function tg_nuevo();
+-- "Volvió a entrar" en el catálogo: cuándo el producto pasó de sin stock a tener stock (se muestra 7 días).
+-- No cuenta el stock que vuelve al anular un presupuesto o rechazar/cambiar un pedido web.
+alter table productos add column if not exists repuesto_ts timestamptz;
+grant select (repuesto_ts) on productos to anon;
+create or replace function public.tg_repuesto() returns trigger language plpgsql set search_path=public as $$
+begin
+  if coalesce(old.stock, 0) <= 0 and coalesce(new.stock, 0) > 0
+     and current_query() !~* '(anular_presupuesto|estado_solicitud|cantidad_solicitud)' then
+    new.repuesto_ts := now();
+  end if;
+  return new;
+end $$;
+drop trigger if exists productos_repuesto on productos;
+create trigger productos_repuesto before update of stock on productos for each row execute function public.tg_repuesto();
+revoke execute on function public.tg_repuesto() from public, anon, authenticated;
 
 -- ===================== COMPRA POR CANTIDAD FIJA (PLATA A SEPARAR) =====================
 -- Productos que se compran de a muchas unidades (bulto de fichas, canillas de a 100…): no entran en el

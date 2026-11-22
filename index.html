@@ -28,10 +28,10 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 /* colores del catálogo: rojo = subió, verde = bajó (hasta el próximo Excel), amarillo = nuevo (7 días) */
 .card.sube{border:2px solid #ff2d55;background:color-mix(in srgb,#ff2d55 9%,var(--c));box-shadow:0 0 6px #ff2d55,0 0 18px rgba(255,45,85,.55)}
 .card.baja{border:2px solid #22e07a;background:color-mix(in srgb,#22ff88 9%,var(--c));box-shadow:0 0 6px #22ff88,0 0 18px rgba(34,255,136,.5)}
-.card.nuevo{border:2px solid #ffd900;background:color-mix(in srgb,#ffe600 12%,var(--c));box-shadow:0 0 6px #ffe600,0 0 18px rgba(255,230,0,.6)}
+.card.nuevo{border:2px solid var(--t);box-shadow:0 0 0 1px var(--t) inset}.card .img .nvb{position:absolute;z-index:2;left:8px;top:8px;background:#111;color:#fff;border:1px solid #fff;font-size:12px;font-weight:900;letter-spacing:.06em;padding:4px 9px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
 /* ofertas: gana sobre los colores. Cinta arriba de la foto, precio de antes tachado y botón que late (solo si hay ofertas) */
-.card.oferta{border:2px solid #ff4d00;box-shadow:0 0 0 1px #ff8a00 inset}
-.card.oferta .img::before{content:"OFERTA";position:absolute;z-index:1;top:0;left:0;right:0;background:linear-gradient(90deg,#ff1f1f,#ff8a00);color:#fff;font-size:12px;font-weight:900;letter-spacing:.15em;padding:4px 0;text-align:center}
+.card.oferta{border:2px solid #e10600;box-shadow:0 0 0 1px #e10600 inset}
+.card.oferta .img::before{content:"OFERTA";position:absolute;z-index:1;top:0;left:0;right:0;background:#e10600;color:#fff;font-size:12px;font-weight:900;letter-spacing:.15em;padding:4px 0;text-align:center}
 .card .antes{font-size:13px;color:var(--m);text-decoration:line-through}
 /* Ofertas: cartel con el % de descuento sobre la foto y "Ahorrás $X" debajo del precio */
 .card .img .pct{position:absolute;z-index:2;right:8px;bottom:8px;background:#e00000;color:#fff;font-size:16px;font-weight:900;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
@@ -45,19 +45,22 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 .card .ultx{display:block;font-size:13px;font-weight:800;color:#b45f00}:root[data-theme=dark] .card .ultx{color:#ffb000}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .card .ultx{color:#ffb000}}.card.oferta .pr{color:#e00000}:root[data-theme=dark] .card.oferta .pr{color:#ff5a3c}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .card.oferta .pr{color:#ff5a3c}}
-.chips button.of{background:linear-gradient(90deg,#ff1f1f,#ff8a00);color:#fff;border:0;font-weight:900;letter-spacing:.04em;animation:late 1.6s ease-in-out infinite}
+.chips button.of{background:#e10600;color:#fff;border:0;font-weight:900;letter-spacing:.04em;animation:late 1.6s ease-in-out infinite}
 .chips button.of.on{outline:2px solid var(--t);outline-offset:2px}
 @keyframes late{0%,100%{box-shadow:0 0 0 0 rgba(255,60,0,.55)}50%{box-shadow:0 0 0 7px rgba(255,60,0,0)}}
 @media(prefers-reduced-motion:reduce){.chips button.of{animation:none}}
-.franja{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;width:100%;margin:14px 0 0;padding:10px 14px;border:0;border-radius:10px;background:linear-gradient(90deg,#ff1f1f,#ff8a00);color:#fff;font-weight:800;font-size:15px;text-align:left;white-space:normal}
-.franja:hover{background:linear-gradient(90deg,#e81010,#f07a00)}.franja span{font-size:13px;background:#fff;color:#d40000;border-radius:99px;padding:4px 12px;white-space:nowrap}
 .cl .of{color:#e00000;font-weight:700}
-/* NUEVOS PRODUCTOS: botón y franja amarillos, solo si hay productos que aparecieron en los últimos 7 días */
-.chips button.nv{background:linear-gradient(90deg,#ffd900,#ffb300);color:#1a1a1a;border:0;font-weight:900;letter-spacing:.04em}
+/* NUEVOS: botón negro y borde negro (blanco en modo oscuro) con cartel "NUEVO" sobre la foto, 7 días */
+.chips button.nv{background:#111;color:#fff;border:2px solid #111;font-weight:900;letter-spacing:.04em}:root[data-theme=dark] .chips button.nv{border-color:#fff}
 .chips button.nv.on{outline:2px solid var(--t);outline-offset:2px}
 @media(max-width:600px){.chips button.nv .lg{display:none}}  /* en el teléfono dice solo "NUEVOS" */
-.franja.nv{background:linear-gradient(90deg,#ffd900,#ffb300);color:#1a1a1a}.franja.nv:hover{background:linear-gradient(90deg,#f2cc00,#f5a800)}.franja.nv span{color:#1a1a1a}
+/* VOLVIÓ A ENTRAR: blanco con rojo. Botón, borde punteado y cartel sobre la foto durante 7 días desde que volvió a tener stock */
+.card.vuelve{border:2px dashed #e10600}
+.card .img .vlv{position:absolute;z-index:2;left:8px;top:8px;background:#fff;color:#e10600;border:2px solid #e10600;font-size:12px;font-weight:900;padding:3px 8px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.card.oferta .img .vlv,.card.oferta .img .nvb{top:30px}
+.chips button.ve{background:#fff;color:#e10600;border:2px solid #e10600;font-weight:900;letter-spacing:.04em}.chips button.ve.on{outline:2px solid var(--t);outline-offset:2px}
 .sep{grid-column:1/-1;margin:18px 0 0;padding-top:14px;border-top:1px solid var(--b);font-size:15px;color:var(--m)}
+.sep.gt{color:var(--t);font-size:17px;font-weight:900}#g>.sep:first-child{margin-top:4px;border-top:0;padding-top:0}
 /* datos del negocio: franja negra al final del catálogo (y la misma información en la ventana "Info") */
 .pie{background:var(--neg);color:#f2f2f2;border-top:3px solid var(--a);margin-top:28px;padding:24px 40px 18px 16px}
 .pie .in{max-width:1100px;margin:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px 28px}
@@ -74,8 +77,6 @@ label{display:grid;gap:4px;font-size:13px;color:var(--m)}
 <div class="top"><div class="bus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
  <input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Nombre o código" aria-label="Buscar productos" oninput="busca()" onkeydown="if(event.key=='Enter')this.blur()">
  <button id="qx" type="button" hidden title="Borrar búsqueda" onclick="$('q').value='';busca();$('q').focus()">✕</button></div><span class="m" id="u"></span><div class="chips" id="chips" hidden></div></div>
-<button type="button" class="franja" id="franja" hidden onclick="eligeSec('of')"></button>
-<button type="button" class="franja nv" id="franjaNv" hidden onclick="eligeSec('nv')"></button>
 <div class="grid" id="g"><p class="m" style="grid-column:1/-1;text-align:center">Cargando catálogo…</p></div>
 <p id="mas" class="m" hidden style="text-align:center">Cargando más productos…</p>
 </main>
@@ -130,25 +131,30 @@ if(CFG.NOMBRE)document.title=CFG.NOMBRE+' · Catálogo';
 async function todos(q){let out=[];for(let i=0;;i+=1000){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out}}
 const pide=c=>()=>sb.from('productos').select(c).eq('activo',true).eq('borrado',false).not('codigo','is',null).neq('codigo','').order('nombre');
 async function load(){
- try{P=await todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts,oferta,precio_oferta')).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock')))}
+ try{P=await todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts,oferta,precio_oferta,repuesto_ts')).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts,oferta,precio_oferta'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo,marca,nuevo_ts'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id,minimo'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock,sector_id'))).catch(()=>todos(pide('id,codigo,nombre,precio,imagen,stock')))}
  catch(e){$('u').textContent='No se pudo cargar el catálogo.';$('g').innerHTML='';$('info').hidden=false;return}
  // en oferta: se vende al precio de oferta y se guarda el de antes para mostrarlo tachado
  for(const p of P)if(p.oferta&&p.precio_oferta!=null&&+p.precio_oferta>0){p.antes=+p.precio;p.precio=+p.precio_oferta;p.of=true}
  // nuevo: apareció en el catálogo hace menos de 7 días (después se apaga solo)
  for(const p of P)p.nv=!!p.nuevo_ts&&Date.now()-Date.parse(p.nuevo_ts)<7*864e5;
+ // Volvió a entrar: estaba sin stock y volvió a tener en los últimos 7 días (si es nuevo, se muestra como nuevo)
+ for(const p of P)p.ve=!p.nv&&p.stock>0&&!!p.repuesto_ts&&Date.now()-Date.parse(p.repuesto_ts)<7*864e5;
  const{data}=await sb.from('sectores').select('id,nombre').order('nombre');SEC=data||[];pintaChips();
  r();$('u').textContent=P.length+' productos';$('info').hidden=false;pintaCar()}
 // Últimas unidades: quedan 1 a 3 (si tiene compra mínima, solo si alcanza para la compra mínima)
 const ult=p=>p.precio>0&&p.stock>0&&p.stock<=3&&!(+p.minimo>p.stock);
-const color=p=>p.of?' oferta':p.marca=='sube'?' sube':p.marca=='baja'?' baja':p.nv?' nuevo':'';
+const color=p=>p.of?' oferta':p.marca=='sube'?' sube':p.marca=='baja'?' baja':p.nv?' nuevo':p.ve?' vuelve':'';
 function r(){const w=norm($('q').value).split(/\s+/).filter(Boolean);
- const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return(!sec||(sec=='of'?p.of:sec=='nv'?p.nv:p.sector_id==sec))&&w.every(x=>s.includes(x))});
- // Primero todo lo que tiene stock (en orden alfabético) y después lo que está sin stock
- F.sort((a,b)=>(b.stock>0)-(a.stock>0));const n1=F.findIndex(p=>!(p.stock>0));
- FL=F;pintaAbc($('abc'),F);if(P.length)$('u').textContent=$('q').value.trim()||sec?`${F.length} de ${P.length}`:P.length+' productos';
- $('g').innerHTML=F.slice(0,lim).map((p,i)=>(i&&i==n1?'<h3 class="sep">Sin stock por ahora</h3>':'')+`<article id="a${p.id}" class="card${p.stock>0?'':' agotado'}${color(p)}">
-  <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(nom(p))}">`:'Sin imagen'}${p.of&&p.antes>p.precio?`<span class="pct">−${Math.max(1,Math.round((p.antes-p.precio)/p.antes*100))} %</span>`:''}${ult(p)?`<span class="ult">¡Queda${p.stock>1?'n':''} ${fmt(p.stock)}!</span>`:''}</div>
-  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(nom(p))}</h2>${p.of?`<span class="antes">${money(p.antes)}</span>`:''}<span class="pr">${p.precio>0?money(p.precio):'Consultar precio'}</span>${p.of&&p.antes>p.precio?`<span class="ahorro">Ahorrás ${money(p.antes-p.precio)}</span>`:''}${ult(p)?'<span class="ultx">Últimas unidades</span>':p.precio>0&&p.stock>0?`<span class="stk">✔ ${fmt(p.stock)} disponibles</span>`:''}${p.minimo>0?`<span class="mn">Compra mínima: ${fmt(p.minimo)}</span>`:''}${!(p.precio>0)?'':p.stock>0?`<div class="add" id="k${p.id}">${ctrl(p.id)}</div>`:'<span class="sin">Sin stock</span>'}</div></article>`).join('')
+ const F=P.filter(p=>{const s=norm((p.codigo||'')+' '+p.nombre);return(!sec||(sec=='of'?p.of:sec=='nv'?p.nv:sec=='ve'?p.ve:p.sector_id==sec))&&w.every(x=>s.includes(x))});
+ // Al entrar (sin búsqueda ni sector): primero OFERTAS, después NUEVOS, después VOLVIÓ A ENTRAR y después el resto,
+ // cada grupo en orden alfabético. Lo que está sin stock va siempre al final.
+ const dest=!sec&&!w.length,gr=p=>!(p.stock>0)?5:!dest?4:p.of?1:p.nv?2:p.ve?3:4;
+ F.sort((a,b)=>gr(a)-gr(b));
+ const TIT={1:'🔥 Ofertas',2:'✨ Nuevos productos',3:'🚚 Volvió a entrar',4:'Todos los productos',5:'Sin stock por ahora'};
+ FL=F;FL0=Math.max(0,F.findIndex(p=>gr(p)>=4));pintaAbc($('abc'),F);if(P.length)$('u').textContent=$('q').value.trim()||sec?`${F.length} de ${P.length}`:P.length+' productos';
+ $('g').innerHTML=F.slice(0,lim).map((p,i)=>{const g=gr(p),g0=i?gr(F[i-1]):0;return(g!=g0&&(g<4||i>0)?`<h3 class="sep${g<4?' gt':''}">${TIT[g]}</h3>`:'')+`<article id="a${p.id}" class="card${p.stock>0?'':' agotado'}${color(p)}">
+  <div class="img">${p.imagen?`<img loading="lazy" src="${esc(p.imagen)}" alt="${esc(nom(p))}">`:'Sin imagen'}${p.of&&p.antes>p.precio?`<span class="pct">−${Math.max(1,Math.round((p.antes-p.precio)/p.antes*100))} %</span>`:''}${p.nv?'<span class="nvb">NUEVO</span>':''}${p.ve?'<span class="vlv">Volvió a entrar</span>':''}${ult(p)?`<span class="ult">¡Queda${p.stock>1?'n':''} ${fmt(p.stock)}!</span>`:''}</div>
+  <div class="b">${p.codigo?`<span class="cod">${esc(p.codigo)}</span>`:''}<h2>${esc(nom(p))}</h2>${p.of?`<span class="antes">${money(p.antes)}</span>`:''}<span class="pr">${p.precio>0?money(p.precio):'Consultar precio'}</span>${p.of&&p.antes>p.precio?`<span class="ahorro">Ahorrás ${money(p.antes-p.precio)}</span>`:''}${ult(p)?'<span class="ultx">Últimas unidades</span>':p.precio>0&&p.stock>0?`<span class="stk">✔ ${fmt(p.stock)} disponibles</span>`:''}${p.minimo>0?`<span class="mn">Compra mínima: ${fmt(p.minimo)}</span>`:''}${!(p.precio>0)?'':p.stock>0?`<div class="add" id="k${p.id}">${ctrl(p.id)}</div>`:'<span class="sin">Sin stock</span>'}</div></article>`}).join('')
   ||`<p class="m" style="grid-column:1/-1">${P.length?'No hay productos que coincidan con la búsqueda.':'Todavía no hay productos en el catálogo.'}</p>`;
  $('mas').hidden=F.length<=lim;masObs.unobserve($('mas'));masObs.observe($('mas'))}
 // Índice A-Z: la barra (el) salta al primer producto de la letra; ir(letra) hace el salto
@@ -159,21 +165,20 @@ function gestoAbc(el,ir){let ult='',t;const ver=document.createElement('div');ve
   ult=b.dataset.l;ver.textContent=ult;ver.hidden=false;clearTimeout(t);t=setTimeout(()=>ver.hidden=true,700);ir(ult)};
  el.addEventListener('pointerdown',e=>{ult='';el.setPointerCapture?.(e.pointerId);toca(e)});
  el.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType=='touch')toca(e)});el.addEventListener('pointerup',()=>ult='')}
-let FL=[],SEC=[],sec=null;
+let FL=[],FL0=0,SEC=[],sec=null;
 // Botones de sectores: solo los que tienen productos en el catálogo
-// OFERTAS va siempre primero y solo aparece si hay productos en oferta (con la franja que invita a entrar)
-// NUEVOS PRODUCTOS va al lado, en amarillo, y solo aparece si hay productos nuevos (7 días)
-function pintaChips(){const hay=new Set(P.map(p=>p.sector_id)),L=SEC.filter(x=>hay.has(x.id)),nOf=P.filter(p=>p.of).length,nNv=P.filter(p=>p.nv).length;if(sec=='of'?!nOf:sec=='nv'?!nNv:!L.some(x=>x.id==sec))sec=null;
- $('chips').innerHTML=(nOf?`<button type="button" class="of${sec=='of'?' on':''}" onclick="eligeSec('of')">🔥 OFERTAS (${nOf})</button>`:'')+(nNv?`<button type="button" class="nv${sec=='nv'?' on':''}" onclick="eligeSec('nv')">✨ NUEVOS<span class="lg"> PRODUCTOS</span> (${nNv})</button>`:'')+`<button type="button" class="${sec?'':'on'}" onclick="eligeSec(null)">Todos</button>`+L.map(x=>`<button type="button" class="${sec==x.id?'on':''}" onclick="eligeSec(${x.id})">${esc(x.nombre)}</button>`).join('');
- $('chips').hidden=!L.length&&!nOf&&!nNv;
- $('franjaNv').hidden=!nNv||sec=='nv';$('franjaNv').innerHTML=`✨ ¡Llegaron ${nNv} producto${nNv==1?'':'s'} nuevo${nNv==1?'':'s'}! <span>Ver nuevos ›</span>`;
- $('franja').hidden=!nOf||sec=='of';$('franja').innerHTML=`🔥 ¡Hay ${nOf} producto${nOf==1?'':'s'} en oferta! <span>Ver ofertas ›</span>`;hh()}
+// Botones: OFERTAS (rojo), NUEVOS (negro) y VOLVIÓ A ENTRAR (blanco con rojo); cada uno aparece solo si hay productos de ese tipo
+function pintaChips(){const hay=new Set(P.map(p=>p.sector_id)),L=SEC.filter(x=>hay.has(x.id)),nOf=P.filter(p=>p.of).length,nNv=P.filter(p=>p.nv).length,nVe=P.filter(p=>p.ve).length;if(sec=='of'?!nOf:sec=='nv'?!nNv:sec=='ve'?!nVe:!L.some(x=>x.id==sec))sec=null;
+ $('chips').innerHTML=(nOf?`<button type="button" class="of${sec=='of'?' on':''}" onclick="eligeSec('of')">🔥 OFERTAS (${nOf})</button>`:'')+(nNv?`<button type="button" class="nv${sec=='nv'?' on':''}" onclick="eligeSec('nv')">✨ NUEVOS<span class="lg"> PRODUCTOS</span> (${nNv})</button>`:'')+(nVe?`<button type="button" class="ve${sec=='ve'?' on':''}" onclick="eligeSec('ve')">🚚 VOLVIÓ A ENTRAR (${nVe})</button>`:'')+`<button type="button" class="${sec?'':'on'}" onclick="eligeSec(null)">Todos</button>`+L.map(x=>`<button type="button" class="${sec==x.id?'on':''}" onclick="eligeSec(${x.id})">${esc(x.nombre)}</button>`).join('');
+ $('chips').hidden=!L.length&&!nOf&&!nNv&&!nVe;
+ hh()}
 function eligeSec(id){sec=id;pintaChips();busca();$('chips').querySelector('.on')?.scrollIntoView({inline:'center',block:'nearest'})}
 // Buscar: muestra los resultados desde arriba y el contador de coincidencias
 function busca(){lim=48;r();$('qx').hidden=!$('q').value;if(scrollY>0)scrollTo(0,0)}
 // Altura de la cabecera, para que el buscador quede pegado justo debajo
 const hh=()=>{const d=document.documentElement.style;d.setProperty('--hh',document.querySelector('header').offsetHeight+'px');d.setProperty('--th',document.querySelector('.top').offsetHeight+8+'px')};hh();addEventListener('resize',hh);
-function irLetra(l){const i=FL.findIndex(p=>letra(p.nombre)==l);if(i<0)return;if(i>=lim){lim=i+48;r()}$('a'+FL[i].id)?.scrollIntoView({block:'start'})}
+// El índice A-Z salta a la lista general (no a las ofertas/nuevos de arriba)
+function irLetra(l){let i=FL.findIndex((p,k)=>k>=FL0&&letra(p.nombre)==l);if(i<0)i=FL.findIndex(p=>letra(p.nombre)==l);if(i<0)return;if(i>=lim){lim=i+48;r()}$('a'+FL[i].id)?.scrollIntoView({block:'start'})}
 gestoAbc($('abc'),irLetra);
 // Al acercarse al final se cargan más productos solos, sin botón
 const masObs=new IntersectionObserver(e=>{if(e[0].isIntersecting&&!$('mas').hidden){lim+=48;r()}},{rootMargin:'800px'});
