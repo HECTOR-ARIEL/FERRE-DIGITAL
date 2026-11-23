@@ -338,7 +338,7 @@ dialog{overflow:auto}
  <div class="r" style="justify-content:space-between;align-items:center;gap:8px"><b id="verp" style="font-size:14px"></b><button type="button" class="s" onclick="limpiaPrep()" style="padding:4px 10px;font-size:13px">Desmarcar todo</button></div>
  <div class="secl" id="verl" style="max-height:58vh;overflow:auto;gap:0"></div>
  <div id="vera"></div>
- <div class="acc"><button type="button" class="s" onclick="$('dver').close()">Cerrar</button><button type="button" class="s" onclick="descargar(VER)">Descargar PDF</button></div>
+ <div class="acc"><button type="button" class="s" onclick="$('dver').close()">Cerrar</button><button type="button" class="s" onclick="descargar(VER)">Descargar PDF</button><button type="button" onclick="compartir(VER)">Enviar por mensaje</button></div>
 </form></dialog>
 <dialog id="danu"><form method="dialog" onsubmit="return false">
  <h2 id="anut">Anular</h2>
@@ -862,9 +862,10 @@ function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=
 const nomPdf=p=>('presupuesto-'+p.id+(p.cliente?'-'+p.cliente:'')).normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\w-]+/g,'-').toLowerCase()+'.pdf';
 function descargar(p=ult){pdfDoc(p).save(nomPdf(p))}
 // En el teléfono abre el menú de compartir (WhatsApp, correo…) con el PDF adjunto
-async function compartir(){const f=new File([pdfDoc(ult).output('blob')],nomPdf(ult),{type:'application/pdf'});
- if(navigator.canShare?.({files:[f]}))try{await navigator.share({files:[f],title:'Presupuesto Nº '+ult.id})}catch{}
- else descargar()}
+// (también desde Historial: "Enviar por mensaje" con el presupuesto que se está viendo)
+async function compartir(p=ult){const f=new File([pdfDoc(p).output('blob')],nomPdf(p),{type:'application/pdf'});
+ if(navigator.canShare?.({files:[f]}))try{await navigator.share({files:[f],title:'Presupuesto Nº '+p.id})}catch{}
+ else descargar(p)}
 async function save(){const tel0=$('cltel').value.trim()||W.find(x=>x.id==SOL)?.telefono||'',cl=cliFinal($('cl').value.trim(),tel0);if(cl!=$('cl').value.trim())$('cl').value=cl;
  if(!L.length)return avisa('Añade productos al presupuesto.');
  if(L.some(l=>!(l.cantidad>=0)))return avisa('Revisa las cantidades: hay alguna que no es válida.');
