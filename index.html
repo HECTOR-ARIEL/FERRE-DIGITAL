@@ -17,6 +17,8 @@
 .step{display:flex;align-items:center;gap:4px}.step button{width:36px;height:36px;padding:0;flex:none;font-size:20px;line-height:1}
 .step input{flex:1;min-width:0;width:0;text-align:center;padding:7px 2px;font-weight:600}
 dialog{border:0;border-radius:12px;padding:0;width:min(560px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;background:var(--c);color:var(--t)}
+/* con una ventana abierta, la página de atrás no se mueve */
+dialog,dialog *{overscroll-behavior:contain}html:has(dialog[open]),body:has(dialog[open]){overflow:hidden}
 dialog::backdrop{background:rgba(0,0,0,.45)}dialog form,#cok{display:grid;gap:12px;padding:18px}dialog h2{margin:0;font-size:18px}
 .dh{display:flex;align-items:center;justify-content:space-between;gap:8px}.dh button{width:38px;height:38px;padding:0}
 label{display:grid;gap:4px;font-size:13px;color:var(--m)}

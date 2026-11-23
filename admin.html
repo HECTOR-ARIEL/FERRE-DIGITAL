@@ -18,6 +18,8 @@ th{font-size:12px;font-weight:600;color:var(--m);text-transform:uppercase;letter
 .gtip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0 2px}.gtip button{flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-width:0;padding:8px 10px;text-align:left}.gtip button.on{outline:2px solid var(--t)}.gtip .m{font-size:12px}.gtip b{font-size:17px;font-weight:600}@media(max-width:600px){.gtip{grid-template-columns:1fr;gap:6px}.gtip button{flex-direction:row;justify-content:space-between;align-items:center;padding:9px 12px}.gtip .m{font-size:14px}.gtip b{font-size:16px}}
 .secl{display:grid;gap:8px}.secl .r{flex-wrap:nowrap}.secl .r>input{min-width:0;width:0;flex:1 1 0}#dsec form{grid-template-columns:minmax(0,1fr)}.secl .m{font-size:13px;white-space:nowrap}.mini{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mini input{width:90px}
 dialog{border:0;border-radius:12px;padding:0;width:min(580px,calc(100% - 24px));max-height:calc(100% - 24px);background:var(--c);color:var(--t)}
+/* con una ventana abierta, la página de atrás no se mueve: al llegar al final de la ventana el desplazamiento no pasa atrás */
+dialog,dialog *{overscroll-behavior:contain}html:has(dialog[open]),body:has(dialog[open]){overflow:hidden}
 dialog::backdrop{background:rgba(0,0,0,.45)}dialog form{display:grid;gap:12px;padding:18px}dialog h2{margin:0;font-size:18px}
 .foto{display:flex;gap:14px;align-items:center}.foto .th{width:110px;height:110px}.foto>div{display:grid;gap:8px}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.chk{display:flex;gap:8px;align-items:center;color:var(--t);font-size:15px}.chk input{width:auto}
