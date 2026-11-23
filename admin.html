@@ -862,21 +862,18 @@ function pdfDoc(p){const{jsPDF}=window.jspdf,d=new jsPDF(),ROJO=[189,23,23],NEG=
 const nomPdf=p=>('presupuesto-'+p.id+(p.cliente?'-'+p.cliente:'')).normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\w-]+/g,'-').toLowerCase()+'.pdf';
 function descargar(p=ult){pdfDoc(p).save(nomPdf(p))}
 // En el teléfono abre el menú de compartir (WhatsApp, correo…) con el PDF adjunto
-// "Enviar por WhatsApp": sube el PDF (link público con nombre al azar) y abre WhatsApp directo en el chat del cliente,
-// con el mensaje ya escrito. El teléfono sale de Clientes o del pedido web; si no está, se pide y se guarda en el cliente.
+// "Enviar por WhatsApp": manda el PDF adjunto (no un link) con el mensaje ya escrito.
+// En el teléfono abre el menú de compartir: se elige WhatsApp Business y el cliente. WhatsApp no deja adjuntar
+// un archivo abriendo el chat directo, por eso el contacto se elige ahí. Se hace sin esperas antes de abrir el menú
+// (si tarda, el teléfono lo bloquea).
+// En la computadora: descarga el PDF y abre el chat del cliente (teléfono de Clientes o del pedido web) para adjuntarlo.
 async function telPres(p){const c=CLI.find(x=>norm(x.nombre)==norm(p.cliente||''));if(c?.telefono)return c.telefono;
  const{data}=await sb.from('solicitudes').select('telefono').eq('presupuesto_id',p.id).not('telefono','is',null).limit(1);return data?.[0]?.telefono||''}
 async function enviarWa(p=ult){if(!p)return;
- try{let tel=await telPres(p);
-  if(!waNum(tel)){tel=((await pide(`Teléfono de ${p.cliente||'el cliente'} para WhatsApp (se guarda en el cliente):`))||'').trim();if(!waNum(tel))return;
-   if(p.cliente)await asegCli(p.cliente,tel)}
-  toast('Preparando el PDF…');
-  const ruta=`${crypto.randomUUID()}/${nomPdf(p)}`;
-  const{error}=await sb.storage.from('presupuestos').upload(ruta,pdfDoc(p).output('blob'),{contentType:'application/pdf'});if(error)throw error;
-  const url=sb.storage.from('presupuestos').getPublicUrl(ruta).data.publicUrl,nombre=(p.cliente||'').split(/[\s/]+/)[0];
-  const txt=`Hola${nombre?' '+nombre:''}, te paso el presupuesto Nº ${p.id} por ${money(p.total)}:\n${url}\n\n${CFG.NOMBRE||''}`.trim();
-  // se abre al tocar "Aceptar" (si se abre solo después de subir el PDF, el teléfono lo bloquea)
-  if(await confirma(`Listo: el presupuesto Nº ${p.id} está preparado.\n¿Abrir WhatsApp con ${p.cliente||tel}?`))open(`https://wa.me/${waNum(tel)}?text=${encodeURIComponent(txt)}`,'_blank')}
+ try{const nombre=(p.cliente||'').split(/[\s/]+/)[0],txt=`Hola${nombre?' '+nombre:''}, te paso el presupuesto Nº ${p.id} por ${money(p.total)}.\n${CFG.NOMBRE||''}`.trim();
+  const f=new File([pdfDoc(p).output('blob')],nomPdf(p),{type:'application/pdf'});
+  if(navigator.canShare?.({files:[f]})){try{await navigator.share({files:[f],text:txt,title:'Presupuesto Nº '+p.id})}catch(e){if(e.name!='AbortError')throw e}return}
+  descargar(p);const tel=await telPres(p);if(waNum(tel))open(`https://wa.me/${waNum(tel)}?text=${encodeURIComponent(txt)}`,'_blank')}
  catch(e){avisa(msg(e))}}
 // (también desde Historial: compartir el PDF con el menú del teléfono)
 async function compartir(p=ult){const f=new File([pdfDoc(p).output('blob')],nomPdf(p),{type:'application/pdf'});

@@ -197,8 +197,8 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 - Plan B: en supabase.com > Authentication > Users, en tu usuario puedes enviarte el link ("Send password recovery") o cambiar la contraseña.
 
 ## Enviar presupuesto por WhatsApp
-- Al generar un presupuesto y en **Historial** (al abrir uno) está el botón **Enviar por WhatsApp**: sube el PDF (link con nombre al azar, en el almacenamiento `presupuestos` de Supabase) y abre WhatsApp directo en el chat del cliente con el mensaje listo ("Hola X, te paso el presupuesto Nº … por $…: link"). Solo hay que tocar enviar.
-- El teléfono sale de **Clientes** o del pedido web. Si no lo tiene, lo pide y lo guarda en el cliente.
+- Al generar un presupuesto y en **Historial** (al abrir uno) está el botón **Enviar por WhatsApp**: en el teléfono abre el menú de compartir con **el PDF adjunto** y el mensaje escrito ("Hola X, te paso el presupuesto Nº … por $…"); se elige WhatsApp Business y el cliente. WhatsApp no permite adjuntar un archivo abriendo el chat directo (solo con su API paga), por eso el contacto se elige en el menú.
+- En la computadora descarga el PDF y abre el chat del cliente (teléfono de **Clientes** o del pedido web) para adjuntarlo a mano.
 - **Compartir…** sigue abriendo el menú del teléfono con el PDF adjunto.
 
 ## Compra mínima (catálogo)
