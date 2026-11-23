@@ -196,6 +196,11 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 - El link vence en 1 hora y sirve una sola vez. Supabase gratis permite pocos emails por hora: si dice "espera unos minutos", espera.
 - Plan B: en supabase.com > Authentication > Users, en tu usuario puedes enviarte el link ("Send password recovery") o cambiar la contraseña.
 
+## Enviar presupuesto por WhatsApp
+- Al generar un presupuesto y en **Historial** (al abrir uno) está el botón **Enviar por WhatsApp**: sube el PDF (link con nombre al azar, en el almacenamiento `presupuestos` de Supabase) y abre WhatsApp directo en el chat del cliente con el mensaje listo ("Hola X, te paso el presupuesto Nº … por $…: link"). Solo hay que tocar enviar.
+- El teléfono sale de **Clientes** o del pedido web. Si no lo tiene, lo pide y lo guarda en el cliente.
+- **Compartir…** sigue abriendo el menú del teléfono con el PDF adjunto.
+
 ## Compra mínima (catálogo)
 - En el catálogo ya no se ve la leyenda del proveedor "(MINIMO 12 UNIDADES)", "MIN 10", "(CAJA CERRADA 50 UNID)"…: el cliente ve el nombre limpio. En el panel y en el pedido al proveedor la descripción sigue completa.
 - Cada producto tiene **Compra mínima** en su ficha: vacío = se vende por unidad; con número, el catálogo muestra "Compra mínima: X" y el carrito no deja pedir menos (al tocar "Agregar" pone directamente ese mínimo). Además se vende **de a esa cantidad**: "+" y "−" suman o restan de a 10, de a 6…, y si el cliente escribe un número que no es múltiplo (por ejemplo 15 con mínimo 10) se sube al siguiente (20). La base de datos hace lo mismo al recibir el pedido.
