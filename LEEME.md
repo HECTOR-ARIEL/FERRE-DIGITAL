@@ -227,7 +227,8 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 - **Cambiar el precio a mano** (en Productos > editar) también pinta: rojo si el precio de venta subió, verde si bajó (cambios de menos del 0,5 % no cuentan). Vale cambiando el costo, la ganancia o escribiendo directamente el precio de venta (el porcentaje se recalcula solo y el costo no se toca). Dura hasta el próximo Excel.
 
 ## Caja: "Plata que entró esta semana"
-- Suma toda la plata que entró de sábado a viernes (los "Entró plata", también cuando un cliente paga una deuda). Lo fiado no suma hasta que lo pagan.
+- "Después de compras y gastos" **no resta el pago del pedido de la semana pasada**, porque es por lo vendido la semana anterior; se muestra aparte como "Pedido pagado (de lo vendido antes) · no se resta". Al cargar **Compré mercadería** con **Proveedor del Excel** aparece la tilde **"Es el pago del pedido de la semana pasada"** (viene marcada; se desmarca si es otra compra a ese proveedor). Sí resta las compras a Exult, Mi madre u Otro y los gastos. En Movimientos esa compra dice "· pedido de la semana pasada".
+- Suma toda la plata que entró de lunes a domingo (antes era de sábado a viernes; desde el 26/11/2026 la semana arranca el lunes, también en Movimientos "Esta semana") (los "Entró plata", también cuando un cliente paga una deuda). Lo fiado no suma hasta que lo pagan.
 - Tocando la casilla podés elegir las fechas a mano (desde / hasta). Se guarda y se ve igual en la PC y en el teléfono. Con "Volver a la semana normal" vuelve a contar sola cada sábado.
 
 ## Ofertas

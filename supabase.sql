@@ -200,6 +200,8 @@ create table if not exists caja_mov(
 -- Descuento al cobrar: no entra a la caja, pero baja la deuda del cliente (26/11/2026)
 alter table caja_mov add column if not exists descuento numeric not null default 0;
 alter table caja_mov add column if not exists descuento_pct numeric not null default 0;
+-- Compra que es el pago del pedido de la semana pasada: no se resta de "Plata que entró" de esta semana (26/11/2026)
+alter table caja_mov add column if not exists ped_ant boolean not null default false;
 -- costo_vendido: costo de lo vendido desde que existe la Caja (sin los productos con compra por cantidad).
 create table if not exists caja_config(
   id int primary key default 1 check (id = 1),

@@ -306,7 +306,7 @@ dialog{overflow:auto}
  <h2 id="cjt"></h2><datalist id="cjlis"></datalist>
  <label id="cjlcl">Cliente<input id="cjcl" list="cjlis" autocomplete="off" oninput="avisaCaja()"></label>
  <label id="cjlte">Teléfono (opcional)<input id="cjte" inputmode="tel" autocomplete="off"></label>
- <label id="cjlpr">Proveedor<select id="cjpr"><option>Proveedor del Excel</option><option>Exult</option><option>Mi madre</option><option>Otro</option></select></label>
+ <label id="cjlpr">Proveedor<select id="cjpr" onchange="verPedAnt()"><option>Proveedor del Excel</option><option>Exult</option><option>Mi madre</option><option>Otro</option></select></label>
  <label id="cjlga">Tipo de gasto<select id="cjga"><option>Gastos fijos</option><option>Automotor</option><option>Otros</option></select></label>
  <label id="cjlde">Aclaración (opcional)<input id="cjde" autocomplete="off"></label>
  <label><span id="cjmt">Monto</span><input id="cjm" inputmode="decimal" oninput="dscCalc('cj','m')"></label>
@@ -315,6 +315,7 @@ dialog{overflow:auto}
  <div id="cjlds"><label class="chk"><input type="checkbox" id="cjdsc" onchange="dscVer('cj')"> Se le hizo descuento</label>
  <div id="cjdsb" hidden><div class="g3"><label>Sobre (lo que debía)<input id="cjdsba" inputmode="decimal" oninput="dscCalc('cj','b')"></label><label>Descuento %<input id="cjdsp" inputmode="decimal" placeholder="Ej. 4" oninput="dscCalc('cj','p')"></label></div><p class="m" id="cjdsav" style="margin:0;font-size:14px"></p></div></div>
  <label id="cjlnv">Dejó a deber de esta compra (opcional)<input id="cjnv" inputmode="decimal" placeholder="0" oninput="avisaCaja()"></label>
+ <label class="chk" id="cjlpa"><input type="checkbox" id="cjpa"> Es el pago del pedido de la semana pasada (no se resta de lo que entró esta semana)</label>
  <label class="chk" id="cjlbu"><input type="checkbox" id="cjbu"> Es un bulto (se paga con la plata a separar)</label>
  <p class="m" id="cjav2" style="margin:0;font-size:14px"></p>
  <div class="acc"><button type="button" class="s" onclick="$('dcaja').close()">Cancelar</button><button id="cjok">Guardar</button></div>
@@ -324,7 +325,7 @@ dialog{overflow:auto}
  <h2>Plata que entró: elegir fechas</h2>
  <label>Desde<input type="date" id="vnde"></label>
  <label>Hasta (vacío = hasta hoy)<input type="date" id="vnha"></label>
- <p class="m" style="margin:0;font-size:14px">Si no elegís nada, cuenta solo la semana de sábado a viernes y arranca de nuevo cada sábado.</p>
+ <p class="m" style="margin:0;font-size:14px">Si no elegís nada, cuenta solo la semana de lunes a domingo y arranca de nuevo cada lunes.</p>
  <div class="acc"><button type="button" class="s" onclick="guardaVen(true)">Volver a la semana normal</button><button type="button" class="s" onclick="$('dven').close()">Cancelar</button><button>Guardar</button></div>
 </form></dialog>
 
@@ -1502,8 +1503,8 @@ function filCaja(b){CJF=b.dataset.f;CJG='';document.querySelectorAll('#cjfil but
 let CJ={mov:[],cfg:{divisor:1.3,costo_vendido:0},ok:false},CJT='';
 const CJTIT={cobro:'Entró plata',compra:'Compré mercadería',gasto:'Gasto',retiro:'Retiro',inicial:'Poner la caja en (0 = arrancar de cero)',deuda:'Cliente con deuda'};
 const CJNOM={cobro:'Entró plata',fiado:'Deuda',compra:'Compra',gasto:'Gasto',retiro:'Retiro',inicial:'Saldo inicial'};
-// semana de sábado a viernes
-const iniSemana=()=>{const d=new Date;d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+1)%7));return d};
+// semana de lunes a domingo (arranca cada lunes)
+const iniSemana=()=>{const d=new Date;d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d};
 const sumaCj=(k,f=()=>true)=>CJ.mov.filter(f).reduce((s,m)=>s+(+m[k]||0),0);
 function saldosCaja(){const M=new Map();for(const m of CJ.mov){if(!m.cliente)continue;const k=norm(m.cliente),x=M.get(k)||{nombre:m.cliente,saldo:0};x.saldo+=+m.deuda;M.set(k,x)}return[...M.values()].sort((a,b)=>b.saldo-a.saldo||a.nombre.localeCompare(b.nombre))}
 const saldoTxt=v=>v>.009?money(v):v<-.009?'A favor '+money(-v):'Al día';
@@ -1516,11 +1517,15 @@ async function cargaCaja(){$('cjav').hidden=true;
 function pintaCaja(){const cap=sumaCj('capital'),gan=sumaCj('ganancia'),D=saldosCaja(),deben=D.reduce((s,x)=>s+Math.max(0,x.saldo),0),comp=sumaCj('monto',m=>m.tipo=='compra'&&!m.bulto);
  const pend=Math.max(0,(+CJ.cfg.costo_vendido||0)-comp),bul=bultosCaja(),lib=cap-pend-bul;
  const dato=(t,v,neg,sub)=>`<div style="flex:1;min-width:150px;padding:12px;background:var(--c);border:1px solid var(--b);border-radius:10px"><div class="m" style="font-size:12px">${t}</div><div style="font-size:21px;font-weight:600${neg?';color:var(--no)':''}">${money(v)}</div>${sub?`<div class="m" style="font-size:11px">${sub}</div>`:''}</div>`;
- // Plata que entró esta semana (sábado a viernes): todos los cobros, también los pagos de deudas.
+ // Plata que entró esta semana (lunes a domingo): todos los cobros, también los pagos de deudas.
  // Lo fiado no suma hasta que lo pagan.
  // y abajo, lo que queda después de restar las compras de mercadería y los gastos de esas mismas fechas
- const RV=rangoVen(),MV=CJ.mov.filter(m=>{const f=new Date(m.fecha);return f>=RV.ini&&(!RV.fin||f<RV.fin)}),sumV=t=>MV.reduce((a,m)=>a+(m.tipo==t?(+m.monto||0):0),0),vendSem=sumV('cobro'),netoSem=vendSem-sumV('compra')-sumV('gasto');
- $('cjres').innerHTML=`<div class="r" style="margin-bottom:10px">${dato('Capital en caja',cap,cap<-.005)}${dato('Ganancia para retirar',gan,gan<-.005)}${dato('Te deben los clientes',deben)}<div onclick="abreVen()" title="Tocar para elegir las fechas" style="flex:1;min-width:150px;padding:12px;background:var(--c);border:1px solid var(--b);border-radius:10px;cursor:pointer"><div class="m" style="font-size:12px">${RV.manual?'Plata que entró (fechas elegidas)':'Plata que entró esta semana'}</div><div style="font-size:21px;font-weight:600">${money(vendSem)}</div><div style="font-size:12px;margin:2px 0">Después de compras y gastos: <b>${money(netoSem)}</b></div><div class="m" style="font-size:11px">${RV.txt} · <u>cambiar</u></div></div></div>`;
+ const RV=rangoVen(),MV=CJ.mov.filter(m=>{const f=new Date(m.fecha);return f>=RV.ini&&(!RV.fin||f<RV.fin)}),sumV=t=>MV.reduce((a,m)=>a+(m.tipo==t?(+m.monto||0):0),0),vendSem=sumV('cobro'),
+  // El pago del pedido de la semana pasada (compra con la tilde "pago del pedido de la semana pasada") es por lo que se vendió
+  // la semana anterior: no se resta de lo que entró esta semana, se muestra aparte
+  esPed=m=>m.tipo=='compra'&&!!m.ped_ant,pedSem=MV.reduce((a,m)=>a+(esPed(m)?(+m.monto||0):0),0),
+  netoSem=vendSem-(sumV('compra')-pedSem)-sumV('gasto');
+ $('cjres').innerHTML=`<div class="r" style="margin-bottom:10px">${dato('Capital en caja',cap,cap<-.005)}${dato('Ganancia para retirar',gan,gan<-.005)}${dato('Te deben los clientes',deben)}<div onclick="abreVen()" title="Tocar para elegir las fechas" style="flex:1;min-width:150px;padding:12px;background:var(--c);border:1px solid var(--b);border-radius:10px;cursor:pointer"><div class="m" style="font-size:12px">${RV.manual?'Plata que entró (fechas elegidas)':'Plata que entró esta semana'}</div><div style="font-size:21px;font-weight:600">${money(vendSem)}</div><div style="font-size:12px;margin:2px 0">Después de compras y gastos: <b>${money(netoSem)}</b></div>${pedSem>.009?`<div class="m" style="font-size:11px">Pedido pagado (de lo vendido antes): ${money(pedSem)} · no se resta</div>`:''}<div class="m" style="font-size:11px">${RV.txt} · <u>cambiar</u></div></div></div>`;
  const tot=Math.max(1,pend+bul+Math.max(0,lib)),fila=(n,t,v,c)=>`<div class="r" style="justify-content:space-between;flex-wrap:nowrap;font-size:15px;padding:3px 0"><span>${n}. ${t}</span><b style="white-space:nowrap${c?';color:var(--no)':''}">${money(v)}</b></div>`;
  $('cjcap').innerHTML=`<div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--bg);margin:10px 0"><div style="width:${pend/tot*100}%;background:var(--no)"></div><div style="width:${bul/tot*100}%;background:var(--m)"></div><div style="width:${Math.max(0,lib)/tot*100}%;background:var(--b)"></div></div>`
   +fila(1,'Mercadería vendida sin reponer',pend,pend>0)+fila(2,'Plata a separar para bultos',bul)+(lib<0?`<p class="falta" style="margin:6px 0 0">Faltan ${money(-lib)} de capital para cubrir todo esto.</p>`:fila(3,'Capital libre, de reserva',lib));
@@ -1534,13 +1539,16 @@ function pintaCaja(){const cap=sumaCj('capital'),gan=sumaCj('ganancia'),D=saldos
  const dsc=VS.reduce((a,m)=>a+(+m.descuento||0),0),dscS=dsc>.009?` · Descuentos ${money(dsc)}`:'';
  $('cjsem').textContent=CJF=='cobro'?`Entraron ${money(s('cobro'))}${dscS} · ${cu(V.length)}`:CJF=='compra'?`Compras de mercadería: ${money(s('compra'))} · ${cu(V.length)}`:CJF=='gasto'?(CJG?`${CJG} ${perTxt}: ${money(gt(CJG))} · ${cu(V.length)} · Toca de nuevo para ver todos`:`Gastos ${perTxt}: ${money(s('gasto'))} · ${cu(V.length)} · Toca un tipo para ver solo esos`):CJF=='fiado'?`Fiado ${money(sube)}${baja>.009?` · Anulado o corregido ${money(baja)}`:''} · Hoy te deben ${money(deben)}`:`Entró ${money(s('cobro'))} · Compras ${money(s('compra'))} · Gastos ${money(s('gasto'))}${gt('Automotor')>.009?` (automotor ${money(gt('Automotor'))})`:''} · Retiros ${money(s('retiro'))}${dscS}`;
  const efe=m=>[+m.capital?`Capital ${+m.capital>0?'+':'−'} ${money(Math.abs(m.capital))}`:'',+m.ganancia?`Ganancia ${+m.ganancia>0?'+':'−'} ${money(Math.abs(m.ganancia))}`:'',+m.deuda?`Deuda ${+m.deuda>0?'+':'−'} ${money(Math.abs(m.deuda))}`:'',dscTxt(m)].filter(Boolean).join(' · ');
- $('cjmov').innerHTML=N.map(m=>`<tr><td><div class="nom">${esc(CJNOM[m.tipo]||m.tipo)}${m.cliente?' · '+esc(m.cliente):''}${m.detalle?' · '+esc(m.detalle):''}${m.bulto?' · bulto':''}</div><div class="m" style="font-size:12px">${new Date(m.fecha).toLocaleDateString('es',{day:'2-digit',month:'2-digit'})} · ${efe(m)||money(m.monto)}</div></td><td class="n"><button class="s" title="Borrar movimiento" onclick="borraCaja(${m.id})">✕</button></td></tr>`).join('')
+ $('cjmov').innerHTML=N.map(m=>`<tr><td><div class="nom">${esc(CJNOM[m.tipo]||m.tipo)}${m.cliente?' · '+esc(m.cliente):''}${m.detalle?' · '+esc(m.detalle):''}${m.bulto?' · bulto':''}${m.ped_ant?' · pedido de la semana pasada':''}</div><div class="m" style="font-size:12px">${new Date(m.fecha).toLocaleDateString('es',{day:'2-digit',month:'2-digit'})} · ${efe(m)||money(m.monto)}</div></td><td class="n"><button class="s" title="Borrar movimiento" onclick="borraCaja(${m.id})">✕</button></td></tr>`).join('')
   ||`<tr><td class="m">${CJF||sem?'No hay movimientos de este tipo'+(sem?' '+perTxt+'.':'.'):'Todavía no hay movimientos.'}</td></tr>`;
  $('cjdiv').value=fmtIn(CJ.cfg.divisor)}
 function abreCaja(t){if(!CJ.ok)return avisa('La Caja todavía no está lista. Revisa el aviso de arriba.');CJT=t;$('cjt').textContent=CJTIT[t];
- const ver=(i,v)=>$(i).hidden=!v;ver('cjlcl',t=='cobro'||t=='deuda');ver('cjlte',t=='deuda');ver('cjlpr',t=='compra');ver('cjlga',t=='gasto');ver('cjlde',['compra','gasto'].includes(t));ver('cjlg2',t=='inicial');ver('cjlpd',t=='cobro');ver('cjlnv',t=='cobro');ver('cjlbu',t=='compra');ver('cjlds',t=='cobro');
+ const ver=(i,v)=>$(i).hidden=!v;ver('cjlcl',t=='cobro'||t=='deuda');ver('cjlte',t=='deuda');ver('cjlpr',t=='compra');ver('cjlga',t=='gasto');ver('cjlde',['compra','gasto'].includes(t));ver('cjlg2',t=='inicial');ver('cjlpd',t=='cobro');ver('cjlnv',t=='cobro');ver('cjlbu',t=='compra');ver('cjlds',t=='cobro');ver('cjlpa',false);
  $('cjmt').textContent=t=='inicial'?'Capital en caja':t=='cobro'?'Plata que entró':t=='deuda'?'Cuánto debe':'Monto';
- for(const i of['cjcl','cjte','cjde','cjm','cjm2','cjnv'])$(i).value='';$('cjpd').checked=$('cjbu').checked=false;$('cjpr').selectedIndex=$('cjga').selectedIndex=0;if(t=='inicial')$('cjm').value=$('cjm2').value='0';dscReset('cj');avisaCaja();$('dcaja').showModal()}
+ for(const i of['cjcl','cjte','cjde','cjm','cjm2','cjnv'])$(i).value='';$('cjpd').checked=$('cjbu').checked=false;$('cjpr').selectedIndex=$('cjga').selectedIndex=0;if(t=='inicial')$('cjm').value=$('cjm2').value='0';dscReset('cj');if(t=='compra')verPedAnt();avisaCaja();$('dcaja').showModal()}
+// "Pago del pedido de la semana pasada": aparece solo con "Proveedor del Excel" y viene marcado (es el pago semanal del pedido);
+// esa compra no se resta de "Plata que entró" de esta semana porque es por lo vendido la semana anterior
+function verPedAnt(){const on=CJT=='compra'&&$('cjpr').selectedIndex==0;$('cjlpa').hidden=!on;$('cjpa').checked=on}
 // Muestra cómo se va a repartir lo que se está cargando
 function avisaCaja(){let t='';const m=num($('cjm').value)||0,div=+CJ.cfg.divisor||1.3;
  if(CJT=='cobro'){if(m>0)t=`Capital ${money(m/div)} · Ganancia ${money(m-m/div)}`;
@@ -1569,7 +1577,7 @@ Lo que te deben los clientes no cambia. ¿Guardar?`))return;
   if(t=='gasto')o={tipo:'gasto',detalle:$('cjga').value+(de?': '+de:''),monto:m,ganancia:-m};
   else if(t=='retiro'){const gan=sumaCj('ganancia');if(m>gan&&!await confirma(`Hay ${money(gan)} de ganancia y vas a retirar ${money(m)}. ¿Guardar igual?`))return;o={tipo:'retiro',detalle:de||null,monto:m,ganancia:-m}}
   else{const cap=sumaCj('capital');if(m>cap&&!await confirma(`No alcanza el capital: hay ${money(cap)} y la compra es de ${money(m)}.\n\nLa ganancia no se toca: el capital va a quedar en ${money(cap-m)}. ¿Guardar igual?`))return;
-   o={tipo:'compra',detalle:$('cjpr').value+(de?': '+de:''),monto:m,capital:-m,bulto:$('cjbu').checked}}}
+   o={tipo:'compra',detalle:$('cjpr').value+(de?': '+de:''),monto:m,capital:-m,bulto:$('cjbu').checked,...(!$('cjlpa').hidden&&$('cjpa').checked?{ped_ant:true}:{})}}}
  await asegCli(cl,t=='deuda'?$('cjte').value.trim():null);const b=$('cjok');b.disabled=true;const{error}=await sb.from('caja_mov').insert(o);b.disabled=false;if(error)return avisa(msg(error));$('dcaja').close();toast('Guardado');cargaCaja()}
 // Ficha del cliente: lo que se le lleva suma a su saldo y lo que paga lo baja (y entra a la caja)
 let CJC='';
@@ -1628,11 +1636,11 @@ async function borraCaja(id){const m=CJ.mov.find(x=>x.id==id);if(!m||!await conf
 async function guardaDivisor(){const d=num($('cjdiv').value);if(!(d>=1)){$('cjdiv').value=fmtIn(CJ.cfg.divisor);return avisa('Esta casilla es el divisor (cómo se separa capital y ganancia), no el saldo. Tiene que ser 1 o más, por ejemplo 1,3.\n\nPara poner la caja en 0 usa el botón "Poner la caja en 0".')}
  const{error}=await sb.from('caja_config').update({divisor:d}).eq('id',1);if(error)return avisa(msg(error));CJ.cfg.divisor=d;toast('Guardado. Se aplica desde ahora; lo ya cargado no cambia.')}
 
-// Vendido: por defecto la semana de sábado a viernes. Si elegiste fechas a mano (se guardan en Supabase,
+// Vendido: por defecto la semana de lunes a domingo. Si elegiste fechas a mano (se guardan en Supabase,
 // así se ven igual en la PC y en el teléfono), cuenta desde-hasta (el día "hasta" entero).
 const diaTxt=d=>d.toLocaleDateString('es',{day:'2-digit',month:'2-digit'}),aFecha=s=>new Date(s+'T00:00:00');
 function rangoVen(){const de=CJ.cfg.ven_desde,ha=CJ.cfg.ven_hasta;
- if(!de){const i=iniSemana();return{ini:i,fin:null,manual:false,txt:'desde el sábado '+diaTxt(i)}}
+ if(!de){const i=iniSemana();return{ini:i,fin:null,manual:false,txt:'desde el lunes '+diaTxt(i)}}
  const i=aFecha(de),f=ha?aFecha(ha):null;if(f)f.setDate(f.getDate()+1);
  return{ini:i,fin:f,manual:true,txt:ha?`del ${diaTxt(i)} al ${diaTxt(aFecha(ha))}`:`desde el ${diaTxt(i)} hasta hoy`}}
 const isoDia=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1641,7 +1649,7 @@ async function guardaVen(auto){const de=auto?null:$('vnde').value||null,ha=auto?
  if(!auto&&!de)return avisa('Elegí desde qué día contar.');if(de&&ha&&ha<de)return avisa('La fecha "hasta" no puede ser antes que "desde".');
  const{error}=await sb.from('caja_config').update({ven_desde:de,ven_hasta:ha}).eq('id',1);
  if(error)return avisa(/ven_/.test(msg(error))?'Falta actualizar la base de datos: ejecuta otra vez el archivo supabase.sql en Supabase (SQL Editor > Run).':msg(error));
- CJ.cfg.ven_desde=de;CJ.cfg.ven_hasta=ha;$('dven').close();pintaCaja();toast(auto?'Vuelve a contar la semana de sábado a viernes':'Fechas guardadas')}
+ CJ.cfg.ven_desde=de;CJ.cfg.ven_hasta=ha;$('dven').close();pintaCaja();toast(auto?'Vuelve a contar la semana de lunes a domingo':'Fechas guardadas')}
 
 /* ---------- copia de seguridad ---------- */
 // Descarga un Excel con todo lo guardado en Supabase, una hoja por tabla.
