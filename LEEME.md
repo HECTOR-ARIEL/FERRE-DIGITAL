@@ -200,6 +200,7 @@ Cotizador de mosquiteros corredizos de una hoja (Módena, A30, A40, Rotonda, Her
 - Al generar un presupuesto y en **Historial** (al abrir uno) está el botón **Enviar por WhatsApp**: en el teléfono abre el menú de compartir con **el PDF adjunto** y el mensaje escrito ("Hola X, te paso el presupuesto Nº … por $…"); se elige WhatsApp Business y el cliente. WhatsApp no permite adjuntar un archivo abriendo el chat directo (solo con su API paga), por eso el contacto se elige en el menú.
 - En la computadora descarga el PDF y abre el chat del cliente (teléfono de **Clientes** o del pedido web) para adjuntarlo a mano.
 - **Compartir…** sigue abriendo el menú del teléfono con el PDF adjunto.
+- **Mosquiteros:** en la lista de presupuestos guardados, cada uno tiene el botón **WhatsApp** (entre "Costo total" y ✕): manda el PDF de ese presupuesto adjunto, con el mensaje escrito, sin abrirlo. Si los precios cambiaron desde que se guardó, avisa que hay que abrirlo y generar el PDF de nuevo.
 
 ## Compra mínima (catálogo)
 - En el catálogo ya no se ve la leyenda del proveedor "(MINIMO 12 UNIDADES)", "MIN 10", "(CAJA CERRADA 50 UNID)"…: el cliente ve el nombre limpio. En el panel y en el pedido al proveedor la descripción sigue completa.
