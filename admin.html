@@ -283,6 +283,9 @@ dialog{overflow:auto}
  <button type="button" onclick="pagoCaja('todo')">Pagó todo</button>
  <div id="pgcli"><div class="g3" style="align-items:end"><label style="grid-column:span 2">Pagó una parte<input id="pgm" inputmode="decimal" placeholder="Cuánto pagó"></label><button type="button" class="s" onclick="pagoCaja('parte')">Guardar</button></div>
   <button type="button" class="s" style="width:100%;margin-top:10px" onclick="pagoCaja('debe')">Queda a deber todo</button></div>
+ <label class="chk"><input type="checkbox" id="pgdsc" onchange="dscVer('pg')"> Se le hizo descuento</label>
+ <div id="pgdsb" hidden><div class="g3"><label>Sobre (lo que debía)<input id="pgdsba" inputmode="decimal" oninput="dscCalc('pg','b')"></label><label>Descuento %<input id="pgdsp" inputmode="decimal" placeholder="Ej. 4" oninput="dscCalc('pg','p')"></label><label>Pagó<input id="pgdm" inputmode="decimal" oninput="dscCalc('pg','m')"></label></div><p class="m" id="pgdsav" style="margin:0;font-size:14px"></p></div>
+ <div id="pgdok" hidden><button type="button" style="width:100%" onclick="pagoCaja('desc')">Guardar pago con descuento</button></div>
  <div class="acc"><button type="button" class="s" onclick="$('dpago').close()">No cargar en Caja</button></div>
 </form></dialog>
 
@@ -290,7 +293,9 @@ dialog{overflow:auto}
  <div class="r" style="justify-content:space-between;align-items:center;flex-wrap:nowrap"><h2 id="clt" style="margin:0"></h2><button type="button" class="s" onclick="renombraCli(CJC)">✎ Editar nombre</button></div>
  <div class="r" style="align-items:flex-end"><label style="flex:1;min-width:180px">Teléfono<input id="clte" inputmode="tel" autocomplete="off" placeholder="351…"></label><button type="button" class="s" onclick="guardaTelCli()">Guardar teléfono</button></div>
  <div style="font-size:22px"><span class="m" style="font-size:14px">Saldo:</span> <b id="clsal"></b></div>
- <div class="g3"><label>Le llevamos (sin presupuesto)<input id="clle" inputmode="decimal" placeholder="0" oninput="pintaCli()"></label><label>Pagó<input id="clpa" inputmode="decimal" placeholder="0" oninput="pintaCli()"></label><label>Aclaración (opcional)<input id="clde" autocomplete="off"></label></div>
+ <div class="g3"><label>Le llevamos (sin presupuesto)<input id="clle" inputmode="decimal" placeholder="0" oninput="pintaCli()"></label><label>Pagó<input id="clpa" inputmode="decimal" placeholder="0" oninput="dscCalc('cl','m')"></label><label>Aclaración (opcional)<input id="clde" autocomplete="off"></label></div>
+ <label class="chk"><input type="checkbox" id="cldsc" onchange="dscVer('cl')"> Se le hizo descuento</label>
+ <div id="cldsb" hidden><div class="g3"><label>Sobre (lo que debía)<input id="cldsba" inputmode="decimal" oninput="dscCalc('cl','b')"></label><label>Descuento %<input id="cldsp" inputmode="decimal" placeholder="Ej. 4" oninput="dscCalc('cl','p')"></label></div><p class="m" id="cldsav" style="margin:0;font-size:14px"></p></div>
  <p class="m" id="clnv" style="margin:0;font-size:14px"></p>
  <div class="acc"><button type="button" class="danger" style="margin-right:auto" onclick="borraCli()">Eliminar cliente</button><button type="button" class="s" onclick="$('dcli').close()">Cerrar</button><button id="clok">Guardar</button></div>
  <div class="r" style="align-items:flex-end"><label style="flex:1;min-width:180px">Corregir saldo a<input id="claj" inputmode="decimal" placeholder="Cuánto debe en realidad"></label><button type="button" class="s" onclick="ajustaCli()">Corregir</button></div>
@@ -304,9 +309,11 @@ dialog{overflow:auto}
  <label id="cjlpr">Proveedor<select id="cjpr"><option>Proveedor del Excel</option><option>Exult</option><option>Mi madre</option><option>Otro</option></select></label>
  <label id="cjlga">Tipo de gasto<select id="cjga"><option>Gastos fijos</option><option>Automotor</option><option>Otros</option></select></label>
  <label id="cjlde">Aclaración (opcional)<input id="cjde" autocomplete="off"></label>
- <label><span id="cjmt">Monto</span><input id="cjm" inputmode="decimal" oninput="avisaCaja()"></label>
+ <label><span id="cjmt">Monto</span><input id="cjm" inputmode="decimal" oninput="dscCalc('cj','m')"></label>
  <label id="cjlg2">Ganancia para retirar<input id="cjm2" inputmode="decimal"></label>
  <label class="chk" id="cjlpd"><input type="checkbox" id="cjpd" onchange="avisaCaja()"> Es pago de una deuda anterior</label>
+ <div id="cjlds"><label class="chk"><input type="checkbox" id="cjdsc" onchange="dscVer('cj')"> Se le hizo descuento</label>
+ <div id="cjdsb" hidden><div class="g3"><label>Sobre (lo que debía)<input id="cjdsba" inputmode="decimal" oninput="dscCalc('cj','b')"></label><label>Descuento %<input id="cjdsp" inputmode="decimal" placeholder="Ej. 4" oninput="dscCalc('cj','p')"></label></div><p class="m" id="cjdsav" style="margin:0;font-size:14px"></p></div></div>
  <label id="cjlnv">Dejó a deber de esta compra (opcional)<input id="cjnv" inputmode="decimal" placeholder="0" oninput="avisaCaja()"></label>
  <label class="chk" id="cjlbu"><input type="checkbox" id="cjbu"> Es un bulto (se paga con la plata a separar)</label>
  <p class="m" id="cjav2" style="margin:0;font-size:14px"></p>
@@ -1448,13 +1455,41 @@ function pintaLCl(){if($('lcl').hidden)return;const t=LCLT?'':norm($('cl').value
 function eligeCl(i){const c=LCLV[i];$('cl').value=c.nombre;$('cltel').value=c.tel||'';cierraLCl();guardaBorrador();pintaClH()}
 document.addEventListener('pointerdown',e=>{const l=$('lcl');if(l&&!l.hidden&&!e.target.closest('#lcl,#cl,#lclb'))cierraLCl()});
 document.addEventListener('keydown',e=>{if(e.key=='Escape')cierraLCl()});
+// Descuento al cobrar: "Sobre" es lo que debía, el % y lo que pagó se calculan entre sí.
+// El descuento no entra a la caja, pero baja la deuda del cliente (así no figura que falta plata).
+const DSCP={pg:'pgdm',cj:'cjm',cl:'clpa'};
+function dscBase(q){return q=='pg'?PAGO.total:q=='cl'?saldoCli()+(num($('clle').value)||0):(saldosCaja().find(x=>norm(x.nombre)==norm($('cjcl').value.trim()))?.saldo)||0}
+function dscReset(q){DSCS[q]='';$(q+'dsc').checked=false;for(const k of['dsba','dsp'])$(q+k).value='';if(q=='pg')$('pgdm').value='';dscVer(q)}
+function dscVer(q){const on=$(q+'dsc').checked;$(q+'dsb').hidden=!on;if(q=='pg'){$('pgdok').hidden=!on}
+ if(on&&!(num($(q+'dsba').value)>0)){const b=dscBase(q);if(b>0)$(q+'dsba').value=fmtIn(red(b,2))}
+ if(on&&q=='cj'&&dscBase('cj')>0)$('cjpd').checked=true;
+ if(on)$(q+'dsp').focus();dscCalc(q,'x')}
+// Devuelve {d: plata descontada, p: %} o null si no hay descuento
+// DSCS: qué se escribió último (m = lo que pagó, p = el %); el otro se calcula
+const DSCS={};
+function dscVal(q){if(!$(q+'dsc').checked)return null;const b=num($(q+'dsba').value)||0,p=num($(q+'dsp').value)||0,m=num($(DSCP[q]).value);
+ if(DSCS[q]=='m'&&b>0&&m!=null&&m<b){const d=red(b-m,2);return{d,p:red(d/b*100,2),b}}
+ return b>0&&p>0?{d:red(b*p/100,2),p:red(p,2),b}:null}
+function dscCalc(q,k){const pa=$(DSCP[q]);
+ if($(q+'dsc').checked){const b=num($(q+'dsba').value)||0;
+  if(k=='m'||k=='p')DSCS[q]=k;
+  if(k=='m'||k=='b'&&DSCS[q]=='m'){const m=num(pa.value);if(b>0&&m!=null&&m<=b)$(q+'dsp').value=fmtIn(red((1-m/b)*100,2))}
+  else if(k=='p'||k=='b'){const p=num($(q+'dsp').value);if(b>0&&p!=null)pa.value=fmtIn(red(b*(1-p/100),2))}
+  const v=dscVal(q),m=num(pa.value)||0;$(q+'dsav').textContent=v?`Descuento ${fmtIn(v.p)} % = ${money(v.d)} · Pagó ${money(m)}`+(v.b-v.d-m>.009?` · Queda debiendo ${money(v.b-v.d-m)}`:''):'Escribe el % o cuánto pagó.'}
+ if(q=='cj')avisaCaja();if(q=='cl')pintaCli()}
+const dscTxt=m=>+m.descuento>0?`Descuento ${+m.descuento_pct?fmtIn(m.descuento_pct)+' % ':''}− ${money(m.descuento)}`:'';
+const dscObj=v=>v?{descuento:v.d,descuento_pct:v.p}:{};
 // Después de generar el presupuesto: la venta pasa a la Caja y a la ficha del cliente
 function abrePago(id,cl,total,tel){if(!CLI_OK||!(total>0))return;PAGO={id,cl,total,tel};
- $('pgt').textContent=`Presupuesto Nº ${id}${cl?' · '+cl:''} · Total ${money(total)}`;$('pgcli').hidden=!cl;$('pgm').value='';$('dpago').showModal()}
-async function pagoCaja(k){const{id,cl,total,tel}=PAGO,m=k=='todo'?total:k=='debe'?0:num($('pgm').value)||0;
+ $('pgt').textContent=`Presupuesto Nº ${id}${cl?' · '+cl:''} · Total ${money(total)}`;$('pgcli').hidden=!cl;$('pgm').value='';dscReset('pg');$('dpago').showModal()}
+async function pagoCaja(k){const{id,cl,total,tel}=PAGO,m=k=='todo'?total:k=='debe'?0:k=='desc'?num($('pgdm').value)||0:num($('pgm').value)||0;
  if(k=='parte'&&!(m>0&&m<total))return avisa(`Escribe cuánto pagó: menos de ${money(total)}.`);
+ const v=k=='desc'?dscVal('pg'):null;
+ if(k=='desc'){if(!v||v.p>=100)return avisa('Escribe el % de descuento (menos de 100) o cuánto pagó.');if(!(m>0))return avisa('Escribe cuánto pagó.');
+  if(m+v.d>total+.009)return avisa(`Con el descuento de ${money(v.d)} tenía que pagar ${money(total-v.d)}. Revisa lo que pagó.`);
+  if(total-v.d-m>.009&&!cl)return avisa('Le queda saldo por pagar: el presupuesto necesita un cliente para llevar la deuda.')}
  const{data:cf}=await sb.from('caja_config').select('divisor').eq('id',1).maybeSingle(),c=m/(+cf?.divisor||1.3),det='Presupuesto Nº '+id;
- const o=m>0?{tipo:'cobro',cliente:cl||null,detalle:det,monto:m,capital:c,ganancia:m-c,deuda:total-m}:{tipo:'fiado',cliente:cl,detalle:det,monto:total,deuda:total};
+ const o=m>0?{tipo:'cobro',cliente:cl||null,detalle:det,monto:m,capital:c,ganancia:m-c,deuda:red(total-m-(v?.d||0),2),...dscObj(v)}:{tipo:'fiado',cliente:cl,detalle:det,monto:total,deuda:total};
  await asegCli(cl,tel);const{error}=await sb.from('caja_mov').insert(o);if(error)return avisa(msg(error));$('dpago').close();toast('Cargado en la Caja')}
 
 /* ---------- caja ---------- */
@@ -1496,15 +1531,16 @@ function pintaCaja(){const cap=sumaCj('capital'),gan=sumaCj('ganancia'),D=saldos
  const G=VS.filter(m=>m.tipo=='gasto'),gt=g=>G.filter(m=>tipoGasto(m)==g).reduce((a,m)=>a+(+m.monto||0),0),perTxt={sem:'esta semana',mes:'este mes',mpa:'el mes pasado','':'en total'}[per];
  $('cjgas').hidden=CJF!='gasto';if(CJF=='gasto')$('cjgas').innerHTML=`<div class="gtip">${GTIP.map(g=>`<button type="button" class="s${CJG==g?' on':''}" onclick="filGasto('${g}')"><span class="m">${g=='Automotor'?'🚗 ':''}${g}</span><b>${money(gt(g))}</b></button>`).join('')}</div>`;
  const fi=VS.filter(m=>m.tipo=='fiado'),sube=fi.reduce((a,m)=>a+Math.max(0,+m.deuda),0),baja=fi.reduce((a,m)=>a+Math.max(0,-m.deuda),0);
- $('cjsem').textContent=CJF=='cobro'?`Entraron ${money(s('cobro'))} · ${cu(V.length)}`:CJF=='compra'?`Compras de mercadería: ${money(s('compra'))} · ${cu(V.length)}`:CJF=='gasto'?(CJG?`${CJG} ${perTxt}: ${money(gt(CJG))} · ${cu(V.length)} · Toca de nuevo para ver todos`:`Gastos ${perTxt}: ${money(s('gasto'))} · ${cu(V.length)} · Toca un tipo para ver solo esos`):CJF=='fiado'?`Fiado ${money(sube)}${baja>.009?` · Anulado o corregido ${money(baja)}`:''} · Hoy te deben ${money(deben)}`:`Entró ${money(s('cobro'))} · Compras ${money(s('compra'))} · Gastos ${money(s('gasto'))}${gt('Automotor')>.009?` (automotor ${money(gt('Automotor'))})`:''} · Retiros ${money(s('retiro'))}`;
- const efe=m=>[+m.capital?`Capital ${+m.capital>0?'+':'−'} ${money(Math.abs(m.capital))}`:'',+m.ganancia?`Ganancia ${+m.ganancia>0?'+':'−'} ${money(Math.abs(m.ganancia))}`:'',+m.deuda?`Deuda ${+m.deuda>0?'+':'−'} ${money(Math.abs(m.deuda))}`:''].filter(Boolean).join(' · ');
+ const dsc=VS.reduce((a,m)=>a+(+m.descuento||0),0),dscS=dsc>.009?` · Descuentos ${money(dsc)}`:'';
+ $('cjsem').textContent=CJF=='cobro'?`Entraron ${money(s('cobro'))}${dscS} · ${cu(V.length)}`:CJF=='compra'?`Compras de mercadería: ${money(s('compra'))} · ${cu(V.length)}`:CJF=='gasto'?(CJG?`${CJG} ${perTxt}: ${money(gt(CJG))} · ${cu(V.length)} · Toca de nuevo para ver todos`:`Gastos ${perTxt}: ${money(s('gasto'))} · ${cu(V.length)} · Toca un tipo para ver solo esos`):CJF=='fiado'?`Fiado ${money(sube)}${baja>.009?` · Anulado o corregido ${money(baja)}`:''} · Hoy te deben ${money(deben)}`:`Entró ${money(s('cobro'))} · Compras ${money(s('compra'))} · Gastos ${money(s('gasto'))}${gt('Automotor')>.009?` (automotor ${money(gt('Automotor'))})`:''} · Retiros ${money(s('retiro'))}${dscS}`;
+ const efe=m=>[+m.capital?`Capital ${+m.capital>0?'+':'−'} ${money(Math.abs(m.capital))}`:'',+m.ganancia?`Ganancia ${+m.ganancia>0?'+':'−'} ${money(Math.abs(m.ganancia))}`:'',+m.deuda?`Deuda ${+m.deuda>0?'+':'−'} ${money(Math.abs(m.deuda))}`:'',dscTxt(m)].filter(Boolean).join(' · ');
  $('cjmov').innerHTML=N.map(m=>`<tr><td><div class="nom">${esc(CJNOM[m.tipo]||m.tipo)}${m.cliente?' · '+esc(m.cliente):''}${m.detalle?' · '+esc(m.detalle):''}${m.bulto?' · bulto':''}</div><div class="m" style="font-size:12px">${new Date(m.fecha).toLocaleDateString('es',{day:'2-digit',month:'2-digit'})} · ${efe(m)||money(m.monto)}</div></td><td class="n"><button class="s" title="Borrar movimiento" onclick="borraCaja(${m.id})">✕</button></td></tr>`).join('')
   ||`<tr><td class="m">${CJF||sem?'No hay movimientos de este tipo'+(sem?' '+perTxt+'.':'.'):'Todavía no hay movimientos.'}</td></tr>`;
  $('cjdiv').value=fmtIn(CJ.cfg.divisor)}
 function abreCaja(t){if(!CJ.ok)return avisa('La Caja todavía no está lista. Revisa el aviso de arriba.');CJT=t;$('cjt').textContent=CJTIT[t];
- const ver=(i,v)=>$(i).hidden=!v;ver('cjlcl',t=='cobro'||t=='deuda');ver('cjlte',t=='deuda');ver('cjlpr',t=='compra');ver('cjlga',t=='gasto');ver('cjlde',['compra','gasto'].includes(t));ver('cjlg2',t=='inicial');ver('cjlpd',t=='cobro');ver('cjlnv',t=='cobro');ver('cjlbu',t=='compra');
+ const ver=(i,v)=>$(i).hidden=!v;ver('cjlcl',t=='cobro'||t=='deuda');ver('cjlte',t=='deuda');ver('cjlpr',t=='compra');ver('cjlga',t=='gasto');ver('cjlde',['compra','gasto'].includes(t));ver('cjlg2',t=='inicial');ver('cjlpd',t=='cobro');ver('cjlnv',t=='cobro');ver('cjlbu',t=='compra');ver('cjlds',t=='cobro');
  $('cjmt').textContent=t=='inicial'?'Capital en caja':t=='cobro'?'Plata que entró':t=='deuda'?'Cuánto debe':'Monto';
- for(const i of['cjcl','cjte','cjde','cjm','cjm2','cjnv'])$(i).value='';$('cjpd').checked=$('cjbu').checked=false;$('cjpr').selectedIndex=$('cjga').selectedIndex=0;if(t=='inicial')$('cjm').value=$('cjm2').value='0';avisaCaja();$('dcaja').showModal()}
+ for(const i of['cjcl','cjte','cjde','cjm','cjm2','cjnv'])$(i).value='';$('cjpd').checked=$('cjbu').checked=false;$('cjpr').selectedIndex=$('cjga').selectedIndex=0;if(t=='inicial')$('cjm').value=$('cjm2').value='0';dscReset('cj');avisaCaja();$('dcaja').showModal()}
 // Muestra cómo se va a repartir lo que se está cargando
 function avisaCaja(){let t='';const m=num($('cjm').value)||0,div=+CJ.cfg.divisor||1.3;
  if(CJT=='cobro'){if(m>0)t=`Capital ${money(m/div)} · Ganancia ${money(m-m/div)}`;
@@ -1512,8 +1548,9 @@ function avisaCaja(){let t='';const m=num($('cjm').value)||0,div=+CJ.cfg.divisor
  $('cjav2').textContent=t}
 async function guardaCaja(e){e.preventDefault();const t=CJT,m=num($('cjm').value)||0,cl=(t=='deuda'?cliFinal($('cjcl').value.trim(),$('cjte').value):$('cjcl').value.trim())||null,div=+CJ.cfg.divisor||1.3;let o;
  if(t=='cobro'){const nv=num($('cjnv').value)||0,pd=$('cjpd').checked;if(!(m>0)&&!(nv>0))return avisa('Escribe cuánta plata entró.');if((nv>0||pd)&&!cl)return avisa('Escribe el nombre del cliente para llevar su deuda.');
-  const sal=saldosCaja().find(x=>norm(x.nombre)==norm(cl||''))?.saldo||0;if(pd&&m>sal+.009&&!await confirma(`${cl} debe ${money(sal)} y estás cargando ${money(m)}. ¿Guardar igual?`))return;
-  const c=m/div;o=m>0?{tipo:'cobro',cliente:cl,monto:m,capital:c,ganancia:m-c,deuda:nv-(pd?m:0)}:{tipo:'fiado',cliente:cl,monto:nv,deuda:nv}}
+  const sal=saldosCaja().find(x=>norm(x.nombre)==norm(cl||''))?.saldo||0;const dv=dscVal('cj')?.d||0;if(pd&&m+dv>sal+.009&&!await confirma(`${cl} debe ${money(sal)} y estás cargando ${money(m)}${dv?' + descuento '+money(dv):''}. ¿Guardar igual?`))return;
+  const v=dscVal('cj');if($('cjdsc').checked){if(!v||v.p>=100)return avisa('Escribe el % de descuento (menos de 100) o desmarca "Se le hizo descuento".');if(!(m>0))return avisa('Escribe cuánto pagó.');if(!cl)return avisa('Escribe el nombre del cliente para descontarle de su deuda.')}
+  const c=m/div;o=m>0?{tipo:'cobro',cliente:cl,detalle:v&&!pd?'Pago con descuento':null,monto:m,capital:c,ganancia:m-c,deuda:red(nv-(pd?m+(v?.d||0):0),2),...dscObj(v)}:{tipo:'fiado',cliente:cl,monto:nv,deuda:nv}}
  else if(t=='deuda'){if(!cl||!(m>0))return avisa('Escribe el cliente y cuánto debe.');const ya=saldosCaja().find(x=>norm(x.nombre)==norm(cl))?.saldo||0;if(ya&&!await confirma(`${cl} ya tiene saldo: ${saldoTxt(ya)}.
 
 Se le va a sumar ${money(m)}. Para poner otro saldo, usa "Corregir saldo" en su ficha. ¿Sumar igual?`))return;o={tipo:'fiado',cliente:cl,detalle:'Deuda inicial',monto:m,deuda:m}}
@@ -1537,11 +1574,11 @@ Lo que te deben los clientes no cambia. ¿Guardar?`))return;
 // Ficha del cliente: lo que se le lleva suma a su saldo y lo que paga lo baja (y entra a la caja)
 let CJC='';
 const saldoCli=()=>(saldosCaja().find(x=>norm(x.nombre)==norm(CJC))?.saldo)||0;
-function abreCli(i){CJC=CJ.cli[i].nombre;const te=CLI.find(c=>norm(c.nombre)==norm(CJC))?.telefono;$('clt').textContent=CJC;$('clte').value=te||'';for(const k of['clle','clpa','clde','claj'])$(k).value='';pintaCli();$('dcli').showModal()}
-function pintaCli(){const sal=saldoCli(),le=num($('clle').value)||0,pa=num($('clpa').value)||0,nv=sal+le-pa;$('clsal').textContent=saldoTxt(sal);
- $('clnv').textContent=le||pa?`${money(sal)} + ${money(le)} − ${money(pa)} = ${saldoTxt(nv)}`:'';
+function abreCli(i){CJC=CJ.cli[i].nombre;const te=CLI.find(c=>norm(c.nombre)==norm(CJC))?.telefono;$('clt').textContent=CJC;$('clte').value=te||'';for(const k of['clle','clpa','clde','claj'])$(k).value='';dscReset('cl');$('dcli').showModal()}
+function pintaCli(){const sal=saldoCli(),le=num($('clle').value)||0,pa=num($('clpa').value)||0,ds=dscVal('cl')?.d||0,nv=sal+le-pa-ds;$('clsal').textContent=saldoTxt(sal);
+ $('clnv').textContent=le||pa?`${money(sal)} + ${money(le)} − ${money(pa)}${ds?` − descuento ${money(ds)}`:''} = ${saldoTxt(nv)}`:'';
  let acu=0;const F=CJ.mov.filter(m=>m.cliente&&norm(m.cliente)==norm(CJC)).sort((a,b)=>a.id-b.id).map(m=>{acu+=+m.deuda;
-  const q=m.detalle=='Deuda inicial'?`Deuda inicial ${money(m.monto)}`:m.detalle=='Ajuste de saldo'?`Saldo corregido (${+m.deuda>0?'+':'−'} ${money(m.monto)})`:m.tipo=='fiado'?(+m.deuda<0?`Anulado ${money(m.monto)}`:`Llevó ${money(m.monto)}`):`Pagó ${money(m.monto)}`+(+m.deuda+ +m.monto>.009&&+m.deuda<+m.monto?` · llevó ${money(+m.deuda+ +m.monto)}`:'');
+  const q=m.detalle=='Deuda inicial'?`Deuda inicial ${money(m.monto)}`:m.detalle=='Ajuste de saldo'?`Saldo corregido (${+m.deuda>0?'+':'−'} ${money(m.monto)})`:m.tipo=='fiado'?(+m.deuda<0?`Anulado ${money(m.monto)}`:`Llevó ${money(m.monto)}`):`Pagó ${money(m.monto)}`+(+m.descuento>0?` · ${dscTxt(m).toLowerCase()}`:'')+(+m.deuda+ +m.monto+ +(m.descuento||0)>.009&&+m.deuda<+m.monto?` · llevó ${money(+m.deuda+ +m.monto+ +(m.descuento||0))}`:'');
   return`<tr><td>${new Date(m.fecha).toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'2-digit'})}</td><td>${q}${m.detalle&&!/^(Deuda inicial|Ajuste de saldo)$/.test(m.detalle)?`<div class="m" style="font-size:12px">${esc(m.detalle)}</div>`:''}</td><td class="n">${saldoTxt(acu)}</td></tr>`}).reverse();
  $('clmov').innerHTML=F.join('')||'<tr><td colspan="3" class="m">Sin movimientos.</td></tr>'}
 // Guarda o cambia el teléfono del cliente (si todavía no estaba en la lista de clientes, lo agrega)
@@ -1579,12 +1616,13 @@ async function borraCli(){const sal=saldoCli(),M=CJ.mov.filter(m=>m.cliente&&nor
   if(c){const{error}=await sb.from('clientes').delete().eq('id',c.id);if(error)throw error;CLI=CLI.filter(x=>x!==c);pintaLisCli()}}
  catch(e){avisa('No se pudo eliminar: '+msg(e));return cargaCaja()}
  $('dcli').close();toast('Cliente eliminado');cargaCaja()}
-async function guardaCli(e){e.preventDefault();const le=num($('clle').value)||0,pa=num($('clpa').value)||0,div=+CJ.cfg.divisor||1.3,sal=saldoCli(),de=$('clde').value.trim()||null;
+async function guardaCli(e){e.preventDefault();const le=num($('clle').value)||0,pa=num($('clpa').value)||0,div=+CJ.cfg.divisor||1.3,sal=saldoCli(),de=$('clde').value.trim()||null,v=dscVal('cl'),ds=v?.d||0;
  if(!(le>0)&&!(pa>0))return avisa('Escribe cuánto le llevaron o cuánto pagó.');
- if(pa>sal+le+.009&&!await confirma(`Está pagando más de lo que debe: le quedaría a favor ${money(pa-sal-le)}. ¿Guardar igual?`))return;
- const c=pa/div,o=pa>0?{tipo:'cobro',cliente:CJC,detalle:de,monto:pa,capital:c,ganancia:pa-c,deuda:le-pa}:{tipo:'fiado',cliente:CJC,detalle:de,monto:le,deuda:le};
+ if($('cldsc').checked){if(!v||v.p>=100)return avisa('Escribe el % de descuento (menos de 100) o desmarca "Se le hizo descuento".');if(!(pa>0))return avisa('Escribe cuánto pagó.')}
+ if(pa+ds>sal+le+.009&&!await confirma(`Está pagando más de lo que debe: le quedaría a favor ${money(pa+ds-sal-le)}. ¿Guardar igual?`))return;
+ const c=pa/div,o=pa>0?{tipo:'cobro',cliente:CJC,detalle:de,monto:pa,capital:c,ganancia:pa-c,deuda:red(le-pa-ds,2),...dscObj(v)}:{tipo:'fiado',cliente:CJC,detalle:de,monto:le,deuda:le};
  const b=$('clok');b.disabled=true;const{error}=await sb.from('caja_mov').insert(o);b.disabled=false;if(error)return avisa(msg(error));
- for(const k of['clle','clpa','clde'])$(k).value='';toast('Guardado');await cargaCaja();pintaCli()}
+ for(const k of['clle','clpa','clde'])$(k).value='';dscReset('cl');toast(ds?'Guardado con descuento de '+money(ds):'Guardado');await cargaCaja();pintaCli()}
 async function borraCaja(id){const m=CJ.mov.find(x=>x.id==id);if(!m||!await confirma(`¿Borrar este movimiento de ${money(m.monto)}?\n\nLos saldos se recalculan.`))return;
  const{error}=await sb.from('caja_mov').delete().eq('id',id);if(error)return avisa(msg(error));toast('Movimiento borrado');cargaCaja()}
 async function guardaDivisor(){const d=num($('cjdiv').value);if(!(d>=1)){$('cjdiv').value=fmtIn(CJ.cfg.divisor);return avisa('Esta casilla es el divisor (cómo se separa capital y ganancia), no el saldo. Tiene que ser 1 o más, por ejemplo 1,3.\n\nPara poner la caja en 0 usa el botón "Poner la caja en 0".')}

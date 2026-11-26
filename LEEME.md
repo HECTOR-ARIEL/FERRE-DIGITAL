@@ -110,6 +110,12 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Al generar el presupuesto, **¿Cómo pagó?** lo pasa a la Caja: pagó todo, pagó una parte o queda a deber todo. Con **No cargar en Caja** no se anota nada. Esa venta no se carga otra vez en "Entró plata".
 - Si después se anula un presupuesto, el movimiento de la Caja no se borra solo: hay que borrarlo con ✕.
 
+## Descuentos al cobrar (26/11/2026)
+- Al cargar un pago (en **¿Cómo pagó?**, en **Entró plata** o en la ficha del cliente) se marca **Se le hizo descuento**.
+- **Sobre (lo que debía)**: lo que debía pagar (ya viene puesto; se puede cambiar si el descuento es solo sobre un presupuesto). Se escribe el **%** y se calcula solo lo que pagó, o se escribe lo que pagó y se calcula el %.
+- A la caja entra solo lo que pagó, pero al cliente se le baja la deuda completa (lo que pagó + el descuento). Así la cuenta queda al día y no figura que falta plata.
+- En Movimientos cada pago muestra "Descuento 4 % − $ …" y arriba sale el total de **Descuentos** del período. En la ficha del cliente aparece al lado del pago.
+
 ## Recepción (comparar lo pedido con lo que llegó)
 - Se eligen dos Excel: **1** la nota de pedido que se le mandó al proveedor y **2** la misma nota corregida con lo que llegó (la que después se sube en "Importar cantidades").
 - Muestra al momento qué llegó completo, qué llegó incompleto y qué no llegó. Los productos se reconocen por la descripción.

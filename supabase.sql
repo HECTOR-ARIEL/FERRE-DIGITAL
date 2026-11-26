@@ -197,6 +197,9 @@ create table if not exists caja_mov(
   deuda numeric not null default 0,     -- + el cliente debe más, - pagó deuda
   bulto boolean not null default false  -- compra de bulto: se paga con la plata a separar
 );
+-- Descuento al cobrar: no entra a la caja, pero baja la deuda del cliente (26/11/2026)
+alter table caja_mov add column if not exists descuento numeric not null default 0;
+alter table caja_mov add column if not exists descuento_pct numeric not null default 0;
 -- costo_vendido: costo de lo vendido desde que existe la Caja (sin los productos con compra por cantidad).
 create table if not exists caja_config(
   id int primary key default 1 check (id = 1),
