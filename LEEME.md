@@ -79,6 +79,7 @@ Cada producto se reconoce por su **descripción original del Excel**, no por el 
 - Productos por bulto (la descripción del proveedor dice "MINIMO 6", "MIN 10", "MINIMO 12 UNID"…): se piden bultos completos, y solo si el stock quedó por debajo de 5 (o de la mitad del bulto en los de 20 o más).
 - Puedes cambiar cualquier cantidad antes de completar la nota.
 - **Completar nota de pedido**: usa sola la **última nota que importaste** en "Importar Excel" (la de los precios actuales) y descarga una copia con las cantidades escritas en la columna "Cantidad", con el mismo formato. Al lado del botón dice qué nota se va a usar.
+  - El **encabezado** sale completo solo: CLIENTE Silvina Daniela De Cia, DIRECCION, CEL, EXPRESO, la **fecha del día** en que se genera y el **número de nota** (el del nombre del archivo, ej. "NOTA DE PEDIDO 301.xlsx"). Para cambiar algún dato fijo, editar `DATOS_NOTA` en admin.html.
   - Cada vez que importas una nota nueva, reemplaza a la anterior. Así nunca se completa el pedido con una nota vieja.
   - **Usar otro archivo…** permite elegir otra a mano (avisa si no es la última importada).
   - La primera vez hay que ejecutar otra vez `supabase.sql` (crea la carpeta privada `notas`) y volver a importar la nota actual.

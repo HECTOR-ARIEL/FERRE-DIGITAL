@@ -1864,6 +1864,24 @@ async function compreSep(id){const p=P.find(x=>x.id==id);if(!p)return;const j=(+
  if(!await confirma(`¿Ya compraste ${p.nombre}?\n\nLa plata a separar de este producto (${money(j)}) vuelve a cero.`))return;
  const{error}=await sb.from('productos').update({compra_vendido:0,compra_pendiente:true}).eq('id',id);if(error)return avisa(msg(error));
  p.compra_vendido=0;p.compra_pendiente=true;toast('Compra registrada');pintaSep()}
+// Datos del cliente que van siempre en el encabezado de la nota de pedido (arriba de los productos).
+// Para cambiar algún dato, se cambia aquí. La fecha y el número de nota se completan solos.
+const DATOS_NOTA={cliente:'Silvina Daniela De Cia',direccion:'Av. Argentina 296 Villa Santa Cruz del Lago Punilla Córdoba',cel:'3541647118',expreso:'Expreso Centauro'};
+// Busca en las filas de arriba (antes de los títulos) las casillas "CLIENTE", "DIRECCION", "CEL:", "EXPRESO",
+// "Fecha de Pedido:" y "NOTA DE PEDIDO NRO" y las deja completas. El número de nota sale del nombre del archivo
+// (ej. "NOTA DE PEDIDO 301.xlsx"); si el nombre no lo trae, se deja el que ya tiene la nota.
+function encabezadoNota(filas,h,R,nombre){const out=new Map(),hoy=new Date(),d2=n=>String(n).padStart(2,'0');
+ const fecha=`${d2(hoy.getDate())}/${d2(hoy.getMonth()+1)}/${String(hoy.getFullYear()).slice(-2)}`;
+ const nroArch=(String(nombre).match(/pedido\D{0,8}(\d+)/i)||String(nombre).match(/(\d+)/)||[])[1];
+ for(let i=0;i<h;i++)(filas[i]||[]).forEach((v,j)=>{const x=norm(v).replace(/\s+/g,' ');if(!x)return;let txt=null;
+  if(x.startsWith('nota de pedido')){const nro=nroArch||(x.match(/(\d+)/)||[])[1];if(nro)txt='NOTA DE PEDIDO NRO '+nro}
+  else if(x.startsWith('cliente'))txt='CLIENTE '+DATOS_NOTA.cliente;
+  else if(x.startsWith('direccion'))txt='DIRECCION '+DATOS_NOTA.direccion;
+  else if(/^cel\b/.test(x))txt='CEL:'+DATOS_NOTA.cel;
+  else if(x.startsWith('expreso'))txt='EXPRESO '+DATOS_NOTA.expreso;
+  else if(x.startsWith('fecha de pedido'))txt='Fecha de Pedido:'+fecha;
+  if(txt)out.set(XLSX.utils.encode_cell({r:R.s.r+i,c:R.s.c+j}),txt)});
+ return out}
 // Escribe las cantidades en la nota de pedido del proveedor y descarga una copia (el original no se toca)
 async function usarNota(buf,nombre){
  let ws,filas;try{const wb=XLSX.read(buf);ws=wb.Sheets[wb.SheetNames[0]];filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',blankrows:true})}catch{return avisa('No se pudo leer el archivo. Tiene que ser la nota de pedido en formato .xlsx.')}
@@ -1878,14 +1896,16 @@ async function usarNota(buf,nombre){
   if(l&&!hay.has(l.clave)){hay.add(l.clave);poner.set(XLSX.utils.encode_cell({r:R.s.r+i,c:R.s.c+cq}),l.pedir)}}
  const noEnc=Q.filter(l=>!hay.has(l.clave));
  if(!poner.size)return avisa(`Ninguno de los productos a pedir aparece en "${nombre}".`);
- if(!await confirma(`Se van a escribir ${poner.size} cantidades en la columna "Cantidad" de "${nombre}" y se descargará una copia completa.\n`+
+ const cant=poner.size,enc=encabezadoNota(filas,h,R,nombre);for(const[k,v]of enc)poner.set(k,v);
+ if(!await confirma(`Se van a escribir ${cant} cantidades en la columna "Cantidad" de "${nombre}" y se descargará una copia completa.\n`+
+  (enc.size?`\nEncabezado: se completan los datos del cliente (${DATOS_NOTA.cliente}), la fecha de hoy${[...enc.values()].find(v=>v.startsWith('NOTA'))?' y el número de nota ('+[...enc.values()].find(v=>v.startsWith('NOTA')).replace(/\D+/g,'')+')':''}.\n`:'\nOjo: no encontré el encabezado (CLIENTE, DIRECCION…) en esta nota; se completan solo las cantidades.\n')+
   (previas?`\nOjo: el archivo ya tenía ${previas} cantidades de otros productos; se dejan como están.\n`:'')+
   '\n¿Continuar?'))return;
  const b=$('bnota');b.disabled=true;b.textContent='Completando…';
  try{const blob=await escribirCantidades(buf,poner),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download=nombre.replace(/\.xlsx$/i,'')+' - completa.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000)}
  catch(e){return avisa('No se pudo completar la nota: '+e.message)}finally{b.disabled=false;b.textContent='Completar nota de pedido (Excel)'}
- $('pedres').innerHTML=`<b>Listo:</b> se descargó la nota con ${poner.size} producto(s) cargados. Revísala, mándasela al proveedor y luego pulsa "Marcar pedido como enviado".`+
+ $('pedres').innerHTML=`<b>Listo:</b> se descargó la nota con ${cant} producto(s) cargados${enc.size?' y los datos del cliente con la fecha de hoy':''}. Revísala, mándasela al proveedor y luego pulsa "Marcar pedido como enviado".`+
   (noEnc.length?` Los otros ${noEnc.length} producto(s) vendidos no están en esta nota (son de otro proveedor) y se dejaron afuera.`:'');$('pedres').hidden=false}
 // Cambia solo las casillas de cantidad dentro del archivo: colores, fórmulas y comentarios quedan igual
 async function escribirCantidades(buf,poner){const z=await JSZip.loadAsync(buf),X=new DOMParser(),S=new XMLSerializer();
@@ -1899,7 +1919,9 @@ async function escribirCantidades(buf,poner){const z=await JSZip.loadAsync(buf),
   if(!row){row=doc.createElementNS(NS,'row');row.setAttribute('r',nr);const sig=[...filas.keys()].filter(k=>k>nr).sort((a,b)=>a-b)[0];sd.insertBefore(row,sig?filas.get(sig):null);filas.set(nr,row)}
   const cs=[...row.getElementsByTagName('c')];let c=cs.find(x=>x.getAttribute('r')==ref);
   if(!c){c=doc.createElementNS(NS,'c');c.setAttribute('r',ref);row.insertBefore(c,cs.find(x=>col(x.getAttribute('r'))>col(ref))||null)}
-  c.removeAttribute('t');while(c.firstChild)c.removeChild(c.firstChild);const e=doc.createElementNS(NS,'v');e.textContent=String(v);c.appendChild(e)}
+  while(c.firstChild)c.removeChild(c.firstChild);
+  if(typeof v=='string'){c.setAttribute('t','inlineStr');const is=doc.createElementNS(NS,'is'),e=doc.createElementNS(NS,'t');e.setAttributeNS('http://www.w3.org/XML/1998/namespace','xml:space','preserve');e.textContent=v;is.appendChild(e);c.appendChild(is)}
+  else{c.removeAttribute('t');const e=doc.createElementNS(NS,'v');e.textContent=String(v);c.appendChild(e)}}
  z.file(ruta,S.serializeToString(doc),{createFolders:false});
  // que Excel recalcule los totales al abrir el archivo
  let cp=wbx.getElementsByTagName('calcPr')[0];
